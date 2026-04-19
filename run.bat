@@ -3,6 +3,9 @@ chcp 65001 >nul
 setlocal
 cd /d "%~dp0"
 
+if /I "%~1"=="capture" goto safe_capture
+if /I "%~1"=="dashboard" goto streamlit_dash
+
 echo.
 echo   LeadPilot — starting API + Vite (React)
 echo   Browser: http://localhost:5173   API: http://127.0.0.1:8000/docs
@@ -46,5 +49,42 @@ if not exist .env (
 )
 
 call npm run dev
+if errorlevel 1 pause
+goto :eof
+
+:safe_capture
+echo.
+echo   LeadPilot — Safe manual capture (Playwright, one lead at a time)
+echo   Profile: sessions\playwright_user_data\safe_capture
+echo   DB: database\safe_leads.db   CSV: exports\safe_leads.csv
+echo.
+python -m pip install -r requirements.txt -q
+if errorlevel 1 (
+  echo Pip failed. Is Python on PATH?
+  pause
+  goto :eof
+)
+echo Ensuring Playwright browser binaries...
+python -m playwright install chromium
+if errorlevel 1 (
+  echo Playwright install failed.
+  pause
+  goto :eof
+)
+python -m backend.safe_capture_cli
+if errorlevel 1 pause
+goto :eof
+
+:streamlit_dash
+echo.
+echo   LeadPilot — Streamlit dashboard (safe captures)
+echo.
+python -m pip install -r requirements.txt -q
+if errorlevel 1 (
+  echo Pip failed. Is Python on PATH?
+  pause
+  goto :eof
+)
+python -m streamlit run "%~dp0frontend\streamlit_dashboard.py"
 if errorlevel 1 pause
 goto :eof

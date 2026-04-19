@@ -13,3 +13,4 @@ beautifulsoup4
 lxml
 playwright
 httpx
+streamlit>=1.28

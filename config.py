@@ -59,10 +59,11 @@ BRANDING_UPLOAD_DIR = os.getenv("BRANDING_UPLOAD_DIR", str(_REPO_ROOT / "storage
 def ensure_data_dirs() -> None:
     for d in (EXPORTS_DIR, SESSIONS_DIR, LOGS_DIR, BRANDING_UPLOAD_DIR):
         os.makedirs(d, exist_ok=True)
-    for p in (SQLITE_DB_PATH, API_META_DB_PATH):
+    for p in (SQLITE_DB_PATH, API_META_DB_PATH, SAFE_CAPTURE_DB_PATH, SAFE_CAPTURE_CSV_PATH):
         parent = os.path.dirname(os.path.abspath(p))
         if parent:
             os.makedirs(parent, exist_ok=True)
+    os.makedirs(SAFE_CAPTURE_PROFILE_DIR, exist_ok=True)
 
 
 # --- Scraper (Playwright): safe delays & per-run lead caps ---
@@ -76,6 +77,25 @@ SCRAPER_PROFILE_ENRICH_CAP = int(os.getenv("SCRAPER_PROFILE_ENRICH_CAP", "8"))
 
 # --- Lead scoring (industry alignment bonus) ---
 SCORING_BENCHMARK_INDUSTRY = os.getenv("SCORING_BENCHMARK_INDUSTRY", "").strip()
+
+# --- Safe manual capture (Playwright + sqlite3; one lead at a time) ---
+_REPO_ROOT_STR = str(_REPO_ROOT)
+SAFE_CAPTURE_DB_PATH = os.getenv(
+    "SAFE_CAPTURE_DB_PATH",
+    str(_REPO_ROOT / "database" / "safe_leads.db"),
+).strip()
+SAFE_CAPTURE_PROFILE_DIR = os.getenv(
+    "SAFE_CAPTURE_PROFILE_DIR",
+    str(_REPO_ROOT / "sessions" / "playwright_user_data" / "safe_capture"),
+).strip()
+SAFE_CAPTURE_CSV_PATH = os.getenv(
+    "SAFE_CAPTURE_CSV_PATH",
+    str(_REPO_ROOT / "exports" / "safe_leads.csv"),
+).strip()
+SAFE_CAPTURE_LOCK_PATH = os.getenv(
+    "SAFE_CAPTURE_LOCK_PATH",
+    str(_REPO_ROOT / "sessions" / "safe_capture.lock"),
+).strip()
 
 
 # SMTP (optional — email_service sends when host is set)

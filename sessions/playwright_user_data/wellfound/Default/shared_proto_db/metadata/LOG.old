@@ -1,2 +1,3 @@
-2026/04/16-21:35:27.555 5aa0 Creating DB D:\Py_Projects\LeadPilot\sessions\playwright_user_data\wellfound\Default\shared_proto_db\metadata since it was missing.
-2026/04/16-21:35:27.573 5aa0 Reusing MANIFEST D:\Py_Projects\LeadPilot\sessions\playwright_user_data\wellfound\Default\shared_proto_db\metadata/MANIFEST-000001
+2026/04/16-21:54:33.757 61fc Reusing MANIFEST D:\Py_Projects\LeadPilot\sessions\playwright_user_data\wellfound\Default\shared_proto_db\metadata/MANIFEST-000001
+2026/04/16-21:54:33.757 61fc Recovering log #3
+2026/04/16-21:54:33.758 61fc Reusing old log D:\Py_Projects\LeadPilot\sessions\playwright_user_data\wellfound\Default\shared_proto_db\metadata/000003.log 
