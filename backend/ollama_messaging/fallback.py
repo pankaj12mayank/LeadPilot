@@ -20,7 +20,6 @@ def build_fallback_pack(lead: LeadMessageInput) -> LeadMessageOutput:
     pains = _clean(lead.get("pain_points"))
     opp = _clean(lead.get("opportunity_summary"))
 
-    who = f"{name}"
     if title and company:
         who_line = f"{name}, {title} at {company}"
     elif company:
@@ -61,12 +60,14 @@ def build_fallback_pack(lead: LeadMessageInput) -> LeadMessageOutput:
         """
     ).strip()
 
+    pain_intro = ("Context I have: " + pains[:280] + "\n\n") if pains else ""
+
     email_message = textwrap.dedent(
         f"""
         Hi {who_line},
 
         I came across {company or "your team"}{site_hint} and wanted to reach out personally.
-        {("Context I have: " + pains[:280] + "\n\n") if pains else ""}{opp or "I'd value a short conversation to see if there's a fit."}
+        {pain_intro}{opp or "I'd value a short conversation to see if there's a fit."}
 
         If this isn't a priority right now, no problem — a one-line reply helps either way.
 

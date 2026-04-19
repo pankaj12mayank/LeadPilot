@@ -4,8 +4,6 @@ from __future__ import annotations
 
 from urllib.parse import urlparse
 
-from playwright.sync_api import Page
-
 
 def detect_platform_from_url(url: str) -> str:
     """
@@ -27,11 +25,3 @@ def detect_platform_from_url(url: str) -> str:
     if "clutch.co" in host:
         return "clutch"
     return "generic"
-
-
-def detect_platform_from_page(page: Page) -> str:
-    try:
-        url = page.url or ""
-    except Exception:
-        url = ""
-    return detect_platform_from_url(url)

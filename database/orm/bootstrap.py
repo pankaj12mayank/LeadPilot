@@ -3,7 +3,6 @@ from __future__ import annotations
 from sqlalchemy import create_engine, event, text
 from sqlalchemy.orm import sessionmaker
 
-import config
 from database.meta_db import meta_db_path
 from database.orm.base import Base
 

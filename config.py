@@ -79,7 +79,6 @@ SCRAPER_PROFILE_ENRICH_CAP = int(os.getenv("SCRAPER_PROFILE_ENRICH_CAP", "8"))
 SCORING_BENCHMARK_INDUSTRY = os.getenv("SCORING_BENCHMARK_INDUSTRY", "").strip()
 
 # --- Safe manual capture (Playwright + sqlite3; one lead at a time) ---
-_REPO_ROOT_STR = str(_REPO_ROOT)
 SAFE_CAPTURE_DB_PATH = os.getenv(
     "SAFE_CAPTURE_DB_PATH",
     str(_REPO_ROOT / "database" / "safe_leads.db"),

@@ -7,7 +7,7 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from jose import JWTError
 
 from backend.app.middleware.jwt import decode_access_token
-from database.orm.session import get_db
+from database.orm.session import get_db  # noqa: F401 — re-exported for FastAPI route ``Depends()``
 from services import auth_service
 
 _bearer = HTTPBearer(auto_error=True)

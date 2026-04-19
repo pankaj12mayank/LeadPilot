@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 from abc import ABC, abstractmethod
-from typing import Any, ClassVar, Dict, List, Optional
+from typing import Any, ClassVar, Dict, List
 from urllib.parse import quote_plus
 
 from playwright.sync_api import Page, sync_playwright

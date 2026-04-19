@@ -6,7 +6,7 @@ from typing import Any, Dict, List, Optional
 
 import httpx
 from fastapi import APIRouter, Depends
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 
 import config
 from backend.app.api.deps import get_current_user

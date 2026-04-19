@@ -1,90 +1,104 @@
 @echo off
 chcp 65001 >nul
-setlocal
+setlocal EnableDelayedExpansion
 cd /d "%~dp0"
 
-if /I "%~1"=="capture" goto safe_capture
-if /I "%~1"=="dashboard" goto streamlit_dash
-
-echo.
-echo   LeadPilot — starting API + Vite (React)
-echo   Browser: http://localhost:5173   API: http://127.0.0.1:8000/docs
-echo   Stop: Ctrl+C here and close the API window
-echo   Alternative: from repo root run  npm install  then  npm run dev  (single terminal)
-echo.
-
-echo Installing Python requirements (quiet)...
-python -m pip install -r requirements.txt -q
-if errorlevel 1 (
-  echo Pip failed. Is Python on PATH?
-  pause
-  goto :eof
+REM ----- Optional virtual environment (common layouts) -----
+set "_VENV_ACT="
+if exist "%~dp0.venv\Scripts\activate.bat" (
+  call "%~dp0.venv\Scripts\activate.bat"
+  set "_VENV_ACT=1"
+) else if exist "%~dp0venv\Scripts\activate.bat" (
+  call "%~dp0venv\Scripts\activate.bat"
+  set "_VENV_ACT=1"
+) else if exist "%~dp0env\Scripts\activate.bat" (
+  call "%~dp0env\Scripts\activate.bat"
+  set "_VENV_ACT=1"
+)
+if not defined _VENV_ACT (
+  echo.
+  echo [i] No virtual environment found at .venv, venv, or env.
+  echo     Using Python from PATH. Create one with:  python -m venv .venv
+  echo.
 )
 
-echo Starting API in a new window...
-start "LeadPilot API" cmd /k "%~dp0scripts\start-api.bat"
-echo Waiting 2 seconds for API...
+where python >nul 2>&1
+if errorlevel 1 (
+  echo [X] Python was not found on PATH. Install Python 3 and retry.
+  pause
+  exit /b 1
+)
+
+:menu
+cls
+echo.
+echo   LeadPilot  ^|  Windows launcher
+echo   ================================
+echo   1. Run Lead Capture   ^(Playwright + backend\main.py^)
+echo   2. Open Dashboard     ^(Streamlit^)
+echo   3. Export CSV         ^(SQLite safe captures -^> configured CSV path^)
+echo   4. Exit
+echo.
+set "choice="
+set /p "choice=Choose [1-4]: "
+if "!choice!"=="" goto menu
+if "!choice!"=="1" goto opt_capture
+if "!choice!"=="2" goto opt_dashboard
+if "!choice!"=="3" goto opt_export
+if "!choice!"=="4" goto :eof
+echo Invalid choice. Use 1, 2, 3, or 4.
 timeout /t 2 /nobreak >nul
+goto menu
 
-cd /d "%~dp0frontend"
-if not exist package.json (
-  echo ERROR: frontend folder missing.
-  pause
-  goto :eof
-)
-if not exist node_modules (
-  echo npm install...
-  call npm install
-  if errorlevel 1 (
-    echo npm install failed.
-    pause
-    goto :eof
-  )
-)
-if not exist .env (
-  if exist .env.example (
-    echo Creating frontend\.env from .env.example
-    copy /y .env.example .env
-  )
-)
-
-call npm run dev
-if errorlevel 1 pause
-goto :eof
-
-:safe_capture
+:opt_capture
 echo.
-echo   LeadPilot — Safe manual capture (Playwright, one lead at a time)
-echo   Profile: sessions\playwright_user_data\safe_capture
-echo   DB: database\safe_leads.db   CSV: exports\safe_leads.csv
-echo.
-python -m pip install -r requirements.txt -q
+echo --- Lead Capture ---
+python -m pip install -r "%~dp0requirements.txt" -q
 if errorlevel 1 (
-  echo Pip failed. Is Python on PATH?
+  echo [X] pip install failed. Check network and requirements.txt
   pause
-  goto :eof
+  goto menu
 )
-echo Ensuring Playwright browser binaries...
+echo Ensuring Playwright Chromium...
 python -m playwright install chromium
 if errorlevel 1 (
-  echo Playwright install failed.
-  pause
-  goto :eof
+  echo [!] Playwright browser install had a problem; capture may still work if browsers exist.
 )
-python -m backend.safe_capture_cli
-if errorlevel 1 pause
-goto :eof
+python -m backend.main
+if errorlevel 1 echo [X] Capture exited with an error.
+pause
+goto menu
 
-:streamlit_dash
+:opt_dashboard
 echo.
-echo   LeadPilot — Streamlit dashboard (safe captures)
-echo.
-python -m pip install -r requirements.txt -q
+echo --- Dashboard ---
+python -m pip install -r "%~dp0requirements.txt" -q
 if errorlevel 1 (
-  echo Pip failed. Is Python on PATH?
+  echo [X] pip install failed.
   pause
-  goto :eof
+  goto menu
+)
+python -c "import streamlit" 2>nul
+if errorlevel 1 (
+  echo [X] Streamlit is not installed. From repo root:  python -m pip install streamlit
+  pause
+  goto menu
 )
 python -m streamlit run "%~dp0frontend\streamlit_dashboard.py"
-if errorlevel 1 pause
-goto :eof
+if errorlevel 1 echo [X] Streamlit exited with an error.
+pause
+goto menu
+
+:opt_export
+echo.
+echo --- Export CSV ---
+python -m pip install -r "%~dp0requirements.txt" -q
+if errorlevel 1 (
+  echo [X] pip install failed.
+  pause
+  goto menu
+)
+python -m backend.export_safe_csv
+if errorlevel 1 echo [X] Export failed.
+pause
+goto menu

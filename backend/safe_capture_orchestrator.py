@@ -46,7 +46,6 @@ def run_interactive_capture(
 
     with CaptureLock(config.SAFE_CAPTURE_LOCK_PATH):
         browser = launch_capture_browser(headless=headless)
-        captured_at = ""
         try:
             page = _pick_active_page(browser)
             if start_url:

@@ -1,0 +1,22 @@
+[project]
+name = "leadpilot"
+version = "0.0.0"
+description = "LeadPilot monorepo (FastAPI + React + safe capture tooling)"
+readme = "README.md"
+requires-python = ">=3.10"
+
+[tool.ruff]
+line-length = 120
+target-version = "py312"
+extend-exclude = [
+    "sessions",
+    "frontend/node_modules",
+    "frontend/dist",
+    ".venv",
+    "venv",
+    "env",
+]
+
+[tool.ruff.lint]
+# Unused imports / unused variables — run:  python -m ruff check . --select F401,F841
+select = ["F401", "F841"]

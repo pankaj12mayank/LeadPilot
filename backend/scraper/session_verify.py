@@ -37,8 +37,6 @@ def verify_playwright_session(slug: str, *, custom_login_url: Optional[str] = No
     Launch headless persistent context; open probe URL (or custom base URL).
     Returns True only if navigation does not land on an obvious login URL.
     """
-    from pathlib import Path
-
     from playwright.sync_api import sync_playwright
 
     from backend.scraper.session_manager import SessionManager

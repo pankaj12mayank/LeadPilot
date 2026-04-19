@@ -11,7 +11,7 @@ available meta tables when present; see ``metrics.data_quality`` for coverage hi
 from __future__ import annotations
 
 import json
-from collections import Counter, defaultdict
+from collections import Counter
 from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List, Optional, Tuple
 
