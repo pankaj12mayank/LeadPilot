@@ -13,8 +13,8 @@ from backend.app.schemas.platform import (
 )
 from backend.scraper.session_manager import SessionManager
 from backend.scraper.urls import LOGIN_START_URLS, login_url
-from connectors.platforms import PLATFORM_CANONICAL
-from services import platform_registry_service
+from backend.connectors.platforms import PLATFORM_CANONICAL
+from backend.services import platform_registry_service
 
 router = APIRouter(prefix="/platforms", tags=["platforms"])
 

@@ -8,18 +8,18 @@ Monorepo: **FastAPI** backend + **React (Vite)** SPA. CRM leads live in **SQLite
 
 | Action | Command |
 |--------|---------|
-| **Backend (dev, reload)** | `python -m uvicorn backend.app.main:app --reload --host 127.0.0.1 --port 8000` |
+| **Backend (dev, reload)** | From repo root: `python -m uvicorn app.main:app --reload --host 0.0.0.0 --port 8000` |
 | **Frontend (dev)** | `cd frontend && npm run dev` → [http://localhost:5173](http://localhost:5173) |
-| **One-command local (API + Vite)** | From repo root: `npm install` then `npm run dev` **or** Windows `run.bat` **or** `./run.sh` |
+| **One-command local (API + Vite)** | **Windows:** double-click **`run.bat`** from the repo root (installs deps, then runs **API + Vite in one window** — leave it open; **Ctrl+C** stops both). **Manual:** `.\.venv\Scripts\python.exe scripts\dev_server.py` from repo root, or `scripts\start-api.bat` + `scripts\start-frontend.bat` in two terminals |
 | **Production build (SPA only)** | `cd frontend && npm run build` (output: `frontend/dist/`) |
 | **Docker Compose (API + nginx UI)** | `docker compose up --build` → API [http://127.0.0.1:8000](http://127.0.0.1:8000), UI [http://127.0.0.1:8080](http://127.0.0.1:8080) |
 | **Initialize SQLite / dirs** | `python scripts/init_database.py` |
 | **Seed demo user + leads** | `python scripts/seed_demo_data.py` |
-| **API tests** | `pip install -r requirements-dev.txt` then `pytest` |
+| **API tests** | `pip install -r requirements.txt` then `pytest` |
 | **Frontend tests** | `cd frontend && npm run test` |
-| **All tests** | From root: `npm run test` (after dev deps installed) |
+| **All tests** | API: `pytest` · Web: `cd frontend && npm run test` |
 
-API docs (when backend is up): **http://127.0.0.1:8000/docs**
+API docs (when backend is up): **http://127.0.0.1:8000/docs** (OpenAPI paths include the **`/api`** prefix by default)
 
 ---
 
@@ -27,32 +27,35 @@ API docs (when backend is up): **http://127.0.0.1:8000/docs**
 
 ```text
 LeadPilot/
-├── backend/app/main.py       # FastAPI app + lifespan (DB init, logging)
-├── config.py                 # Central env (python-dotenv)
-├── database/                 # SQLite helpers, ORM models, migrations
-├── services/                 # Auth, leads (ORM), analytics, etc.
-├── exports/                  # CSV outputs (volume in Docker)
-├── sessions/                 # Playwright user data dirs (volume)
-├── logs/                     # Rotating api.log (volume)
+├── backend/                  # Python: FastAPI app, services, connectors, scraper, safe capture, prompts
+│   ├── app/main.py           # FastAPI entry + lifespan
+│   ├── services/             # Auth, ORM leads, analytics, messaging, …
+│   ├── connectors/         # Safe-capture parsers + platform ids
+│   ├── safe_capture/         # Manual capture normalize / score / AI helpers
+│   ├── storage/             # CSV / SQLite / Postgres storage adapters
+│   ├── settings/            # lead_schema (shared constants)
+│   ├── utils/               # logging, locks, platform_detect
+│   ├── prompts/             # LLM text templates (PROMPTS_DIR default)
+│   └── docs/                # Architecture notes (optional)
+├── config.py                 # Central env (python-dotenv); load from repo root
+├── database/                 # ORM bootstrap, meta_db, safe_capture_store
+├── exports/                  # CSV outputs (Docker volume)
+├── sessions/                 # Playwright profiles (volume)
+├── logs/
+├── data/                     # Default CSV path for STORAGE_MODE=csv (optional)
 ├── scripts/
-│   ├── init_database.py      # Schema + storage init (CLI)
-│   ├── seed_demo_data.py     # Demo user + sample leads
-│   ├── start-api.bat         # Windows API launcher (used by run.bat)
-│   ├── start-api.sh          # Unix API launcher
-│   └── dev-local.ps1         # PowerShell: API + Vite
-├── tests/                    # Pytest + FastAPI TestClient
-├── frontend/
-│   ├── src/lib/api/client.ts # Axios instance + auth header
-│   ├── Dockerfile            # Multi-stage → nginx static
-│   └── nginx.conf            # SPA routing
-├── Dockerfile                # API image (Playwright base)
-├── docker-compose.yml        # api:8000 + web:8080
-├── requirements.txt          # Production Python deps
-├── requirements-dev.txt      # + pytest / httpx
+│   ├── init_database.py
+│   ├── seed_demo_data.py
+│   ├── start-api.bat         # API only (.venv + uvicorn)
+│   └── start-frontend.bat    # Vite dev server only
+├── tests/                    # Pytest
+├── frontend/                 # Vite + React (single package.json here)
+├── Dockerfile
+├── docker-compose.yml
+├── requirements.txt          # All Python deps (app + pytest + ruff)
 ├── pytest.ini
-├── package.json              # concurrently: `npm run dev`
-├── run.bat / run.sh          # One-command starters
-└── .env.example              # Copy to `.env` at repo root
+├── run.bat                   # Single Windows launcher (full stack + capture + dashboard + export)
+└── .env.example
 ```
 
 ---
@@ -61,8 +64,8 @@ LeadPilot/
 
 1. **Backend:** copy **`.env.example`** → **`.env`** in the **repository root** (same folder as `config.py`). `python-dotenv` loads this on import.
 2. **Frontend:** optional **`frontend/.env`**.  
-   - **Development:** leave `VITE_API_URL` empty to use the Vite proxy **`/api` → `http://127.0.0.1:8000`** (see `frontend/vite.config.ts`).  
-   - **Production build:** set `VITE_API_URL` to the **browser-reachable** API URL (e.g. `https://api.example.com`).
+   - **Development:** leave **`VITE_API_BASE_URL`** unset → Axios uses **`/api`** and Vite proxies **`/api/*` → `http://127.0.0.1:8000`** (same path; see `frontend/vite.config.ts`).  
+   - **Production build:** set **`VITE_API_BASE_URL`** to the browser-reachable API root including the prefix, e.g. **`https://api.example.com/api`** (legacy: `VITE_API_URL`).
 
 Important keys:
 
@@ -70,17 +73,19 @@ Important keys:
 |----------|---------|
 | `API_META_DB_PATH` | SQLite file for users, leads (ORM), settings, raw scrape rows |
 | `SECRET_KEY` | JWT signing — **change in production** |
-| `CORS_ORIGINS` | Comma-separated allowed origins (use real UI origin in prod) |
+| `CORS_ORIGINS` | Comma-separated allowed origins (use real UI origin in prod; avoid `*` if you need credentials) |
+| `FRONTEND_URL` | Vite origin (e.g. `http://localhost:5173`); appended to `CORS_ORIGINS` when that list is explicit |
+| `API_ROOT_PATH` | JSON API prefix (default **`/api`**). **`GET /health`** and **`/branding/*`** stay at the server root |
 | `EXPORTS_DIR`, `SESSIONS_DIR`, `LOGS_DIR` | Writable runtime directories |
-| `VITE_API_URL` | Axios base URL for the SPA (build-time for static hosting) |
+| `VITE_API_BASE_URL` | Axios base URL for the SPA (build-time; include `/api` to match `API_ROOT_PATH`) |
 
 ---
 
 ## Frontend ↔ backend (Axios)
 
 - **`frontend/src/lib/api/client.ts`** creates a shared Axios instance with `Authorization: Bearer <token>` from Zustand.
-- **Dev:** default base URL is **`/api`**; Vite rewrites to FastAPI on port **8000** without CORS friction.
-- **Prod:** set **`VITE_API_URL`** at `npm run build` time so the static files call the correct host.
+- **Dev:** default base URL is **`/api`**; Vite proxies **`/api/*`** to **`http://127.0.0.1:8000`** with the same path (no strip).
+- **Prod:** set **`VITE_API_BASE_URL`** at `npm run build` time (e.g. `http://127.0.0.1:8000/api`) and align **`CORS_ORIGINS`** / **`FRONTEND_URL`** on the API.
 
 ---
 
@@ -108,23 +113,17 @@ python scripts/init_database.py
 
 ```bash
 pip install -r requirements.txt
-pip install -r requirements-dev.txt   # optional, for tests
 cd frontend && npm install && cd ..
 copy .env.example .env                 # Windows: copy; Unix: cp
 python scripts/init_database.py
 python scripts/seed_demo_data.py       # optional demo login (see script env vars)
 ```
 
-**Option A — one command (Node + Python):**
+**Option A — Windows (recommended):** **`run.bat`** → **1** (pip, API in new window, then Vite).
 
-```bash
-npm install          # installs concurrently at repo root
-npm run dev
-```
+**Option B — manual two terminals:** `scripts\start-api.bat` then `scripts\start-frontend.bat` (or `uvicorn` / `npm run dev` yourself from repo root / `frontend\`).
 
-**Option B — Windows:** double-click or run **`run.bat`** (starts API in a second window, then Vite).
-
-**Option C — Unix:** `chmod +x run.sh scripts/start-api.sh` then `./run.sh`.
+**Option C — Unix / macOS:** same as B with `uvicorn` + `npm run dev` in two shells (no root `run.sh`; keep it simple).
 
 Sign in with seeded **`demo@leadpilot.local`** / **`demo-password-change-me`** (unless overridden by `SEED_DEMO_EMAIL` / `SEED_DEMO_PASSWORD`).
 
@@ -137,10 +136,10 @@ docker compose up --build
 ```
 
 - **API** listens on **8000**; volumes persist `database/`, `exports/`, `logs/`, `sessions/`.
-- **Web** is nginx on host **8080**; the SPA is built with `VITE_API_URL` defaulting to **`http://127.0.0.1:8000`** so the browser talks to the API on the host loopback.  
-  Adjust in compose: `VITE_API_URL`, `CORS_ORIGINS`, `SECRET_KEY`.
+- **Web** is nginx on host **8080**; the SPA is built with **`VITE_API_BASE_URL`** defaulting to **`http://127.0.0.1:8000/api`**.  
+  Adjust in compose: `VITE_API_BASE_URL`, `API_ROOT_PATH`, `FRONTEND_URL`, `CORS_ORIGINS`, `SECRET_KEY`.
 
-Playwright scrapers need a **saved session** on the host volume (`sessions/`); use **`POST /scraper/sessions/{platform}/manual-login`** from a machine that can open a browser, or document X11 for headed login in Linux containers.
+Playwright scrapers need a **saved session** on the host volume (`sessions/`); use **`POST /api/scraper/sessions/{platform}/manual-login`** from a machine that can open a browser, or document X11 for headed login in Linux containers.
 
 ---
 
@@ -156,7 +155,7 @@ Playwright scrapers need a **saved session** on the host volume (`sessions/`); u
 **API (pytest):** from repo root with `PYTHONPATH` implicit via `pytest.ini`:
 
 ```bash
-pip install -r requirements-dev.txt
+pip install -r requirements.txt
 pytest
 ```
 
@@ -178,15 +177,17 @@ npm ci
 npm run build
 ```
 
-Serve `frontend/dist/` with any static host; align **`VITE_API_URL`** and reverse-proxy **`/api`** if you terminate TLS on a gateway.
+Serve `frontend/dist/` with any static host; align **`VITE_API_BASE_URL`** with your gateway path (usually ends in **`/api`**) and **`API_ROOT_PATH`** on the API.
 
 ---
 
 ## API quick reference
 
-- **Auth:** `POST /auth/register`, `POST /auth/login`, `GET /auth/me`
-- **Leads:** `GET/POST /leads/`, exports under `/exports/`
-- **Scraper:** `GET /scraper/status`, `POST /scraper/run`, `GET /scraper/jobs/{id}`
-- **Health:** `GET /health`
+Default **`API_ROOT_PATH=/api`** (override with env). Public branding: **`GET /api/public/branding`**.
 
-Architecture notes: **`docs/SAAS_ARCHITECTURE.md`**.
+- **Auth:** `POST /api/auth/register`, `POST /api/auth/login`, `GET /api/auth/me`
+- **Leads:** `GET/POST /api/leads`, exports under `/api/exports/`
+- **Scraper:** `GET /api/scraper/status`, `POST /api/scraper/run`, `GET /api/scraper/jobs/{id}`
+- **Health:** `GET /health` (no `/api` prefix)
+
+Architecture notes: **`backend/docs/SAAS_ARCHITECTURE.md`**.

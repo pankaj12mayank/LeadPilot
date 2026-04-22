@@ -2,8 +2,10 @@ import { useEffect, useState } from 'react'
 import { Navigate } from 'react-router-dom'
 
 import { ThemeToggle } from '@/components/layout/ThemeToggle'
+import { PasswordField } from '@/components/ui/PasswordField'
 import { useBrandingStore } from '@/store/brandingStore'
 import { fetchMe, login, register } from '@/lib/api/auth'
+import { getApiErrorMessage } from '@/lib/api/client'
 import { useAuthStore } from '@/store/authStore'
 
 /** Shown under the heading (compact for small viewports). */
@@ -67,12 +69,14 @@ export function LoginPage() {
           : await register(email.trim(), password)
       const user = data.user ?? (await fetchMe())
       setAuth(data.access_token, user)
-    } catch {
-      setError(
+    } catch (e) {
+      const hint = getApiErrorMessage(
+        e,
         mode === 'login'
           ? 'Sign-in failed. Check your email and password, then try again.'
           : 'Registration could not be completed. Verify your details or contact your administrator.',
       )
+      setError(hint)
     } finally {
       setBusy(false)
     }
@@ -148,18 +152,14 @@ export function LoginPage() {
             />
           </div>
           <div>
-            <label className="text-xs font-semibold uppercase tracking-wider text-ink-muted" htmlFor="password">
-              Password
-            </label>
-            <input
+            <PasswordField
               id="password"
-              type="password"
+              label="Password"
+              value={password}
+              onChange={setPassword}
               autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
               required
               minLength={6}
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="field-input mt-2"
             />
             {mode === 'login' ? (
               <p className="mt-1.5 text-[11px] leading-snug text-ink-subtle sm:mt-2 sm:text-xs">
@@ -168,21 +168,15 @@ export function LoginPage() {
             ) : null}
           </div>
           {mode === 'register' ? (
-            <div>
-              <label className="text-xs font-semibold uppercase tracking-wider text-ink-muted" htmlFor="confirm">
-                Confirm password
-              </label>
-              <input
-                id="confirm"
-                type="password"
-                autoComplete="new-password"
-                required
-                minLength={6}
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-                className="field-input mt-2"
-              />
-            </div>
+            <PasswordField
+              id="confirm"
+              label="Confirm password"
+              value={confirmPassword}
+              onChange={setConfirmPassword}
+              autoComplete="new-password"
+              required
+              minLength={6}
+            />
           ) : null}
           {error ? <p className="text-sm text-red-600 dark:text-red-400">{error}</p> : null}
           <button type="submit" disabled={busy} className="btn-primary w-full">

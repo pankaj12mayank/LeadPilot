@@ -4,8 +4,8 @@ from typing import Any, Dict
 
 from backend.ollama_messaging.generator import generate_lead_messages
 from backend.ollama_messaging.types import LeadMessageInput
-from modules.ai_enricher import generate_message as _gen_message
-from modules.ai_enricher import generate_subject as _gen_subject
+from backend.safe_capture.ai_enricher import generate_message as _gen_message
+from backend.safe_capture.ai_enricher import generate_subject as _gen_subject
 
 
 def generate_subject(lead: Dict[str, Any]) -> str:

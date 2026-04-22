@@ -44,11 +44,11 @@ def register_exception_handlers(app: FastAPI) -> None:
 
     @app.exception_handler(Exception)
     async def unhandled_exception_handler(
-        _request: Request,
+        request: Request,
         exc: Exception,
     ) -> JSONResponse:
         logger.exception("Unhandled error: %s", exc)
         body: dict = {"detail": "Internal server error"}
-        if getattr(config, "DEBUG", False) or getattr(app, "debug", False):
+        if getattr(config, "DEBUG", False) or bool(getattr(request.app, "debug", False)):
             body["message"] = str(exc)
         return JSONResponse(status_code=500, content=body)

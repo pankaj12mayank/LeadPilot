@@ -14,7 +14,7 @@ if str(ROOT) not in sys.path:
 import config  # noqa: E402
 from database.meta_db import init_meta_schema  # noqa: E402
 from database.orm.bootstrap import get_session_factory, init_sa_tables  # noqa: E402
-from services import auth_service, lead_orm_service  # noqa: E402
+from backend.services import auth_service, lead_orm_service  # noqa: E402
 
 
 DEMO_EMAIL = os.getenv("SEED_DEMO_EMAIL", "demo@leadpilot.local").strip().lower()

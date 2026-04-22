@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from backend.app.api.deps import get_current_user
 from backend.app.middleware.jwt import create_access_token
 from backend.app.schemas.user import TokenResponse, UserCreate, UserLogin, UserResponse
-from services import auth_service
+from backend.services import auth_service
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -21,7 +21,13 @@ def register(body: UserCreate) -> TokenResponse:
     token = create_access_token(user["id"])
     return TokenResponse(
         access_token=token,
-        user=UserResponse(id=user["id"], email=user["email"], created_at=user["created_at"]),
+        user=UserResponse(
+            id=user["id"],
+            email=user["email"],
+            created_at=user["created_at"],
+            is_active=bool(user.get("is_active", True)),
+            last_login_at=str(user.get("last_login_at") or ""),
+        ),
     )
 
 
@@ -33,10 +39,22 @@ def login(body: UserLogin) -> TokenResponse:
     token = create_access_token(user["id"])
     return TokenResponse(
         access_token=token,
-        user=UserResponse(id=user["id"], email=user["email"], created_at=user["created_at"]),
+        user=UserResponse(
+            id=user["id"],
+            email=user["email"],
+            created_at=user["created_at"],
+            is_active=bool(user.get("is_active", True)),
+            last_login_at=str(user.get("last_login_at") or ""),
+        ),
     )
 
 
 @router.get("/me", response_model=UserResponse)
 def me(user: dict = Depends(get_current_user)) -> UserResponse:
-    return UserResponse(id=user["id"], email=user["email"], created_at=user["created_at"])
+    return UserResponse(
+        id=user["id"],
+        email=user["email"],
+        created_at=user["created_at"],
+        is_active=bool(user.get("is_active", True)),
+        last_login_at=str(user.get("last_login_at") or ""),
+    )

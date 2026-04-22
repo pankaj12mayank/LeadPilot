@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from database.orm.bootstrap import get_session_factory, init_sa_tables
-from services import lead_orm_service
+from backend.services import lead_orm_service
 
 
 def test_ingest_scrape_rows_into_leads_dedupes():

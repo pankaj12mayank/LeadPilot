@@ -1,6 +1,7 @@
 import { KeyRound, Loader2, Play, Plus, RefreshCw, Trash2 } from 'lucide-react'
 import { useCallback, useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
+import { ApiLoadError } from '@/components/ui/ApiLoadError'
 import { Modal } from '@/components/ui/Modal'
 import {
   fetchScraperStatus,
@@ -34,13 +35,19 @@ export function PlatformsPage() {
   const [deleteTarget, setDeleteTarget] = useState<PlatformRow | null>(null)
   const [deleteBusy, setDeleteBusy] = useState(false)
   const [deleteErr, setDeleteErr] = useState<string | null>(null)
+  const [loadErr, setLoadErr] = useState<string | null>(null)
 
   const load = useCallback(async () => {
     setLoading(true)
+    setLoadErr(null)
     try {
       const [plats, st] = await Promise.all([listPlatforms(), fetchScraperStatus()])
       setRows(plats)
       setScraper(st)
+    } catch {
+      setLoadErr('Could not load platforms or scraper configuration. Start the API and try again.')
+      setRows([])
+      setScraper(null)
     } finally {
       setLoading(false)
     }
@@ -129,11 +136,23 @@ export function PlatformsPage() {
     }
   }
 
-  if (loading || !scraper) {
+  if (loading) {
     return (
       <div className="flex min-h-[40vh] items-center justify-center gap-2 text-sm text-ink-muted">
         <Loader2 className="h-4 w-4 animate-spin" />
         Loading platform configuration
+      </div>
+    )
+  }
+
+  if (loadErr || !scraper) {
+    return (
+      <div className="mx-auto max-w-[1400px]">
+        <ApiLoadError
+          title="Platforms unavailable"
+          message={loadErr ?? 'Scraper status was not returned. Retry or verify the backend is healthy.'}
+          onRetry={() => void load()}
+        />
       </div>
     )
   }
@@ -169,6 +188,31 @@ export function PlatformsPage() {
             Reload list
           </button>
         </div>
+      </section>
+
+      <section className="rounded-2xl border border-emerald-500/20 bg-emerald-500/[0.04] p-6 dark:border-emerald-500/25 dark:bg-emerald-500/[0.07]">
+        <h2 className="type-section-heading mb-2">Safe scraping: how it works</h2>
+        <p className="max-w-3xl text-sm leading-relaxed text-ink-muted">
+          Lead capture is gated for safety: the browser opens the real channel, you sign in when needed, then automation
+          runs with delays and caps from Settings. You stay in control of the session before any bulk scraping.
+        </p>
+        <ol className="mt-4 list-decimal space-y-2 pl-5 text-sm text-ink-muted">
+          <li>
+            <strong className="text-ink">Activate</strong> the source here and use <strong>Connect / manual login</strong>{' '}
+            so a real browser window opens that channel.
+          </li>
+          <li>
+            <strong className="text-ink">Log in</strong> in that window (and complete any 2FA). Close it when the app
+            shows the session as connected.
+          </li>
+          <li>
+            <strong className="text-ink">Run lead search</strong> from{' '}
+            <Link to="/search-leads" className="font-semibold text-amber-800 underline decoration-amber-500/40 underline-offset-2 hover:text-amber-700 dark:text-amber-200 dark:hover:text-amber-100">
+              Lead search
+            </Link>
+            : the same channel opens again, respects your session, then automates capture with safe delays.
+          </li>
+        </ol>
       </section>
 
       <section className="space-y-4">

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 from contextlib import asynccontextmanager
 from pathlib import Path
 
@@ -27,17 +28,27 @@ from backend.app.routes import (
 )
 from database.meta_db import init_meta_schema
 from database.orm.bootstrap import init_sa_tables
-from services import lead_service
+from backend.services import lead_service
+
+_startup_log = logging.getLogger("leadpilot.startup")
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     setup_logging()
+    _startup_log.info("LeadPilot API — startup beginning.")
+    _startup_log.info("python-dotenv: loaded .env from repository root (see config.py).")
     config.ensure_data_dirs()
+    _startup_log.info("Runtime directories ready (exports, sessions, logs, DB parents, branding).")
     init_meta_schema()
+    _startup_log.info("Meta SQLite schema OK (%s).", getattr(config, "API_META_DB_PATH", ""))
     init_sa_tables()
+    _startup_log.info("SQLAlchemy tables OK (ORM / leads schema).")
     lead_service.init_storage()
+    _startup_log.info("Lead storage initialized (STORAGE_MODE=%s).", getattr(config, "STORAGE_MODE", ""))
+    _startup_log.info("LeadPilot API — ready to accept requests.")
     yield
+    _startup_log.info("LeadPilot API — shutdown.")
 
 
 app = FastAPI(
@@ -49,31 +60,48 @@ app = FastAPI(
 
 register_exception_handlers(app)
 
-_cors = [o.strip() for o in config.CORS_ORIGINS.split(",") if o.strip()]
-if not _cors:
-    _cors = ["*"]
+# Wildcard origins cannot be combined with allow_credentials=True (browser + Starlette rules).
+_cors_origins = [o.strip().rstrip("/") for o in config.CORS_ORIGINS.split(",") if o.strip()]
+if not _cors_origins:
+    _cors_origins = ["*"]
+if config.FRONTEND_URL and _cors_origins != ["*"]:
+    fu = config.FRONTEND_URL.strip().rstrip("/")
+    if fu and fu not in _cors_origins:
+        _cors_origins.append(fu)
+_allow_credentials = all(o != "*" for o in _cors_origins)
+if not _allow_credentials:
+    logging.getLogger("leadpilot.startup").info(
+        "CORS: wildcard origin(s) detected — allow_credentials=False for browser compatibility."
+    )
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=_cors,
-    allow_credentials=True,
+    allow_origins=_cors_origins,
+    allow_credentials=_allow_credentials,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
+_api_root = config.API_ROOT_PATH or ""
+
 app.include_router(health.router)
-app.include_router(public.router)
-app.include_router(admin.router)
-app.include_router(auth.router)
-app.include_router(leads.router)
-app.include_router(messages.router)
-app.include_router(ai_messages.router)
-app.include_router(platforms.router)
-app.include_router(settings_routes.router)
-app.include_router(analytics.router)
-app.include_router(exports.router)
-app.include_router(scraper.router)
-app.include_router(tools.router)
+app.include_router(public.router, prefix=_api_root)
+app.include_router(admin.router, prefix=_api_root)
+app.include_router(auth.router, prefix=_api_root)
+app.include_router(leads.router, prefix=_api_root)
+app.include_router(messages.router, prefix=_api_root)
+app.include_router(ai_messages.router, prefix=_api_root)
+app.include_router(platforms.router, prefix=_api_root)
+app.include_router(settings_routes.router, prefix=_api_root)
+app.include_router(analytics.router, prefix=_api_root)
+app.include_router(exports.router, prefix=_api_root)
+app.include_router(scraper.router, prefix=_api_root)
+app.include_router(tools.router, prefix=_api_root)
+
+_startup_log.info(
+    "HTTP API routes mounted under %r (GET /health unchanged; static /branding unchanged).",
+    (_api_root + "/*") if _api_root else "/* (no API_ROOT_PATH prefix)",
+)
 
 _branding_dir = Path(config.BRANDING_UPLOAD_DIR)
 _branding_dir.mkdir(parents=True, exist_ok=True)

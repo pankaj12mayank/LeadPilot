@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Any, Dict, List
 
-from services import status_history_service
+from backend.services import status_history_service
 
 
 def record_status_change(lead_id: str, old_status: str, new_status: str) -> None:

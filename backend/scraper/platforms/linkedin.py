@@ -7,7 +7,7 @@ import config as app_config
 from playwright.sync_api import Page
 
 from backend.scraper.base import BaseScraper
-from utils.logger import get_logger
+from backend.utils.logger import get_logger
 
 logger = get_logger(__name__)
 
@@ -73,8 +73,19 @@ _JS_EXTRACT = r"""
         .split('\n')
         .map((x) => x.trim())
         .filter(Boolean);
-      if (lines.length > 1) title = (lines[1] || '').slice(0, 220);
-      if (lines.length > 2) company = (lines[2] || '').slice(0, 220);
+      const headline = (lines.length > 1 ? lines[1] : '') || '';
+      const lowerH = headline.toLowerCase();
+      const atPos = lowerH.lastIndexOf(' at ');
+      if (atPos > 0) {
+        title = headline.slice(0, atPos).trim().slice(0, 220);
+        company = headline.slice(atPos + 4).trim().split(/[·|]/)[0].trim().slice(0, 220);
+      } else {
+        title = headline.slice(0, 220);
+      }
+      if (!company && lines.length > 2) {
+        const third = (lines[2] || '').split(/[·|]/)[0].trim();
+        if (third && !/^[\d\s]+$/.test(third)) company = third.slice(0, 220);
+      }
     }
 
     out.push({

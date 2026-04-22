@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Navigate, useNavigate } from 'react-router-dom'
 
 import { ThemeToggle } from '@/components/layout/ThemeToggle'
+import { PasswordField } from '@/components/ui/PasswordField'
 import { adminLogin } from '@/lib/api/admin'
 import { useAdminStore } from '@/store/adminStore'
 
@@ -46,7 +47,7 @@ export function AdminLoginPage() {
       } else {
         setError(
           msg ||
-            'Could not reach the API. Check the server is running and VITE_API_URL / dev proxy points to it. Admin vars belong in LeadPilot/.env, not frontend/.env.',
+            'Could not reach the API. Check the server is running and VITE_API_BASE_URL (or dev /api proxy) matches API_ROOT_PATH. Admin vars belong in LeadPilot/.env, not frontend/.env.',
         )
       }
     } finally {
@@ -83,20 +84,14 @@ export function AdminLoginPage() {
               className="field-input mt-2"
             />
           </div>
-          <div>
-            <label className="text-xs font-semibold uppercase tracking-wider text-ink-muted" htmlFor="adm-pw">
-              Password
-            </label>
-            <input
-              id="adm-pw"
-              type="password"
-              autoComplete="current-password"
-              required
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="field-input mt-2"
-            />
-          </div>
+          <PasswordField
+            id="adm-pw"
+            label="Password"
+            value={password}
+            onChange={setPassword}
+            autoComplete="current-password"
+            required
+          />
           {error ? <p className="text-sm text-red-600 dark:text-red-400">{error}</p> : null}
           <button type="submit" disabled={busy} className="btn-primary w-full">
             {busy ? 'Signing in…' : 'Sign in to admin'}

@@ -6,7 +6,7 @@ from backend.app.api.deps import get_current_user
 from backend.app.schemas.ai_messages import LeadAIMessageRequest, LeadAIMessageResponse
 from backend.ollama_messaging.generator import generate_lead_messages
 from backend.ollama_messaging.types import LeadMessageInput
-from services import history_service, runtime_settings
+from backend.services import history_service, runtime_settings
 
 router = APIRouter(prefix="/ai/messages", tags=["ai-messages"])
 

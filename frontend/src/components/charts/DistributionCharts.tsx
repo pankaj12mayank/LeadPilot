@@ -13,7 +13,7 @@ import {
   YAxis,
 } from 'recharts'
 
-import { tooltipLabelStyle as tooltipLabelStyleFn, tooltipStyles, useChartPalette } from '@/lib/chartTheme'
+import { chartTooltipProps, useChartPalette } from '@/lib/chartTheme'
 
 type Datum = { name: string; value: number }
 
@@ -22,8 +22,7 @@ const chartClass =
 
 export const PlatformBar = memo(function PlatformBar({ data }: { data: Datum[] }) {
   const p = useChartPalette()
-  const tip = tooltipStyles(p)
-  const tipLabel = tooltipLabelStyleFn(p)
+  const tt = chartTooltipProps(p)
 
   return (
     <div className={chartClass}>
@@ -42,8 +41,14 @@ export const PlatformBar = memo(function PlatformBar({ data }: { data: Datum[] }
             tickLine={false}
             allowDecimals={false}
           />
-          <Tooltip contentStyle={tip} labelStyle={tipLabel} />
-          <Bar dataKey="value" fill={p.barPrimary} radius={[8, 8, 0, 0]} maxBarSize={48} />
+          <Tooltip {...tt} />
+          <Bar
+            dataKey="value"
+            fill={p.barPrimary}
+            radius={[8, 8, 0, 0]}
+            maxBarSize={48}
+            activeBar={{ fill: p.cursorBand }}
+          />
         </BarChart>
       </ResponsiveContainer>
     </div>
@@ -52,8 +57,7 @@ export const PlatformBar = memo(function PlatformBar({ data }: { data: Datum[] }
 
 export const StatusPie = memo(function StatusPie({ data }: { data: Datum[] }) {
   const p = useChartPalette()
-  const tip = tooltipStyles(p)
-  const tipLabel = tooltipLabelStyleFn(p)
+  const tt = chartTooltipProps(p)
 
   return (
     <div className={chartClass}>
@@ -68,6 +72,7 @@ export const StatusPie = memo(function StatusPie({ data }: { data: Datum[] }) {
             innerRadius={68}
             outerRadius={110}
             paddingAngle={2}
+            stroke="transparent"
           >
             {data.map((_, i) => (
               <Cell key={i} fill={p.pie[i % p.pie.length]} stroke="transparent" />
@@ -77,7 +82,7 @@ export const StatusPie = memo(function StatusPie({ data }: { data: Datum[] }) {
             wrapperStyle={{ fontSize: 12, color: p.tick }}
             formatter={(value) => <span style={{ color: p.tick }}>{value}</span>}
           />
-          <Tooltip contentStyle={tip} labelStyle={tipLabel} />
+          <Tooltip {...tt} cursor={false} />
         </PieChart>
       </ResponsiveContainer>
     </div>

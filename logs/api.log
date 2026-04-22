@@ -212,3 +212,412 @@ Call log:
 2026-04-17 13:32:26,073 | WARNING | backend.app.middleware.error_handlers | POST /auth/login -> HTTP 401: Incorrect email or password
 2026-04-17 13:32:26,212 | WARNING | backend.app.middleware.error_handlers | POST /auth/login -> HTTP 401: Incorrect email or password
 2026-04-17 13:33:20,190 | ERROR | backend.app.middleware.error_handlers | POST /scraper/sessions/wellfound/manual-login -> HTTP 500: Manual login flow failed: Page.wait_for_timeout: Target page, context or browser has been closed
+2026-04-22 11:58:05,544 | INFO | leadpilot.startup | LeadPilot API — startup beginning.
+2026-04-22 11:58:05,544 | INFO | leadpilot.startup | python-dotenv: loaded .env from repository root (see config.py).
+2026-04-22 11:58:05,545 | INFO | leadpilot.startup | Runtime directories ready (exports, sessions, logs, DB parents, branding).
+2026-04-22 11:58:05,547 | INFO | leadpilot.startup | Meta SQLite schema OK (database/api_meta.db).
+2026-04-22 11:58:05,559 | INFO | leadpilot.startup | SQLAlchemy tables OK (ORM / leads schema).
+2026-04-22 11:58:05,559 | INFO | leadpilot.startup | Lead storage initialized (STORAGE_MODE=csv).
+2026-04-22 11:58:05,559 | INFO | leadpilot.startup | LeadPilot API — ready to accept requests.
+2026-04-22 12:02:49,545 | INFO | leadpilot.startup | LeadPilot API — startup beginning.
+2026-04-22 12:02:49,545 | INFO | leadpilot.startup | python-dotenv: loaded .env from repository root (see config.py).
+2026-04-22 12:02:49,547 | INFO | leadpilot.startup | Runtime directories ready (exports, sessions, logs, DB parents, branding).
+2026-04-22 12:02:49,549 | INFO | leadpilot.startup | Meta SQLite schema OK (database/api_meta.db).
+2026-04-22 12:02:49,569 | INFO | leadpilot.startup | SQLAlchemy tables OK (ORM / leads schema).
+2026-04-22 12:02:49,570 | INFO | leadpilot.startup | Lead storage initialized (STORAGE_MODE=csv).
+2026-04-22 12:02:49,570 | INFO | leadpilot.startup | LeadPilot API — ready to accept requests.
+2026-04-22 12:02:51,555 | WARNING | backend.app.middleware.error_handlers | GET /public/branding -> HTTP 404: Not Found
+2026-04-22 12:05:02,617 | INFO | leadpilot.startup | LeadPilot API — startup beginning.
+2026-04-22 12:05:02,617 | INFO | leadpilot.startup | python-dotenv: loaded .env from repository root (see config.py).
+2026-04-22 12:05:02,618 | INFO | leadpilot.startup | Runtime directories ready (exports, sessions, logs, DB parents, branding).
+2026-04-22 12:05:02,619 | INFO | leadpilot.startup | Meta SQLite schema OK (database/api_meta.db).
+2026-04-22 12:05:02,633 | INFO | leadpilot.startup | SQLAlchemy tables OK (ORM / leads schema).
+2026-04-22 12:05:02,633 | INFO | leadpilot.startup | Lead storage initialized (STORAGE_MODE=csv).
+2026-04-22 12:05:02,633 | INFO | leadpilot.startup | LeadPilot API — ready to accept requests.
+2026-04-22 12:07:30,088 | INFO | backend.lead_scoring.engine | lead_score | ref=Ann Joseph • 2nd Hiring Talents for India and UAE, Certified POSH Trainer Kochi, Kerala, India Connect Current: Co-Founder at Beacon Maven Students' Placement Team, IIT Kanpur, Gyanendra Chaudhary and 3 other mutual connections score=18 tier=cold factors={'company_size': 0.0, 'job_role': 0.0, 'country': 4.0, 'website_availability': 0.0, 'email_availability': 0.0, 'platform_source': 14.0, 'industry_match': 0.0, 'budget_potential': 0.0, 'messages': {'company_size': 'No company size -> 0', 'job_role': 'No job title -> 0', 'country': 'Location / country present -> +4', 'website_availability': 'No company website -> 0', 'email_availability': 'No email -> 0', 'platform_source': "Platform 'linkedin' -> +14", 'industry_match': 'No benchmark industry configured -> 0', 'budget_potential': 'No budget keywords -> 0'}, 'raw_total': 18.0}
+2026-04-22 12:07:30,100 | INFO | backend.lead_scoring.engine | lead_score | ref=Students' Placement Team, IIT Kanpur score=18 tier=cold factors={'company_size': 0.0, 'job_role': 0.0, 'country': 4.0, 'website_availability': 0.0, 'email_availability': 0.0, 'platform_source': 14.0, 'industry_match': 0.0, 'budget_potential': 0.0, 'messages': {'company_size': 'No company size -> 0', 'job_role': 'No job title -> 0', 'country': 'Location / country present -> +4', 'website_availability': 'No company website -> 0', 'email_availability': 'No email -> 0', 'platform_source': "Platform 'linkedin' -> +14", 'industry_match': 'No benchmark industry configured -> 0', 'budget_potential': 'No budget keywords -> 0'}, 'raw_total': 18.0}
+2026-04-22 12:07:30,102 | INFO | backend.lead_scoring.engine | lead_score | ref=Gyanendra Chaudhary score=18 tier=cold factors={'company_size': 0.0, 'job_role': 0.0, 'country': 4.0, 'website_availability': 0.0, 'email_availability': 0.0, 'platform_source': 14.0, 'industry_match': 0.0, 'budget_potential': 0.0, 'messages': {'company_size': 'No company size -> 0', 'job_role': 'No job title -> 0', 'country': 'Location / country present -> +4', 'website_availability': 'No company website -> 0', 'email_availability': 'No email -> 0', 'platform_source': "Platform 'linkedin' -> +14", 'industry_match': 'No benchmark industry configured -> 0', 'budget_potential': 'No budget keywords -> 0'}, 'raw_total': 18.0}
+2026-04-22 12:07:30,104 | INFO | backend.lead_scoring.engine | lead_score | ref=Dr Shweta Rohan • 2nd Co-Founder - Hospitality Jobs (UAE) / K B M (INDIA) United Arab Emirates Connect Current: Co-Founder at Hospitality Jobs (UAE) score=18 tier=cold factors={'company_size': 0.0, 'job_role': 0.0, 'country': 4.0, 'website_availability': 0.0, 'email_availability': 0.0, 'platform_source': 14.0, 'industry_match': 0.0, 'budget_potential': 0.0, 'messages': {'company_size': 'No company size -> 0', 'job_role': 'No job title -> 0', 'country': 'Location / country present -> +4', 'website_availability': 'No company website -> 0', 'email_availability': 'No email -> 0', 'platform_source': "Platform 'linkedin' -> +14", 'industry_match': 'No benchmark industry configured -> 0', 'budget_potential': 'No budget keywords -> 0'}, 'raw_total': 18.0}
+2026-04-22 12:07:30,106 | INFO | backend.lead_scoring.engine | lead_score | ref=Aleksandar Milovanovic • 2nd Founder at ServPro UAE United Arab Emirates Follow Current: Founder at ServPro - UAE 2K followers Paul Evans is a mutual connection score=18 tier=cold factors={'company_size': 0.0, 'job_role': 0.0, 'country': 4.0, 'website_availability': 0.0, 'email_availability': 0.0, 'platform_source': 14.0, 'industry_match': 0.0, 'budget_potential': 0.0, 'messages': {'company_size': 'No company size -> 0', 'job_role': 'No job title -> 0', 'country': 'Location / country present -> +4', 'website_availability': 'No company website -> 0', 'email_availability': 'No email -> 0', 'platform_source': "Platform 'linkedin' -> +14", 'industry_match': 'No benchmark industry configured -> 0', 'budget_potential': 'No budget keywords -> 0'}, 'raw_total': 18.0}
+2026-04-22 12:07:30,107 | INFO | backend.lead_scoring.engine | lead_score | ref=Paul Evans score=18 tier=cold factors={'company_size': 0.0, 'job_role': 0.0, 'country': 4.0, 'website_availability': 0.0, 'email_availability': 0.0, 'platform_source': 14.0, 'industry_match': 0.0, 'budget_potential': 0.0, 'messages': {'company_size': 'No company size -> 0', 'job_role': 'No job title -> 0', 'country': 'Location / country present -> +4', 'website_availability': 'No company website -> 0', 'email_availability': 'No email -> 0', 'platform_source': "Platform 'linkedin' -> +14", 'industry_match': 'No benchmark industry configured -> 0', 'budget_potential': 'No budget keywords -> 0'}, 'raw_total': 18.0}
+2026-04-22 12:07:30,109 | INFO | backend.lead_scoring.engine | lead_score | ref=Ankur Chaturvedi • 2nd 🚛 Founder | Transforming Transportation in the UAE 🚛 United Arab Emirates Follow Current: Founder at Hornokplease 8K followers Pankaj Gupta, Faris Saeed and 7 other mutual connections score=18 tier=cold factors={'company_size': 0.0, 'job_role': 0.0, 'country': 4.0, 'website_availability': 0.0, 'email_availability': 0.0, 'platform_source': 14.0, 'industry_match': 0.0, 'budget_potential': 0.0, 'messages': {'company_size': 'No company size -> 0', 'job_role': 'No job title -> 0', 'country': 'Location / country present -> +4', 'website_availability': 'No company website -> 0', 'email_availability': 'No email -> 0', 'platform_source': "Platform 'linkedin' -> +14", 'industry_match': 'No benchmark industry configured -> 0', 'budget_potential': 'No budget keywords -> 0'}, 'raw_total': 18.0}
+2026-04-22 12:07:30,117 | INFO | backend.lead_scoring.engine | lead_score | ref=Naser Al Otaibi • 2nd Assistant Director of Corporate Performance at Central Bank of The UAE United Arab Emirates Connect Current: Founder and Director General at Concrete Concept General Contracting Sanja Radlovacki MSc MBA Ed.S and Faheema Ali are mutua score=18 tier=cold factors={'company_size': 0.0, 'job_role': 0.0, 'country': 4.0, 'website_availability': 0.0, 'email_availability': 0.0, 'platform_source': 14.0, 'industry_match': 0.0, 'budget_potential': 0.0, 'messages': {'company_size': 'No company size -> 0', 'job_role': 'No job title -> 0', 'country': 'Location / country present -> +4', 'website_availability': 'No company website -> 0', 'email_availability': 'No email -> 0', 'platform_source': "Platform 'linkedin' -> +14", 'industry_match': 'No benchmark industry configured -> 0', 'budget_potential': 'No budget keywords -> 0'}, 'raw_total': 18.0}
+2026-04-22 12:07:30,120 | INFO | backend.lead_scoring.engine | lead_score | ref=Faheema Ali score=18 tier=cold factors={'company_size': 0.0, 'job_role': 0.0, 'country': 4.0, 'website_availability': 0.0, 'email_availability': 0.0, 'platform_source': 14.0, 'industry_match': 0.0, 'budget_potential': 0.0, 'messages': {'company_size': 'No company size -> 0', 'job_role': 'No job title -> 0', 'country': 'Location / country present -> +4', 'website_availability': 'No company website -> 0', 'email_availability': 'No email -> 0', 'platform_source': "Platform 'linkedin' -> +14", 'industry_match': 'No benchmark industry configured -> 0', 'budget_potential': 'No budget keywords -> 0'}, 'raw_total': 18.0}
+2026-04-22 12:07:30,121 | INFO | backend.lead_scoring.engine | lead_score | ref=Jovanka Tomasevic • 2nd Founder at JT Events UAE United Arab Emirates Connect Paul Evans, Faris Saeed and 2 other mutual connections score=18 tier=cold factors={'company_size': 0.0, 'job_role': 0.0, 'country': 4.0, 'website_availability': 0.0, 'email_availability': 0.0, 'platform_source': 14.0, 'industry_match': 0.0, 'budget_potential': 0.0, 'messages': {'company_size': 'No company size -> 0', 'job_role': 'No job title -> 0', 'country': 'Location / country present -> +4', 'website_availability': 'No company website -> 0', 'email_availability': 'No email -> 0', 'platform_source': "Platform 'linkedin' -> +14", 'industry_match': 'No benchmark industry configured -> 0', 'budget_potential': 'No budget keywords -> 0'}, 'raw_total': 18.0}
+2026-04-22 12:07:30,123 | INFO | backend.lead_scoring.engine | lead_score | ref=Muhammad Umair Khalid • 2nd Founder & CEO at Orbix Technologies, UAE Dubai, United Arab Emirates Follow 2K followers TK Kader is a mutual connection score=18 tier=cold factors={'company_size': 0.0, 'job_role': 0.0, 'country': 4.0, 'website_availability': 0.0, 'email_availability': 0.0, 'platform_source': 14.0, 'industry_match': 0.0, 'budget_potential': 0.0, 'messages': {'company_size': 'No company size -> 0', 'job_role': 'No job title -> 0', 'country': 'Location / country present -> +4', 'website_availability': 'No company website -> 0', 'email_availability': 'No email -> 0', 'platform_source': "Platform 'linkedin' -> +14", 'industry_match': 'No benchmark industry configured -> 0', 'budget_potential': 'No budget keywords -> 0'}, 'raw_total': 18.0}
+2026-04-22 12:07:30,124 | INFO | backend.lead_scoring.engine | lead_score | ref=TK Kader score=18 tier=cold factors={'company_size': 0.0, 'job_role': 0.0, 'country': 4.0, 'website_availability': 0.0, 'email_availability': 0.0, 'platform_source': 14.0, 'industry_match': 0.0, 'budget_potential': 0.0, 'messages': {'company_size': 'No company size -> 0', 'job_role': 'No job title -> 0', 'country': 'Location / country present -> +4', 'website_availability': 'No company website -> 0', 'email_availability': 'No email -> 0', 'platform_source': "Platform 'linkedin' -> +14", 'industry_match': 'No benchmark industry configured -> 0', 'budget_potential': 'No budget keywords -> 0'}, 'raw_total': 18.0}
+2026-04-22 12:07:30,126 | INFO | backend.lead_scoring.engine | lead_score | ref=Halima Jumani • 2nd Founder and CEO - Kibsons E-commerce Dubai UAE United Kingdom Connect Sanja Radlovacki MSc MBA Ed.S and J. Elasseri are mutual connections score=18 tier=cold factors={'company_size': 0.0, 'job_role': 0.0, 'country': 4.0, 'website_availability': 0.0, 'email_availability': 0.0, 'platform_source': 14.0, 'industry_match': 0.0, 'budget_potential': 0.0, 'messages': {'company_size': 'No company size -> 0', 'job_role': 'No job title -> 0', 'country': 'Location / country present -> +4', 'website_availability': 'No company website -> 0', 'email_availability': 'No email -> 0', 'platform_source': "Platform 'linkedin' -> +14", 'industry_match': 'No benchmark industry configured -> 0', 'budget_potential': 'No budget keywords -> 0'}, 'raw_total': 18.0}
+2026-04-22 12:07:30,127 | INFO | backend.lead_scoring.engine | lead_score | ref=J. Elasseri score=18 tier=cold factors={'company_size': 0.0, 'job_role': 0.0, 'country': 4.0, 'website_availability': 0.0, 'email_availability': 0.0, 'platform_source': 14.0, 'industry_match': 0.0, 'budget_potential': 0.0, 'messages': {'company_size': 'No company size -> 0', 'job_role': 'No job title -> 0', 'country': 'Location / country present -> +4', 'website_availability': 'No company website -> 0', 'email_availability': 'No email -> 0', 'platform_source': "Platform 'linkedin' -> +14", 'industry_match': 'No benchmark industry configured -> 0', 'budget_potential': 'No budget keywords -> 0'}, 'raw_total': 18.0}
+2026-04-22 12:07:30,128 | INFO | backend.lead_scoring.engine | lead_score | ref=Sonny Bains • 2nd Managing Director and Co Founder at Expat Motors UAE United Arab Emirates Connect Current: Managing Director at Expat Motors UAE Paul Evans is a mutual connection score=18 tier=cold factors={'company_size': 0.0, 'job_role': 0.0, 'country': 4.0, 'website_availability': 0.0, 'email_availability': 0.0, 'platform_source': 14.0, 'industry_match': 0.0, 'budget_potential': 0.0, 'messages': {'company_size': 'No company size -> 0', 'job_role': 'No job title -> 0', 'country': 'Location / country present -> +4', 'website_availability': 'No company website -> 0', 'email_availability': 'No email -> 0', 'platform_source': "Platform 'linkedin' -> +14", 'industry_match': 'No benchmark industry configured -> 0', 'budget_potential': 'No budget keywords -> 0'}, 'raw_total': 18.0}
+2026-04-22 12:07:30,130 | INFO | backend.lead_scoring.engine | lead_score | ref=Amna Husain • 2nd Human Resources Leader | Ex - IFFCO(UAE) | Ex - L’Oréal | FMCG | Strategy | Employee Relations | Business Partnering | Learning & Talent Development India Connect Past: Co-founder - Facilitator, & HR Consultant at Eclatstory Shahvir Iran score=18 tier=cold factors={'company_size': 0.0, 'job_role': 0.0, 'country': 4.0, 'website_availability': 0.0, 'email_availability': 0.0, 'platform_source': 14.0, 'industry_match': 0.0, 'budget_potential': 0.0, 'messages': {'company_size': 'No company size -> 0', 'job_role': 'No job title -> 0', 'country': 'Location / country present -> +4', 'website_availability': 'No company website -> 0', 'email_availability': 'No email -> 0', 'platform_source': "Platform 'linkedin' -> +14", 'industry_match': 'No benchmark industry configured -> 0', 'budget_potential': 'No budget keywords -> 0'}, 'raw_total': 18.0}
+2026-04-22 12:07:30,131 | INFO | backend.lead_scoring.engine | lead_score | ref=Shahvir Irani score=18 tier=cold factors={'company_size': 0.0, 'job_role': 0.0, 'country': 4.0, 'website_availability': 0.0, 'email_availability': 0.0, 'platform_source': 14.0, 'industry_match': 0.0, 'budget_potential': 0.0, 'messages': {'company_size': 'No company size -> 0', 'job_role': 'No job title -> 0', 'country': 'Location / country present -> +4', 'website_availability': 'No company website -> 0', 'email_availability': 'No email -> 0', 'platform_source': "Platform 'linkedin' -> +14", 'industry_match': 'No benchmark industry configured -> 0', 'budget_potential': 'No budget keywords -> 0'}, 'raw_total': 18.0}
+2026-04-22 12:07:53,525 | ERROR | backend.safe_capture.ai_enricher | Subject generation failed — using fallback
+2026-04-22 12:07:53,526 | ERROR | backend.safe_capture.ai_enricher | Message generation failed — using fallback
+2026-04-22 12:07:59,074 | ERROR | backend.app.middleware.error_handlers | Unhandled error: database is locked
+Traceback (most recent call last):
+  File "D:\Py_Projects\LeadPilot\.venv\Lib\site-packages\starlette\middleware\errors.py", line 164, in __call__
+    await self.app(scope, receive, _send)
+  File "D:\Py_Projects\LeadPilot\.venv\Lib\site-packages\starlette\middleware\cors.py", line 96, in __call__
+    await self.simple_response(scope, receive, send, request_headers=headers)
+  File "D:\Py_Projects\LeadPilot\.venv\Lib\site-packages\starlette\middleware\cors.py", line 154, in simple_response
+    await self.app(scope, receive, send)
+  File "D:\Py_Projects\LeadPilot\.venv\Lib\site-packages\starlette\middleware\exceptions.py", line 63, in __call__
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+  File "D:\Py_Projects\LeadPilot\.venv\Lib\site-packages\starlette\_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "D:\Py_Projects\LeadPilot\.venv\Lib\site-packages\starlette\_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "D:\Py_Projects\LeadPilot\.venv\Lib\site-packages\fastapi\middleware\asyncexitstack.py", line 18, in __call__
+    await self.app(scope, receive, send)
+  File "D:\Py_Projects\LeadPilot\.venv\Lib\site-packages\starlette\routing.py", line 660, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "D:\Py_Projects\LeadPilot\.venv\Lib\site-packages\starlette\routing.py", line 680, in app
+    await route.handle(scope, receive, send)
+  File "D:\Py_Projects\LeadPilot\.venv\Lib\site-packages\starlette\routing.py", line 276, in handle
+    await self.app(scope, receive, send)
+  File "D:\Py_Projects\LeadPilot\.venv\Lib\site-packages\fastapi\routing.py", line 134, in app
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+  File "D:\Py_Projects\LeadPilot\.venv\Lib\site-packages\starlette\_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "D:\Py_Projects\LeadPilot\.venv\Lib\site-packages\starlette\_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "D:\Py_Projects\LeadPilot\.venv\Lib\site-packages\fastapi\routing.py", line 120, in app
+    response = await f(request)
+               ^^^^^^^^^^^^^^^^
+  File "D:\Py_Projects\LeadPilot\.venv\Lib\site-packages\fastapi\routing.py", line 674, in app
+    raw_response = await run_endpoint_function(
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<3 lines>...
+    )
+    ^
+  File "D:\Py_Projects\LeadPilot\.venv\Lib\site-packages\fastapi\routing.py", line 330, in run_endpoint_function
+    return await run_in_threadpool(dependant.call, **values)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Py_Projects\LeadPilot\.venv\Lib\site-packages\starlette\concurrency.py", line 32, in run_in_threadpool
+    return await anyio.to_thread.run_sync(func)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Py_Projects\LeadPilot\.venv\Lib\site-packages\anyio\to_thread.py", line 63, in run_sync
+    return await get_async_backend().run_sync_in_worker_thread(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        func, args, abandon_on_cancel=abandon_on_cancel, limiter=limiter
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "D:\Py_Projects\LeadPilot\.venv\Lib\site-packages\anyio\_backends\_asyncio.py", line 2518, in run_sync_in_worker_thread
+    return await future
+           ^^^^^^^^^^^^
+  File "D:\Py_Projects\LeadPilot\.venv\Lib\site-packages\anyio\_backends\_asyncio.py", line 1002, in run
+    result = context.run(func, *args)
+  File "D:\Py_Projects\LeadPilot\backend\app\routes\messages.py", line 38, in generate_message
+    status_history_service.record_change(lead_id, "new", "follow_up_sent")
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Py_Projects\LeadPilot\backend\services\status_history_service.py", line 16, in record_change
+    cx.execute(
+    ~~~~~~~~~~^
+        """
+        ^^^
+    ...<3 lines>...
+        (lead_id, old_status or "", new_status, utc_now_iso()),
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+sqlite3.OperationalError: database is locked
+2026-04-22 12:08:37,509 | WARNING | backend.app.middleware.error_handlers | POST /api/admin/login -> HTTP 401: Invalid admin email or password
+2026-04-22 12:16:34,684 | INFO | httpx | HTTP Request: GET http://localhost:11434/api/tags "HTTP/1.1 200 OK"
+2026-04-22 12:16:48,452 | INFO | httpx | HTTP Request: POST http://localhost:11434/api/generate "HTTP/1.1 200 OK"
+2026-04-22 12:16:55,897 | ERROR | backend.safe_capture.ai_enricher | Subject generation failed — using fallback
+2026-04-22 12:16:55,897 | ERROR | backend.safe_capture.ai_enricher | Message generation failed — using fallback
+2026-04-22 12:17:01,444 | ERROR | backend.app.middleware.error_handlers | Unhandled error: database is locked
+Traceback (most recent call last):
+  File "D:\Py_Projects\LeadPilot\.venv\Lib\site-packages\starlette\middleware\errors.py", line 164, in __call__
+    await self.app(scope, receive, _send)
+  File "D:\Py_Projects\LeadPilot\.venv\Lib\site-packages\starlette\middleware\cors.py", line 96, in __call__
+    await self.simple_response(scope, receive, send, request_headers=headers)
+  File "D:\Py_Projects\LeadPilot\.venv\Lib\site-packages\starlette\middleware\cors.py", line 154, in simple_response
+    await self.app(scope, receive, send)
+  File "D:\Py_Projects\LeadPilot\.venv\Lib\site-packages\starlette\middleware\exceptions.py", line 63, in __call__
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+  File "D:\Py_Projects\LeadPilot\.venv\Lib\site-packages\starlette\_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "D:\Py_Projects\LeadPilot\.venv\Lib\site-packages\starlette\_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "D:\Py_Projects\LeadPilot\.venv\Lib\site-packages\fastapi\middleware\asyncexitstack.py", line 18, in __call__
+    await self.app(scope, receive, send)
+  File "D:\Py_Projects\LeadPilot\.venv\Lib\site-packages\starlette\routing.py", line 660, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "D:\Py_Projects\LeadPilot\.venv\Lib\site-packages\starlette\routing.py", line 680, in app
+    await route.handle(scope, receive, send)
+  File "D:\Py_Projects\LeadPilot\.venv\Lib\site-packages\starlette\routing.py", line 276, in handle
+    await self.app(scope, receive, send)
+  File "D:\Py_Projects\LeadPilot\.venv\Lib\site-packages\fastapi\routing.py", line 134, in app
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+  File "D:\Py_Projects\LeadPilot\.venv\Lib\site-packages\starlette\_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "D:\Py_Projects\LeadPilot\.venv\Lib\site-packages\starlette\_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "D:\Py_Projects\LeadPilot\.venv\Lib\site-packages\fastapi\routing.py", line 120, in app
+    response = await f(request)
+               ^^^^^^^^^^^^^^^^
+  File "D:\Py_Projects\LeadPilot\.venv\Lib\site-packages\fastapi\routing.py", line 674, in app
+    raw_response = await run_endpoint_function(
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<3 lines>...
+    )
+    ^
+  File "D:\Py_Projects\LeadPilot\.venv\Lib\site-packages\fastapi\routing.py", line 330, in run_endpoint_function
+    return await run_in_threadpool(dependant.call, **values)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Py_Projects\LeadPilot\.venv\Lib\site-packages\starlette\concurrency.py", line 32, in run_in_threadpool
+    return await anyio.to_thread.run_sync(func)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Py_Projects\LeadPilot\.venv\Lib\site-packages\anyio\to_thread.py", line 63, in run_sync
+    return await get_async_backend().run_sync_in_worker_thread(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        func, args, abandon_on_cancel=abandon_on_cancel, limiter=limiter
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "D:\Py_Projects\LeadPilot\.venv\Lib\site-packages\anyio\_backends\_asyncio.py", line 2518, in run_sync_in_worker_thread
+    return await future
+           ^^^^^^^^^^^^
+  File "D:\Py_Projects\LeadPilot\.venv\Lib\site-packages\anyio\_backends\_asyncio.py", line 1002, in run
+    result = context.run(func, *args)
+  File "D:\Py_Projects\LeadPilot\backend\app\routes\messages.py", line 38, in generate_message
+    status_history_service.record_change(lead_id, "new", "follow_up_sent")
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Py_Projects\LeadPilot\backend\services\status_history_service.py", line 16, in record_change
+    cx.execute(
+    ~~~~~~~~~~^
+        """
+        ^^^
+    ...<3 lines>...
+        (lead_id, old_status or "", new_status, utc_now_iso()),
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+sqlite3.OperationalError: database is locked
+2026-04-22 12:17:21,650 | INFO | leadpilot.startup | LeadPilot API — shutdown.
+2026-04-22 12:28:19,813 | INFO | leadpilot.startup | LeadPilot API — startup beginning.
+2026-04-22 12:28:19,814 | INFO | leadpilot.startup | python-dotenv: loaded .env from repository root (see config.py).
+2026-04-22 12:28:19,815 | INFO | leadpilot.startup | Runtime directories ready (exports, sessions, logs, DB parents, branding).
+2026-04-22 12:28:19,816 | INFO | leadpilot.startup | Meta SQLite schema OK (database/api_meta.db).
+2026-04-22 12:28:19,832 | INFO | leadpilot.startup | SQLAlchemy tables OK (ORM / leads schema).
+2026-04-22 12:28:19,832 | INFO | leadpilot.startup | Lead storage initialized (STORAGE_MODE=csv).
+2026-04-22 12:28:19,833 | INFO | leadpilot.startup | LeadPilot API — ready to accept requests.
+2026-04-22 12:28:45,733 | ERROR | backend.safe_capture.ai_enricher | Subject generation failed — using fallback
+2026-04-22 12:28:45,733 | ERROR | backend.safe_capture.ai_enricher | Message generation failed — using fallback
+2026-04-22 12:28:51,294 | ERROR | backend.app.middleware.error_handlers | Unhandled error: database is locked
+Traceback (most recent call last):
+  File "D:\Py_Projects\LeadPilot\.venv\Lib\site-packages\starlette\middleware\errors.py", line 164, in __call__
+    await self.app(scope, receive, _send)
+  File "D:\Py_Projects\LeadPilot\.venv\Lib\site-packages\starlette\middleware\cors.py", line 96, in __call__
+    await self.simple_response(scope, receive, send, request_headers=headers)
+  File "D:\Py_Projects\LeadPilot\.venv\Lib\site-packages\starlette\middleware\cors.py", line 154, in simple_response
+    await self.app(scope, receive, send)
+  File "D:\Py_Projects\LeadPilot\.venv\Lib\site-packages\starlette\middleware\exceptions.py", line 63, in __call__
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+  File "D:\Py_Projects\LeadPilot\.venv\Lib\site-packages\starlette\_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "D:\Py_Projects\LeadPilot\.venv\Lib\site-packages\starlette\_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "D:\Py_Projects\LeadPilot\.venv\Lib\site-packages\fastapi\middleware\asyncexitstack.py", line 18, in __call__
+    await self.app(scope, receive, send)
+  File "D:\Py_Projects\LeadPilot\.venv\Lib\site-packages\starlette\routing.py", line 660, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "D:\Py_Projects\LeadPilot\.venv\Lib\site-packages\starlette\routing.py", line 680, in app
+    await route.handle(scope, receive, send)
+  File "D:\Py_Projects\LeadPilot\.venv\Lib\site-packages\starlette\routing.py", line 276, in handle
+    await self.app(scope, receive, send)
+  File "D:\Py_Projects\LeadPilot\.venv\Lib\site-packages\fastapi\routing.py", line 134, in app
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+  File "D:\Py_Projects\LeadPilot\.venv\Lib\site-packages\starlette\_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "D:\Py_Projects\LeadPilot\.venv\Lib\site-packages\starlette\_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "D:\Py_Projects\LeadPilot\.venv\Lib\site-packages\fastapi\routing.py", line 120, in app
+    response = await f(request)
+               ^^^^^^^^^^^^^^^^
+  File "D:\Py_Projects\LeadPilot\.venv\Lib\site-packages\fastapi\routing.py", line 674, in app
+    raw_response = await run_endpoint_function(
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<3 lines>...
+    )
+    ^
+  File "D:\Py_Projects\LeadPilot\.venv\Lib\site-packages\fastapi\routing.py", line 330, in run_endpoint_function
+    return await run_in_threadpool(dependant.call, **values)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Py_Projects\LeadPilot\.venv\Lib\site-packages\starlette\concurrency.py", line 32, in run_in_threadpool
+    return await anyio.to_thread.run_sync(func)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Py_Projects\LeadPilot\.venv\Lib\site-packages\anyio\to_thread.py", line 63, in run_sync
+    return await get_async_backend().run_sync_in_worker_thread(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        func, args, abandon_on_cancel=abandon_on_cancel, limiter=limiter
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "D:\Py_Projects\LeadPilot\.venv\Lib\site-packages\anyio\_backends\_asyncio.py", line 2518, in run_sync_in_worker_thread
+    return await future
+           ^^^^^^^^^^^^
+  File "D:\Py_Projects\LeadPilot\.venv\Lib\site-packages\anyio\_backends\_asyncio.py", line 1002, in run
+    result = context.run(func, *args)
+  File "D:\Py_Projects\LeadPilot\backend\app\routes\messages.py", line 38, in generate_message
+    status_history_service.record_change(lead_id, "new", "follow_up_sent")
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Py_Projects\LeadPilot\backend\services\status_history_service.py", line 16, in record_change
+    cx.execute(
+    ~~~~~~~~~~^
+        """
+        ^^^
+    ...<3 lines>...
+        (lead_id, old_status or "", new_status, utc_now_iso()),
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+sqlite3.OperationalError: database is locked
+2026-04-22 12:29:08,800 | ERROR | backend.safe_capture.ai_enricher | Subject generation failed — using fallback
+2026-04-22 12:29:08,801 | ERROR | backend.safe_capture.ai_enricher | Message generation failed — using fallback
+2026-04-22 12:29:14,366 | ERROR | backend.app.middleware.error_handlers | Unhandled error: database is locked
+Traceback (most recent call last):
+  File "D:\Py_Projects\LeadPilot\.venv\Lib\site-packages\starlette\middleware\errors.py", line 164, in __call__
+    await self.app(scope, receive, _send)
+  File "D:\Py_Projects\LeadPilot\.venv\Lib\site-packages\starlette\middleware\cors.py", line 96, in __call__
+    await self.simple_response(scope, receive, send, request_headers=headers)
+  File "D:\Py_Projects\LeadPilot\.venv\Lib\site-packages\starlette\middleware\cors.py", line 154, in simple_response
+    await self.app(scope, receive, send)
+  File "D:\Py_Projects\LeadPilot\.venv\Lib\site-packages\starlette\middleware\exceptions.py", line 63, in __call__
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+  File "D:\Py_Projects\LeadPilot\.venv\Lib\site-packages\starlette\_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "D:\Py_Projects\LeadPilot\.venv\Lib\site-packages\starlette\_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "D:\Py_Projects\LeadPilot\.venv\Lib\site-packages\fastapi\middleware\asyncexitstack.py", line 18, in __call__
+    await self.app(scope, receive, send)
+  File "D:\Py_Projects\LeadPilot\.venv\Lib\site-packages\starlette\routing.py", line 660, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "D:\Py_Projects\LeadPilot\.venv\Lib\site-packages\starlette\routing.py", line 680, in app
+    await route.handle(scope, receive, send)
+  File "D:\Py_Projects\LeadPilot\.venv\Lib\site-packages\starlette\routing.py", line 276, in handle
+    await self.app(scope, receive, send)
+  File "D:\Py_Projects\LeadPilot\.venv\Lib\site-packages\fastapi\routing.py", line 134, in app
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+  File "D:\Py_Projects\LeadPilot\.venv\Lib\site-packages\starlette\_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "D:\Py_Projects\LeadPilot\.venv\Lib\site-packages\starlette\_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "D:\Py_Projects\LeadPilot\.venv\Lib\site-packages\fastapi\routing.py", line 120, in app
+    response = await f(request)
+               ^^^^^^^^^^^^^^^^
+  File "D:\Py_Projects\LeadPilot\.venv\Lib\site-packages\fastapi\routing.py", line 674, in app
+    raw_response = await run_endpoint_function(
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<3 lines>...
+    )
+    ^
+  File "D:\Py_Projects\LeadPilot\.venv\Lib\site-packages\fastapi\routing.py", line 330, in run_endpoint_function
+    return await run_in_threadpool(dependant.call, **values)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Py_Projects\LeadPilot\.venv\Lib\site-packages\starlette\concurrency.py", line 32, in run_in_threadpool
+    return await anyio.to_thread.run_sync(func)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Py_Projects\LeadPilot\.venv\Lib\site-packages\anyio\to_thread.py", line 63, in run_sync
+    return await get_async_backend().run_sync_in_worker_thread(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        func, args, abandon_on_cancel=abandon_on_cancel, limiter=limiter
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "D:\Py_Projects\LeadPilot\.venv\Lib\site-packages\anyio\_backends\_asyncio.py", line 2518, in run_sync_in_worker_thread
+    return await future
+           ^^^^^^^^^^^^
+  File "D:\Py_Projects\LeadPilot\.venv\Lib\site-packages\anyio\_backends\_asyncio.py", line 1002, in run
+    result = context.run(func, *args)
+  File "D:\Py_Projects\LeadPilot\backend\app\routes\messages.py", line 38, in generate_message
+    status_history_service.record_change(lead_id, "new", "follow_up_sent")
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Py_Projects\LeadPilot\backend\services\status_history_service.py", line 16, in record_change
+    cx.execute(
+    ~~~~~~~~~~^
+        """
+        ^^^
+    ...<3 lines>...
+        (lead_id, old_status or "", new_status, utc_now_iso()),
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+sqlite3.OperationalError: database is locked
+2026-04-22 12:33:58,198 | INFO | backend.lead_scoring.engine | lead_score | ref=Sophie Allen • 2nd Founder | Hiring BDRs in London & East Coast USA. Nice, Provence-Alpes-Côte d'Azur, France Follow Current: Founder at Trampoline 47K followers Jay Singh, Sachin Dhanotiya and 1 other mutual connection Book an appointment score=18 tier=cold factors={'company_size': 0.0, 'job_role': 0.0, 'country': 4.0, 'website_availability': 0.0, 'email_availability': 0.0, 'platform_source': 14.0, 'industry_match': 0.0, 'budget_potential': 0.0, 'messages': {'company_size': 'No company size -> 0', 'job_role': 'No job title -> 0', 'country': 'Location / country present -> +4', 'website_availability': 'No company website -> 0', 'email_availability': 'No email -> 0', 'platform_source': "Platform 'linkedin' -> +14", 'industry_match': 'No benchmark industry configured -> 0', 'budget_potential': 'No budget keywords -> 0'}, 'raw_total': 18.0}
+2026-04-22 12:33:58,215 | INFO | backend.lead_scoring.engine | lead_score | ref=Jay Singh score=18 tier=cold factors={'company_size': 0.0, 'job_role': 0.0, 'country': 4.0, 'website_availability': 0.0, 'email_availability': 0.0, 'platform_source': 14.0, 'industry_match': 0.0, 'budget_potential': 0.0, 'messages': {'company_size': 'No company size -> 0', 'job_role': 'No job title -> 0', 'country': 'Location / country present -> +4', 'website_availability': 'No company website -> 0', 'email_availability': 'No email -> 0', 'platform_source': "Platform 'linkedin' -> +14", 'industry_match': 'No benchmark industry configured -> 0', 'budget_potential': 'No budget keywords -> 0'}, 'raw_total': 18.0}
+2026-04-22 12:33:58,220 | INFO | backend.lead_scoring.engine | lead_score | ref=Sachin Dhanotiya score=18 tier=cold factors={'company_size': 0.0, 'job_role': 0.0, 'country': 4.0, 'website_availability': 0.0, 'email_availability': 0.0, 'platform_source': 14.0, 'industry_match': 0.0, 'budget_potential': 0.0, 'messages': {'company_size': 'No company size -> 0', 'job_role': 'No job title -> 0', 'country': 'Location / country present -> +4', 'website_availability': 'No company website -> 0', 'email_availability': 'No email -> 0', 'platform_source': "Platform 'linkedin' -> +14", 'industry_match': 'No benchmark industry configured -> 0', 'budget_potential': 'No budget keywords -> 0'}, 'raw_total': 18.0}
+2026-04-22 12:33:58,223 | INFO | backend.lead_scoring.engine | lead_score | ref=Humayun Kabir • 2nd Run Club Founder | Building London’s most energetic run community. United Kingdom Connect Current: Founder at Canary Wharf Run Club score=18 tier=cold factors={'company_size': 0.0, 'job_role': 0.0, 'country': 4.0, 'website_availability': 0.0, 'email_availability': 0.0, 'platform_source': 14.0, 'industry_match': 0.0, 'budget_potential': 0.0, 'messages': {'company_size': 'No company size -> 0', 'job_role': 'No job title -> 0', 'country': 'Location / country present -> +4', 'website_availability': 'No company website -> 0', 'email_availability': 'No email -> 0', 'platform_source': "Platform 'linkedin' -> +14", 'industry_match': 'No benchmark industry configured -> 0', 'budget_potential': 'No budget keywords -> 0'}, 'raw_total': 18.0}
+2026-04-22 12:33:58,226 | INFO | backend.lead_scoring.engine | lead_score | ref=Smith O'Connor • 2nd CEO at Masraf London London, England, United Kingdom Connect Current: Board Member at RACINE ESTATE LONDON LTD Yael Tamar and MAHMOUD ALMAGHRABI are mutual connections score=18 tier=cold factors={'company_size': 0.0, 'job_role': 0.0, 'country': 4.0, 'website_availability': 0.0, 'email_availability': 0.0, 'platform_source': 14.0, 'industry_match': 0.0, 'budget_potential': 0.0, 'messages': {'company_size': 'No company size -> 0', 'job_role': 'No job title -> 0', 'country': 'Location / country present -> +4', 'website_availability': 'No company website -> 0', 'email_availability': 'No email -> 0', 'platform_source': "Platform 'linkedin' -> +14", 'industry_match': 'No benchmark industry configured -> 0', 'budget_potential': 'No budget keywords -> 0'}, 'raw_total': 18.0}
+2026-04-22 12:33:58,229 | INFO | backend.lead_scoring.engine | lead_score | ref=Yael Tamar score=18 tier=cold factors={'company_size': 0.0, 'job_role': 0.0, 'country': 4.0, 'website_availability': 0.0, 'email_availability': 0.0, 'platform_source': 14.0, 'industry_match': 0.0, 'budget_potential': 0.0, 'messages': {'company_size': 'No company size -> 0', 'job_role': 'No job title -> 0', 'country': 'Location / country present -> +4', 'website_availability': 'No company website -> 0', 'email_availability': 'No email -> 0', 'platform_source': "Platform 'linkedin' -> +14", 'industry_match': 'No benchmark industry configured -> 0', 'budget_potential': 'No budget keywords -> 0'}, 'raw_total': 18.0}
+2026-04-22 12:33:58,232 | INFO | backend.lead_scoring.engine | lead_score | ref=MAHMOUD ALMAGHRABI score=18 tier=cold factors={'company_size': 0.0, 'job_role': 0.0, 'country': 4.0, 'website_availability': 0.0, 'email_availability': 0.0, 'platform_source': 14.0, 'industry_match': 0.0, 'budget_potential': 0.0, 'messages': {'company_size': 'No company size -> 0', 'job_role': 'No job title -> 0', 'country': 'Location / country present -> +4', 'website_availability': 'No company website -> 0', 'email_availability': 'No email -> 0', 'platform_source': "Platform 'linkedin' -> +14", 'industry_match': 'No benchmark industry configured -> 0', 'budget_potential': 'No budget keywords -> 0'}, 'raw_total': 18.0}
+2026-04-22 12:33:58,236 | INFO | backend.lead_scoring.engine | lead_score | ref=Amir Hashmi • 2nd CEO. Cloud, data/AI Engineering. Central London London, England, United Kingdom Connect Current: Chair at University College London Hospitals NHS Foundation Trust Debanjali Chakraborty, Ubaidullah Choudhury and 2 other mutual connections score=18 tier=cold factors={'company_size': 0.0, 'job_role': 0.0, 'country': 4.0, 'website_availability': 0.0, 'email_availability': 0.0, 'platform_source': 14.0, 'industry_match': 0.0, 'budget_potential': 0.0, 'messages': {'company_size': 'No company size -> 0', 'job_role': 'No job title -> 0', 'country': 'Location / country present -> +4', 'website_availability': 'No company website -> 0', 'email_availability': 'No email -> 0', 'platform_source': "Platform 'linkedin' -> +14", 'industry_match': 'No benchmark industry configured -> 0', 'budget_potential': 'No budget keywords -> 0'}, 'raw_total': 18.0}
+2026-04-22 12:33:58,239 | INFO | backend.lead_scoring.engine | lead_score | ref=Debanjali Chakraborty score=18 tier=cold factors={'company_size': 0.0, 'job_role': 0.0, 'country': 4.0, 'website_availability': 0.0, 'email_availability': 0.0, 'platform_source': 14.0, 'industry_match': 0.0, 'budget_potential': 0.0, 'messages': {'company_size': 'No company size -> 0', 'job_role': 'No job title -> 0', 'country': 'Location / country present -> +4', 'website_availability': 'No company website -> 0', 'email_availability': 'No email -> 0', 'platform_source': "Platform 'linkedin' -> +14", 'industry_match': 'No benchmark industry configured -> 0', 'budget_potential': 'No budget keywords -> 0'}, 'raw_total': 18.0}
+2026-04-22 12:33:58,241 | INFO | backend.lead_scoring.engine | lead_score | ref=Ubaidullah Choudhury score=18 tier=cold factors={'company_size': 0.0, 'job_role': 0.0, 'country': 4.0, 'website_availability': 0.0, 'email_availability': 0.0, 'platform_source': 14.0, 'industry_match': 0.0, 'budget_potential': 0.0, 'messages': {'company_size': 'No company size -> 0', 'job_role': 'No job title -> 0', 'country': 'Location / country present -> +4', 'website_availability': 'No company website -> 0', 'email_availability': 'No email -> 0', 'platform_source': "Platform 'linkedin' -> +14", 'industry_match': 'No benchmark industry configured -> 0', 'budget_potential': 'No budget keywords -> 0'}, 'raw_total': 18.0}
+2026-04-22 12:33:58,243 | INFO | backend.lead_scoring.engine | lead_score | ref=Valerie Maine • 2nd CEO & Founder at Live True London Greater London, England, United Kingdom Follow Current: CEO & Founder at FUL London 1K followers Nick Ellsom is a mutual connection score=18 tier=cold factors={'company_size': 0.0, 'job_role': 0.0, 'country': 4.0, 'website_availability': 0.0, 'email_availability': 0.0, 'platform_source': 14.0, 'industry_match': 0.0, 'budget_potential': 0.0, 'messages': {'company_size': 'No company size -> 0', 'job_role': 'No job title -> 0', 'country': 'Location / country present -> +4', 'website_availability': 'No company website -> 0', 'email_availability': 'No email -> 0', 'platform_source': "Platform 'linkedin' -> +14", 'industry_match': 'No benchmark industry configured -> 0', 'budget_potential': 'No budget keywords -> 0'}, 'raw_total': 18.0}
+2026-04-22 12:33:58,246 | INFO | backend.lead_scoring.engine | lead_score | ref=Nick Ellsom score=18 tier=cold factors={'company_size': 0.0, 'job_role': 0.0, 'country': 4.0, 'website_availability': 0.0, 'email_availability': 0.0, 'platform_source': 14.0, 'industry_match': 0.0, 'budget_potential': 0.0, 'messages': {'company_size': 'No company size -> 0', 'job_role': 'No job title -> 0', 'country': 'Location / country present -> +4', 'website_availability': 'No company website -> 0', 'email_availability': 'No email -> 0', 'platform_source': "Platform 'linkedin' -> +14", 'industry_match': 'No benchmark industry configured -> 0', 'budget_potential': 'No budget keywords -> 0'}, 'raw_total': 18.0}
+2026-04-22 12:33:58,249 | INFO | backend.lead_scoring.engine | lead_score | ref=Benedict Hazan 🌳 • 2nd London | New York United Kingdom Follow Past: CEO & Co-Founder at GradBay 15K followers Nick Ellsom is a mutual connection Visit my website score=18 tier=cold factors={'company_size': 0.0, 'job_role': 0.0, 'country': 4.0, 'website_availability': 0.0, 'email_availability': 0.0, 'platform_source': 14.0, 'industry_match': 0.0, 'budget_potential': 0.0, 'messages': {'company_size': 'No company size -> 0', 'job_role': 'No job title -> 0', 'country': 'Location / country present -> +4', 'website_availability': 'No company website -> 0', 'email_availability': 'No email -> 0', 'platform_source': "Platform 'linkedin' -> +14", 'industry_match': 'No benchmark industry configured -> 0', 'budget_potential': 'No budget keywords -> 0'}, 'raw_total': 18.0}
+2026-04-22 12:33:58,258 | INFO | backend.lead_scoring.engine | lead_score | ref=Ethan Green • 2nd London London, England, United Kingdom Connect Current: Founder at Hire Stack Rob Young is a mutual connection score=18 tier=cold factors={'company_size': 0.0, 'job_role': 0.0, 'country': 4.0, 'website_availability': 0.0, 'email_availability': 0.0, 'platform_source': 14.0, 'industry_match': 0.0, 'budget_potential': 0.0, 'messages': {'company_size': 'No company size -> 0', 'job_role': 'No job title -> 0', 'country': 'Location / country present -> +4', 'website_availability': 'No company website -> 0', 'email_availability': 'No email -> 0', 'platform_source': "Platform 'linkedin' -> +14", 'industry_match': 'No benchmark industry configured -> 0', 'budget_potential': 'No budget keywords -> 0'}, 'raw_total': 18.0}
+2026-04-22 12:33:58,260 | INFO | backend.lead_scoring.engine | lead_score | ref=Rob Young score=18 tier=cold factors={'company_size': 0.0, 'job_role': 0.0, 'country': 4.0, 'website_availability': 0.0, 'email_availability': 0.0, 'platform_source': 14.0, 'industry_match': 0.0, 'budget_potential': 0.0, 'messages': {'company_size': 'No company size -> 0', 'job_role': 'No job title -> 0', 'country': 'Location / country present -> +4', 'website_availability': 'No company website -> 0', 'email_availability': 'No email -> 0', 'platform_source': "Platform 'linkedin' -> +14", 'industry_match': 'No benchmark industry configured -> 0', 'budget_potential': 'No budget keywords -> 0'}, 'raw_total': 18.0}
+2026-04-22 12:33:58,262 | INFO | backend.lead_scoring.engine | lead_score | ref=Megha Ruia • 3rd+ Director | Building Hamster London Delhi, India Message Current: Founder at Hamster London score=18 tier=cold factors={'company_size': 0.0, 'job_role': 0.0, 'country': 4.0, 'website_availability': 0.0, 'email_availability': 0.0, 'platform_source': 14.0, 'industry_match': 0.0, 'budget_potential': 0.0, 'messages': {'company_size': 'No company size -> 0', 'job_role': 'No job title -> 0', 'country': 'Location / country present -> +4', 'website_availability': 'No company website -> 0', 'email_availability': 'No email -> 0', 'platform_source': "Platform 'linkedin' -> +14", 'industry_match': 'No benchmark industry configured -> 0', 'budget_potential': 'No budget keywords -> 0'}, 'raw_total': 18.0}
+2026-04-22 12:33:58,264 | INFO | backend.lead_scoring.engine | lead_score | ref=Alex West • 2nd Founder | London Group Pty Ltd Greater Sydney Area Connect Current: Director | Co-Founder at London Group Pty Ltd Melissa Person, Foun Expo and 1 other mutual connection score=18 tier=cold factors={'company_size': 0.0, 'job_role': 0.0, 'country': 4.0, 'website_availability': 0.0, 'email_availability': 0.0, 'platform_source': 14.0, 'industry_match': 0.0, 'budget_potential': 0.0, 'messages': {'company_size': 'No company size -> 0', 'job_role': 'No job title -> 0', 'country': 'Location / country present -> +4', 'website_availability': 'No company website -> 0', 'email_availability': 'No email -> 0', 'platform_source': "Platform 'linkedin' -> +14", 'industry_match': 'No benchmark industry configured -> 0', 'budget_potential': 'No budget keywords -> 0'}, 'raw_total': 18.0}
+2026-04-22 12:33:58,267 | INFO | backend.lead_scoring.engine | lead_score | ref=Melissa Person score=18 tier=cold factors={'company_size': 0.0, 'job_role': 0.0, 'country': 4.0, 'website_availability': 0.0, 'email_availability': 0.0, 'platform_source': 14.0, 'industry_match': 0.0, 'budget_potential': 0.0, 'messages': {'company_size': 'No company size -> 0', 'job_role': 'No job title -> 0', 'country': 'Location / country present -> +4', 'website_availability': 'No company website -> 0', 'email_availability': 'No email -> 0', 'platform_source': "Platform 'linkedin' -> +14", 'industry_match': 'No benchmark industry configured -> 0', 'budget_potential': 'No budget keywords -> 0'}, 'raw_total': 18.0}
+2026-04-22 12:33:58,269 | INFO | backend.lead_scoring.engine | lead_score | ref=Foun Expo score=18 tier=cold factors={'company_size': 0.0, 'job_role': 0.0, 'country': 4.0, 'website_availability': 0.0, 'email_availability': 0.0, 'platform_source': 14.0, 'industry_match': 0.0, 'budget_potential': 0.0, 'messages': {'company_size': 'No company size -> 0', 'job_role': 'No job title -> 0', 'country': 'Location / country present -> +4', 'website_availability': 'No company website -> 0', 'email_availability': 'No email -> 0', 'platform_source': "Platform 'linkedin' -> +14", 'industry_match': 'No benchmark industry configured -> 0', 'budget_potential': 'No budget keywords -> 0'}, 'raw_total': 18.0}
+2026-04-22 12:33:58,272 | INFO | backend.lead_scoring.engine | lead_score | ref=Hemant Kambli • 2nd Founder & CEO - AARYA EDUCATION SERVICES LLC (London, United Kingdom) Mumbai, Maharashtra, India Connect Current: Founder & CEO at AARYA EDUCATION SERVICES LLC Pawas Goyal and Ramesh Chaudhari are mutual connections score=18 tier=cold factors={'company_size': 0.0, 'job_role': 0.0, 'country': 4.0, 'website_availability': 0.0, 'email_availability': 0.0, 'platform_source': 14.0, 'industry_match': 0.0, 'budget_potential': 0.0, 'messages': {'company_size': 'No company size -> 0', 'job_role': 'No job title -> 0', 'country': 'Location / country present -> +4', 'website_availability': 'No company website -> 0', 'email_availability': 'No email -> 0', 'platform_source': "Platform 'linkedin' -> +14", 'industry_match': 'No benchmark industry configured -> 0', 'budget_potential': 'No budget keywords -> 0'}, 'raw_total': 18.0}
+2026-04-22 12:34:31,250 | WARNING | backend.scraper.platforms.linkedin | LinkedIn search: no profile links found in DOM yet (login wall, empty results, or slow render).
+2026-04-22 12:34:31,255 | INFO | backend.scraper.platforms.linkedin | LinkedIn extract: 0 rows this pass (selectors or visibility).
+2026-04-22 12:35:01,490 | WARNING | backend.scraper.platforms.linkedin | LinkedIn search: no profile links found in DOM yet (login wall, empty results, or slow render).
+2026-04-22 12:35:01,493 | INFO | backend.scraper.platforms.linkedin | LinkedIn extract: 0 rows this pass (selectors or visibility).
+2026-04-22 12:35:31,800 | WARNING | backend.scraper.platforms.linkedin | LinkedIn search: no profile links found in DOM yet (login wall, empty results, or slow render).
+2026-04-22 12:35:31,804 | INFO | backend.scraper.platforms.linkedin | LinkedIn extract: 0 rows this pass (selectors or visibility).
+2026-04-22 12:36:00,761 | WARNING | backend.scraper.platforms.linkedin | LinkedIn search: no profile links found in DOM yet (login wall, empty results, or slow render).
+2026-04-22 12:36:00,764 | INFO | backend.scraper.platforms.linkedin | LinkedIn extract: 0 rows this pass (selectors or visibility).
+2026-04-22 12:36:30,100 | WARNING | backend.scraper.platforms.linkedin | LinkedIn search: no profile links found in DOM yet (login wall, empty results, or slow render).
+2026-04-22 12:36:30,103 | INFO | backend.scraper.platforms.linkedin | LinkedIn extract: 0 rows this pass (selectors or visibility).
+2026-04-22 12:37:00,428 | WARNING | backend.scraper.platforms.linkedin | LinkedIn search: no profile links found in DOM yet (login wall, empty results, or slow render).
+2026-04-22 12:37:00,431 | INFO | backend.scraper.platforms.linkedin | LinkedIn extract: 0 rows this pass (selectors or visibility).
+2026-04-22 12:37:29,830 | WARNING | backend.scraper.platforms.linkedin | LinkedIn search: no profile links found in DOM yet (login wall, empty results, or slow render).
+2026-04-22 12:37:29,834 | INFO | backend.scraper.platforms.linkedin | LinkedIn extract: 0 rows this pass (selectors or visibility).
+2026-04-22 12:37:59,803 | WARNING | backend.scraper.platforms.linkedin | LinkedIn search: no profile links found in DOM yet (login wall, empty results, or slow render).
+2026-04-22 12:37:59,805 | INFO | backend.scraper.platforms.linkedin | LinkedIn extract: 0 rows this pass (selectors or visibility).
+2026-04-22 12:38:28,516 | WARNING | backend.scraper.platforms.linkedin | LinkedIn search: no profile links found in DOM yet (login wall, empty results, or slow render).
+2026-04-22 12:38:28,531 | INFO | backend.scraper.platforms.linkedin | LinkedIn extract: 0 rows this pass (selectors or visibility).
+2026-04-22 12:38:59,137 | WARNING | backend.scraper.platforms.linkedin | LinkedIn search: no profile links found in DOM yet (login wall, empty results, or slow render).
+2026-04-22 12:38:59,140 | INFO | backend.scraper.platforms.linkedin | LinkedIn extract: 0 rows this pass (selectors or visibility).
+2026-04-22 12:39:28,761 | WARNING | backend.scraper.platforms.linkedin | LinkedIn search: no profile links found in DOM yet (login wall, empty results, or slow render).
+2026-04-22 12:39:28,764 | INFO | backend.scraper.platforms.linkedin | LinkedIn extract: 0 rows this pass (selectors or visibility).
+2026-04-22 12:39:58,028 | WARNING | backend.scraper.platforms.linkedin | LinkedIn search: no profile links found in DOM yet (login wall, empty results, or slow render).
+2026-04-22 12:39:58,031 | INFO | backend.scraper.platforms.linkedin | LinkedIn extract: 0 rows this pass (selectors or visibility).
+2026-04-22 12:48:22,243 | WARNING | backend.app.middleware.error_handlers | POST /api/auth/login -> HTTP 401: Incorrect email or password
+2026-04-22 12:48:27,337 | WARNING | backend.app.middleware.error_handlers | POST /api/auth/login -> HTTP 401: Incorrect email or password
+2026-04-22 12:48:28,083 | WARNING | backend.app.middleware.error_handlers | POST /api/auth/login -> HTTP 401: Incorrect email or password
+2026-04-22 12:48:29,239 | WARNING | backend.app.middleware.error_handlers | POST /api/auth/login -> HTTP 401: Incorrect email or password
+2026-04-22 12:48:29,862 | WARNING | backend.app.middleware.error_handlers | POST /api/auth/login -> HTTP 401: Incorrect email or password
+2026-04-22 12:48:36,381 | WARNING | backend.app.middleware.error_handlers | POST /api/auth/login -> HTTP 401: Incorrect email or password
+2026-04-22 12:48:55,372 | WARNING | backend.app.middleware.error_handlers | POST /api/auth/login -> HTTP 401: Incorrect email or password
+2026-04-22 12:49:05,817 | WARNING | backend.app.middleware.error_handlers | POST /api/auth/login -> HTTP 401: Incorrect email or password
+2026-04-22 12:49:11,400 | WARNING | backend.app.middleware.error_handlers | POST /api/auth/login -> HTTP 401: Incorrect email or password
+2026-04-22 12:49:11,955 | WARNING | backend.app.middleware.error_handlers | POST /api/auth/login -> HTTP 401: Incorrect email or password
+2026-04-22 12:49:14,023 | WARNING | backend.app.middleware.error_handlers | POST /api/auth/login -> HTTP 401: Incorrect email or password
+2026-04-22 12:49:14,253 | WARNING | backend.app.middleware.error_handlers | POST /api/auth/login -> HTTP 401: Incorrect email or password
+2026-04-22 12:49:19,589 | INFO | leadpilot.startup | LeadPilot API — shutdown.
+2026-04-22 13:03:05,352 | INFO | leadpilot.startup | LeadPilot API — startup beginning.
+2026-04-22 13:03:05,352 | INFO | leadpilot.startup | python-dotenv: loaded .env from repository root (see config.py).
+2026-04-22 13:03:05,353 | INFO | leadpilot.startup | Runtime directories ready (exports, sessions, logs, DB parents, branding).
+2026-04-22 13:03:05,356 | INFO | leadpilot.startup | Meta SQLite schema OK (database/api_meta.db).
+2026-04-22 13:03:05,371 | INFO | leadpilot.startup | SQLAlchemy tables OK (ORM / leads schema).
+2026-04-22 13:03:05,371 | INFO | leadpilot.startup | Lead storage initialized (STORAGE_MODE=csv).
+2026-04-22 13:03:05,372 | INFO | leadpilot.startup | LeadPilot API — ready to accept requests.
+2026-04-22 13:03:39,090 | ERROR | backend.safe_capture.ai_enricher | Subject generation failed — using fallback
+2026-04-22 13:03:39,091 | ERROR | backend.safe_capture.ai_enricher | Message generation failed — using fallback
+2026-04-22 13:20:18,600 | INFO | leadpilot.startup | LeadPilot API — shutdown.
+2026-04-22 13:26:38,651 | INFO | leadpilot.startup | LeadPilot API — startup beginning.
+2026-04-22 13:26:38,652 | INFO | leadpilot.startup | python-dotenv: loaded .env from repository root (see config.py).
+2026-04-22 13:26:38,653 | INFO | leadpilot.startup | Runtime directories ready (exports, sessions, logs, DB parents, branding).
+2026-04-22 13:26:38,656 | INFO | leadpilot.startup | Meta SQLite schema OK (database/api_meta.db).
+2026-04-22 13:26:38,671 | INFO | leadpilot.startup | SQLAlchemy tables OK (ORM / leads schema).
+2026-04-22 13:26:38,672 | INFO | leadpilot.startup | Lead storage initialized (STORAGE_MODE=csv).
+2026-04-22 13:26:38,672 | INFO | leadpilot.startup | LeadPilot API — ready to accept requests.
+2026-04-22 13:28:30,903 | INFO | leadpilot.startup | LeadPilot API — shutdown.

@@ -24,11 +24,15 @@ export default defineConfig({
   server: {
     port: 5173,
     strictPort: true,
+    // Same path as backend API_ROOT_PATH (default /api). No rewrite — FastAPI serves /api/... .
     proxy: {
       '/api': {
         target: 'http://127.0.0.1:8000',
         changeOrigin: true,
-        rewrite: (p) => p.replace(/^\/api/, '') || '/',
+      },
+      '/branding': {
+        target: 'http://127.0.0.1:8000',
+        changeOrigin: true,
       },
     },
   },

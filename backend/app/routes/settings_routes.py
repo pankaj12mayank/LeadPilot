@@ -12,7 +12,7 @@ import config
 from backend.app.api.deps import get_current_user
 from backend.app.schemas.settings import SettingsResponse, SettingsUpdate
 from backend.ollama_messaging.ollama_service import OllamaGenerateService
-from services import external_llm_service, ollama_bootstrap, runtime_settings, settings_service
+from backend.services import external_llm_service, ollama_bootstrap, runtime_settings, settings_service
 
 router = APIRouter(prefix="/settings", tags=["settings"])
 
@@ -128,12 +128,9 @@ def test_ollama(
                 }
             else:
                 hints.append(f"Could not auto-start Ollama ({start_err}). Start it manually: ollama serve")
-            data, wait_err = ollama_bootstrap.wait_for_ollama_tags(tags_url)
-            if data is None and os.name == "nt" and ollama_bootstrap.try_open_visible_ollama_terminal_windows():
-                hints.append(
-                    "Opened a new Command Prompt running `ollama serve`. Leave that window open — this test will wait a bit longer for Ollama to respond."
-                )
-                data, wait_err = ollama_bootstrap.wait_for_ollama_tags(tags_url, total_seconds=24.0)
+            # After a silent background start, wait longer — no extra terminal window.
+            wait_secs = 45.0 if auto_started else 30.0
+            data, wait_err = ollama_bootstrap.wait_for_ollama_tags(tags_url, total_seconds=wait_secs)
             if data is None:
                 hints.extend(
                     [

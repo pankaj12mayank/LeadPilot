@@ -27,6 +27,8 @@ export type User = {
   id: string
   email: string
   created_at: string
+  is_active?: boolean
+  last_login_at?: string
 }
 
 export type AuthResponse = {

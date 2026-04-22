@@ -1,104 +1,168 @@
 @echo off
+setlocal EnableExtensions
 chcp 65001 >nul
-setlocal EnableDelayedExpansion
 cd /d "%~dp0"
+set "ROOT=%CD%"
+set "ERR=0"
 
-REM ----- Optional virtual environment (common layouts) -----
-set "_VENV_ACT="
-if exist "%~dp0.venv\Scripts\activate.bat" (
-  call "%~dp0.venv\Scripts\activate.bat"
-  set "_VENV_ACT=1"
-) else if exist "%~dp0venv\Scripts\activate.bat" (
-  call "%~dp0venv\Scripts\activate.bat"
-  set "_VENV_ACT=1"
-) else if exist "%~dp0env\Scripts\activate.bat" (
-  call "%~dp0env\Scripts\activate.bat"
-  set "_VENV_ACT=1"
-)
-if not defined _VENV_ACT (
-  echo.
-  echo [i] No virtual environment found at .venv, venv, or env.
-  echo     Using Python from PATH. Create one with:  python -m venv .venv
-  echo.
-)
+echo.
+echo ============================================================
+echo   LeadPilot — one-click launcher
+echo   Root: %ROOT%
+echo ============================================================
+echo   Browsers show ERR_CONNECTION_REFUSED when nothing is listening
+echo   on ports 8000 / 5173. This script starts API + Vite in THIS window;
+echo   keep it open until you press Ctrl+C.
+echo ============================================================
+echo.
 
+REM ----- Critical: Python -----
 where python >nul 2>&1
 if errorlevel 1 (
-  echo [X] Python was not found on PATH. Install Python 3 and retry.
-  pause
-  exit /b 1
+  echo [FAIL] Python is not on PATH. Install Python 3.10+ from python.org and retry.
+  set ERR=1
+  goto :end
+)
+echo [OK] Found Python:
+python --version
+
+REM ----- Critical: Node.js / npm -----
+where npm >nul 2>&1
+if errorlevel 1 (
+  echo [FAIL] npm is not on PATH. Install Node.js LTS ^(includes npm^) and retry.
+  set ERR=1
+  goto :end
+)
+echo [OK] Found npm:
+call npm --version
+
+REM ----- Virtual environment -----
+if not exist "%ROOT%\.venv\Scripts\python.exe" (
+  echo.
+  echo [..] Creating virtual environment .venv ...
+  python -m venv "%ROOT%\.venv"
+  if errorlevel 1 (
+    echo [FAIL] Could not create .venv ^(python -m venv failed^).
+    set ERR=1
+    goto :end
+  )
+  echo [OK] Virtual environment created.
+) else (
+  echo [OK] Virtual environment already exists: .venv
+)
+set "PY=%ROOT%\.venv\Scripts\python.exe"
+call "%ROOT%\.venv\Scripts\activate.bat"
+if errorlevel 1 (
+  echo [FAIL] Could not activate .venv\Scripts\activate.bat
+  set ERR=1
+  goto :end
+)
+echo [OK] Virtual environment activated.
+
+REM ----- Runtime folders -----
+echo.
+echo [..] Ensuring runtime folders exist ...
+mkdir "%ROOT%\backend" 2>nul
+mkdir "%ROOT%\database" 2>nul
+mkdir "%ROOT%\data" 2>nul
+mkdir "%ROOT%\exports" 2>nul
+mkdir "%ROOT%\sessions" 2>nul
+mkdir "%ROOT%\logs" 2>nul
+mkdir "%ROOT%\storage" 2>nul
+mkdir "%ROOT%\storage\branding" 2>nul
+"%PY%" -c "import config; config.ensure_data_dirs()" 2>nul
+if errorlevel 1 (
+  echo [WARN] config.ensure_data_dirs^(\^) reported an error ^(continuing^).
+)
+echo [OK] Folders ready ^(exports, sessions, logs, data, database, storage\branding, safe-capture paths^).
+
+REM ----- Root .env -----
+if not exist "%ROOT%\.env" (
+  if exist "%ROOT%\.env.example" (
+    echo [..] Creating .env from .env.example ...
+    copy /y "%ROOT%\.env.example" "%ROOT%\.env" >nul
+    echo [OK] Created .env ^(review secrets before production^).
+  ) else (
+    echo [WARN] No .env.example found; continuing without copying .env
+  )
+) else (
+  echo [OK] .env already present.
 )
 
-:menu
-cls
+REM ----- Backend dependencies -----
 echo.
-echo   LeadPilot  ^|  Windows launcher
-echo   ================================
-echo   1. Run Lead Capture   ^(Playwright + backend\main.py^)
-echo   2. Open Dashboard     ^(Streamlit^)
-echo   3. Export CSV         ^(SQLite safe captures -^> configured CSV path^)
-echo   4. Exit
-echo.
-set "choice="
-set /p "choice=Choose [1-4]: "
-if "!choice!"=="" goto menu
-if "!choice!"=="1" goto opt_capture
-if "!choice!"=="2" goto opt_dashboard
-if "!choice!"=="3" goto opt_export
-if "!choice!"=="4" goto :eof
-echo Invalid choice. Use 1, 2, 3, or 4.
-timeout /t 2 /nobreak >nul
-goto menu
+echo [..] Installing Python dependencies ^(requirements.txt^) ...
+"%PY%" -m pip install --upgrade pip -q
+"%PY%" -m pip install -r "%ROOT%\requirements.txt"
+if errorlevel 1 (
+  echo [FAIL] pip install -r requirements.txt failed.
+  set ERR=1
+  goto :end
+)
+echo [OK] Backend dependencies installed.
 
-:opt_capture
+REM ----- Database files / schema -----
 echo.
-echo --- Lead Capture ---
-python -m pip install -r "%~dp0requirements.txt" -q
+echo [..] Initializing database ^(SQLite + storage^) ...
+"%PY%" "%ROOT%\scripts\init_database.py"
 if errorlevel 1 (
-  echo [X] pip install failed. Check network and requirements.txt
-  pause
-  goto menu
+  echo [FAIL] scripts\init_database.py failed.
+  set ERR=1
+  goto :end
 )
-echo Ensuring Playwright Chromium...
-python -m playwright install chromium
-if errorlevel 1 (
-  echo [!] Playwright browser install had a problem; capture may still work if browsers exist.
+echo [OK] Database initialized.
+
+REM ----- Frontend dependencies -----
+if not exist "%ROOT%\frontend\package.json" (
+  echo [FAIL] frontend\package.json is missing. Clone or restore the frontend folder.
+  set ERR=1
+  goto :end
 )
-python -m backend.main
-if errorlevel 1 echo [X] Capture exited with an error.
+cd /d "%ROOT%\frontend"
+if not exist "%ROOT%\frontend\node_modules" (
+  echo.
+  echo [..] Installing frontend dependencies ^(npm install^) ...
+  call npm install
+  if errorlevel 1 (
+    echo [FAIL] npm install in frontend\ failed.
+    set ERR=1
+    cd /d "%ROOT%"
+    goto :end
+  )
+  echo [OK] Frontend dependencies installed.
+) else (
+  echo [OK] Frontend node_modules already present.
+)
+if not exist "%ROOT%\frontend\.env" (
+  if exist "%ROOT%\frontend\.env.example" (
+    copy /y "%ROOT%\frontend\.env.example" "%ROOT%\frontend\.env" >nul
+    echo [OK] Created frontend\.env from .env.example ^(dev proxy /api^).
+  )
+)
+cd /d "%ROOT%"
+
+REM ----- Start API + Vite in THIS window (reliable; avoids orphan / closing CMD windows) -----
+echo.
+echo [..] Starting API + Vite in this window ^(Ctrl+C stops both^) ...
+echo.
+"%PY%" "%ROOT%\scripts\dev_server.py"
+set ERR=%ERRORLEVEL%
+
+echo.
+echo ============================================================
+echo   Dev servers stopped ^(exit code %ERR%^).
+echo   To run again: double-click run.bat or run scripts\dev_server.py
+echo ============================================================
+goto :end
+
+:end
+if "%ERR%"=="1" (
+  echo.
+  echo ============================================================
+  echo   STOPPED — fix the errors above, then run run.bat again.
+  echo ============================================================
+)
+echo.
 pause
-goto menu
-
-:opt_dashboard
-echo.
-echo --- Dashboard ---
-python -m pip install -r "%~dp0requirements.txt" -q
-if errorlevel 1 (
-  echo [X] pip install failed.
-  pause
-  goto menu
-)
-python -c "import streamlit" 2>nul
-if errorlevel 1 (
-  echo [X] Streamlit is not installed. From repo root:  python -m pip install streamlit
-  pause
-  goto menu
-)
-python -m streamlit run "%~dp0frontend\streamlit_dashboard.py"
-if errorlevel 1 echo [X] Streamlit exited with an error.
-pause
-goto menu
-
-:opt_export
-echo.
-echo --- Export CSV ---
-python -m pip install -r "%~dp0requirements.txt" -q
-if errorlevel 1 (
-  echo [X] pip install failed.
-  pause
-  goto menu
-)
-python -m backend.export_safe_csv
-if errorlevel 1 echo [X] Export failed.
-pause
-goto menu
+endlocal
+exit /b %ERR%

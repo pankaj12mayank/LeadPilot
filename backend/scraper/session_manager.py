@@ -8,7 +8,7 @@ import config as app_config
 
 from backend.scraper.exceptions import ScraperError, UnsupportedPlatformError
 from backend.scraper.urls import LOGIN_START_URLS, login_url
-from settings.lead_schema import utc_now_iso
+from backend.settings.lead_schema import utc_now_iso
 
 
 class SessionManager:
@@ -114,7 +114,7 @@ class SessionManager:
         from playwright.sync_api import sync_playwright
 
         from backend.scraper.session_verify import verify_playwright_session
-        from services import platform_registry_service
+        from backend.services import platform_registry_service
 
         slug = platform_slug.strip().lower().replace(" ", "_")
         self.clear_verification(slug)

@@ -15,6 +15,8 @@ class User(Base):
     email: Mapped[str] = mapped_column(String(320), unique=True, nullable=False, index=True)
     password_hash: Mapped[str] = mapped_column(String(255), nullable=False)
     created_at: Mapped[str] = mapped_column(String(64), nullable=False)
+    is_active: Mapped[int] = mapped_column(Integer, nullable=False, default=1, index=True)
+    last_login_at: Mapped[str] = mapped_column(String(64), nullable=False, default="")
 
 
 class Lead(Base):

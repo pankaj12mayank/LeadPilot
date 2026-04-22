@@ -11,13 +11,30 @@ load_dotenv()  # optional: cwd .env overrides for local experiments
 DEBUG = os.getenv("DEBUG", "false").lower() in ("1", "true", "yes")
 LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO").strip() or "INFO"
 CORS_ORIGINS = os.getenv("CORS_ORIGINS", "*").strip() or "*"
+# Browser origin for the Vite SPA (merged into CORS when CORS_ORIGINS is not "*")
+FRONTEND_URL = os.getenv("FRONTEND_URL", "").strip().rstrip("/")
+
+
+def _normalize_api_root_path(raw: str) -> str:
+    """Return '' (mount at server root) or a path like ``/api`` (no trailing slash except empty)."""
+    s = (raw or "").strip()
+    if not s or s.lower() in ("none", "false", "0", "/"):
+        return ""
+    if not s.startswith("/"):
+        s = "/" + s
+    return s.rstrip("/") or ""
+
+
+# Prefix for all API routers except ``/health`` and static ``/branding``. Default ``/api`` matches Vite + SPA.
+API_ROOT_PATH = _normalize_api_root_path(os.getenv("API_ROOT_PATH", "/api"))
 
 CSV_FILE_PATH = os.getenv("CSV_FILE_PATH", "data/leads.csv")
 SQLITE_DB_PATH = os.getenv("SQLITE_DB_PATH", "database/leads.db")
 POSTGRES_DSN = os.getenv("POSTGRES_DSN", "")
 STORAGE_MODE = os.getenv("STORAGE_MODE", "csv").lower().strip()
 
-PROMPTS_DIR = os.getenv("PROMPTS_DIR", "prompts")
+_PROMPTS_DIR_RAW = os.getenv("PROMPTS_DIR", "").strip()
+PROMPTS_DIR = _PROMPTS_DIR_RAW or str(_REPO_ROOT / "backend" / "prompts")
 
 OLLAMA_URL = os.getenv("OLLAMA_URL", "http://localhost:11434/api/generate")
 MODEL_NAME = os.getenv("MODEL_NAME", "llama3")

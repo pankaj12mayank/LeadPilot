@@ -5,7 +5,7 @@ from typing import List, Optional
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from database.orm.models import Lead as LeadORM
-from services.lead_statuses import assert_status_writable
+from backend.services.lead_statuses import assert_status_writable
 
 
 class LeadCreate(BaseModel):

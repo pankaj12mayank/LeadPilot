@@ -104,7 +104,7 @@ def main() -> None:
     if not rows:
         st.info(
             "No leads yet. Capture from the terminal: "
-            "**`run.bat`** option 1, **`run-safe-capture.bat`**, or **`python -m backend.main`**."
+            "**`run.bat`** option 1 (full stack), option 3 (this dashboard), or **`python -m backend.main`** for capture only."
         )
         st.code(f"Database: {config.SAFE_CAPTURE_DB_PATH}", language="text")
         st.code(f"CSV mirror: {config.SAFE_CAPTURE_CSV_PATH}", language="text")

@@ -19,7 +19,7 @@ from backend.lead_scoring.factors import (
     score_website_availability,
 )
 from backend.lead_scoring.tiers import assign_tier
-from utils.logger import get_logger
+from backend.utils.logger import get_logger
 
 logger = get_logger(__name__)
 

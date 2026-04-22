@@ -21,7 +21,7 @@ from backend.app.schemas.lead import (
     PaginatedLeadsResponse,
     StatusUpdate,
 )
-from services import (
+from backend.services import (
     analytics_service,
     email_history_service,
     history_service,
@@ -35,7 +35,7 @@ def _invalidate_dashboard_cache() -> None:
         analytics_service.invalidate_analytics_cache()
     except Exception:
         pass
-from services.platform_service import normalize_platform
+from backend.services.platform_service import normalize_platform
 
 router = APIRouter(prefix="/leads", tags=["leads"])
 
@@ -67,13 +67,13 @@ _CSV_FIELDS = [
 
 def _create_from_body(db: Session, body: LeadCreate, user_id: str) -> LeadResponse:
     stored = lead_orm_service.create_lead(db, body.model_dump())
+    db.commit()
     history_service.record_event(
         stored.id,
         "lead.created",
         {"full_name": stored.full_name},
         user_id,
     )
-    db.commit()
     _invalidate_dashboard_cache()
     return LeadResponse.from_orm_lead(stored)
 
@@ -207,13 +207,13 @@ def export_leads_csv(
         tier=body.tier,
         platform=body.platform,
     )
+    db.commit()
     history_service.record_event(
         None,
         "leads.export",
         {"rows": len(leads), "filtered": body.ids is None},
         user["id"],
     )
-    db.commit()
     return Response(
         content=_leads_to_csv_bytes(leads),
         media_type="text/csv; charset=utf-8",
@@ -228,13 +228,13 @@ def bulk_delete_leads(
     user: dict = Depends(get_current_user),
 ) -> BulkDeleteResponse:
     n = lead_orm_service.bulk_delete_leads(db, body.ids)
+    db.commit()
     history_service.record_event(
         None,
         "leads.bulk_deleted",
         {"count": n, "sample_ids": body.ids[:20]},
         user["id"],
     )
-    db.commit()
     _invalidate_dashboard_cache()
     return BulkDeleteResponse(deleted=n)
 
@@ -368,8 +368,8 @@ def put_lead(
     row = lead_orm_service.update_lead(db, lead_id, patch)
     if not row:
         raise HTTPException(status_code=404, detail="Lead not found")
-    history_service.record_event(lead_id, "lead.updated", {"fields": list(patch.keys())}, user["id"])
     db.commit()
+    history_service.record_event(lead_id, "lead.updated", {"fields": list(patch.keys())}, user["id"])
     _invalidate_dashboard_cache()
     return LeadResponse.from_orm_lead(row)
 
@@ -387,8 +387,8 @@ def patch_lead(
     row = lead_orm_service.update_lead(db, lead_id, patch)
     if not row:
         raise HTTPException(status_code=404, detail="Lead not found")
-    history_service.record_event(lead_id, "lead.updated", {"fields": list(patch.keys())}, user["id"])
     db.commit()
+    history_service.record_event(lead_id, "lead.updated", {"fields": list(patch.keys())}, user["id"])
     _invalidate_dashboard_cache()
     return LeadResponse.from_orm_lead(row)
 
@@ -422,6 +422,7 @@ def patch_status(
     row = lead_orm_service.update_status(db, lead_id, body.status)
     if not row:
         raise HTTPException(status_code=404, detail="Lead not found")
+    db.commit()
     if old_status != body.status:
         status_history_service.record_change(lead_id, old_status, body.status)
     history_service.record_event(
@@ -430,6 +431,5 @@ def patch_status(
         {"status": body.status},
         user["id"],
     )
-    db.commit()
     _invalidate_dashboard_cache()
     return LeadResponse.from_orm_lead(row)

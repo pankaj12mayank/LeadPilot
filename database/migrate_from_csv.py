@@ -7,9 +7,9 @@ Callable from code or: python -m database.migrate_from_csv
 from __future__ import annotations
 
 import config
-from settings.lead_schema import normalize_lead_row
-from storage.csv_storage import CsvStorage
-from storage.sqlite_storage import SqliteStorage
+from backend.settings.lead_schema import normalize_lead_row
+from backend.storage.csv_storage import CsvStorage
+from backend.storage.sqlite_storage import SqliteStorage
 
 
 def migrate(csv_path: str | None = None, db_path: str | None = None) -> int:

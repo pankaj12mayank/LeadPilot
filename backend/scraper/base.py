@@ -13,7 +13,7 @@ from backend.scraper.exceptions import SessionMissingError
 from backend.scraper.progress import JobProgressSink, NullProgressSink
 from backend.scraper.raw_lead_saver import RawLeadSaver
 from backend.scraper.session_manager import SessionManager
-from utils.logger import get_logger
+from backend.utils.logger import get_logger
 
 logger = get_logger(__name__)
 

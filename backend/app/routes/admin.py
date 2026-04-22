@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any, Dict
+from typing import Any, Dict, List
 
 import config
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
@@ -8,7 +8,7 @@ from pydantic import BaseModel, Field
 
 from backend.app.api.deps import get_current_admin
 from backend.app.middleware.jwt import create_access_token
-from services import auth_service, branding_files, runtime_settings, settings_service
+from backend.services import analytics_service, auth_service, branding_files, runtime_settings, settings_service
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 
@@ -38,6 +38,85 @@ def admin_login(body: AdminLoginBody) -> Dict[str, Any]:
 @router.get("/users")
 def admin_list_users(_admin: dict = Depends(get_current_admin)) -> Dict[str, Any]:
     return {"users": auth_service.list_users()}
+
+
+class AdminCreateUserBody(BaseModel):
+    email: str = Field(..., min_length=3, max_length=320)
+    password: str = Field(..., min_length=8, max_length=128)
+
+
+@router.post("/users")
+def admin_create_user(body: AdminCreateUserBody, _admin: dict = Depends(get_current_admin)) -> Dict[str, Any]:
+    try:
+        user = auth_service.create_user(body.email.strip().lower(), body.password)
+    except ValueError as e:
+        if str(e) == "email_taken":
+            raise HTTPException(status_code=400, detail="Email already registered") from None
+        raise HTTPException(status_code=400, detail="Could not create user") from e
+    return {"user": user}
+
+
+class AdminBulkDeleteUsersBody(BaseModel):
+    ids: List[str] = Field(..., min_length=1, max_length=500)
+
+
+@router.post("/users/bulk-delete")
+def admin_bulk_delete_users(
+    body: AdminBulkDeleteUsersBody,
+    _admin: dict = Depends(get_current_admin),
+) -> Dict[str, Any]:
+    deleted = auth_service.delete_users(body.ids)
+    return {"deleted": deleted}
+
+
+class AdminUserActiveBody(BaseModel):
+    is_active: bool
+
+
+@router.patch("/users/{user_id}")
+def admin_patch_user(
+    user_id: str,
+    body: AdminUserActiveBody,
+    _admin: dict = Depends(get_current_admin),
+) -> Dict[str, Any]:
+    updated = auth_service.set_user_active(user_id, body.is_active)
+    if not updated:
+        raise HTTPException(status_code=404, detail="User not found")
+    return {"user": updated}
+
+
+class AdminUserPasswordBody(BaseModel):
+    password: str = Field(..., min_length=8, max_length=128)
+
+
+@router.post("/users/{user_id}/password")
+def admin_set_user_password(
+    user_id: str,
+    body: AdminUserPasswordBody,
+    _admin: dict = Depends(get_current_admin),
+) -> Dict[str, Any]:
+    ok = auth_service.set_user_password(user_id, body.password)
+    if not ok:
+        raise HTTPException(status_code=404, detail="User not found")
+    return {"ok": True}
+
+
+@router.get("/stats")
+def admin_workspace_stats(_admin: dict = Depends(get_current_admin)) -> Dict[str, Any]:
+    """High-level workspace metrics (same aggregates as the user dashboard)."""
+    dash = analytics_service.dashboard(use_cache=True)
+    users = auth_service.list_users()
+    active_users = sum(1 for u in users if u.get("is_active"))
+    return {
+        "registered_users": len(users),
+        "active_users": active_users,
+        "inactive_users": max(0, len(users) - active_users),
+        "total_leads": int(dash.get("total_leads") or dash.get("total") or 0),
+        "hot_leads": int(dash.get("hot_leads") or 0),
+        "contacted_leads": int(dash.get("contacted_leads") or 0),
+        "converted_leads": int(dash.get("converted_leads") or 0),
+        "conversion_rate_percent": float(dash.get("conversion_rate_percent") or 0),
+    }
 
 
 @router.get("/branding")

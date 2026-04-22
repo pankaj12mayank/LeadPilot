@@ -13,8 +13,9 @@ import {
 } from 'recharts'
 
 import { StatCard } from '@/components/dashboard/StatCard'
+import { ApiLoadError } from '@/components/ui/ApiLoadError'
 import { fetchDashboard } from '@/lib/api/analytics'
-import { tooltipLabelStyle, tooltipStyles, useChartPalette } from '@/lib/chartTheme'
+import { chartTooltipProps, useChartPalette } from '@/lib/chartTheme'
 import type { DashboardData } from '@/types/models'
 
 const chartBox =
@@ -23,16 +24,26 @@ const chartBox =
 export function AnalyticsPage() {
   const [data, setData] = useState<DashboardData | null>(null)
   const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState<string | null>(null)
+  const [retryNonce, setRetryNonce] = useState(0)
   const p = useChartPalette()
-  const tip = tooltipStyles(p)
-  const tipLabel = tooltipLabelStyle(p)
+  const tt = chartTooltipProps(p)
 
   useEffect(() => {
     let cancelled = false
+    setLoading(true)
+    setLoadError(null)
     ;(async () => {
       try {
         const d = await fetchDashboard()
         if (!cancelled) setData(d)
+      } catch {
+        if (!cancelled) {
+          setData(null)
+          setLoadError(
+            'Analytics data could not be loaded. Ensure the API is running and your session is valid, then retry.',
+          )
+        }
       } finally {
         if (!cancelled) setLoading(false)
       }
@@ -40,7 +51,7 @@ export function AnalyticsPage() {
     return () => {
       cancelled = true
     }
-  }, [])
+  }, [retryNonce])
 
   const funnel = useMemo(() => {
     if (!data) return []
@@ -92,7 +103,7 @@ export function AnalyticsPage() {
       .slice(0, 10)
   }, [data])
 
-  if (loading || !data) {
+  if (loading) {
     return (
       <div className="mx-auto max-w-[1600px] space-y-8">
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -101,6 +112,18 @@ export function AnalyticsPage() {
           ))}
         </div>
         <div className="skeleton-shimmer h-96 rounded-2xl" />
+      </div>
+    )
+  }
+
+  if (loadError || !data) {
+    return (
+      <div className="mx-auto max-w-[1600px]">
+        <ApiLoadError
+          title="Analytics unavailable"
+          message={loadError ?? 'The server did not return analytics data.'}
+          onRetry={() => setRetryNonce((n) => n + 1)}
+        />
       </div>
     )
   }
@@ -146,8 +169,14 @@ export function AnalyticsPage() {
                 tickLine={false}
               />
               <YAxis tick={{ fill: p.tick, fontSize: 11 }} axisLine={false} tickLine={false} allowDecimals={false} />
-              <Tooltip contentStyle={tip} labelStyle={tipLabel} />
-              <Bar dataKey="value" fill={p.barPrimary} radius={[8, 8, 0, 0]} maxBarSize={52} />
+              <Tooltip {...tt} />
+              <Bar
+                dataKey="value"
+                fill={p.barPrimary}
+                radius={[8, 8, 0, 0]}
+                maxBarSize={52}
+                activeBar={{ fill: p.cursorBand }}
+              />
             </BarChart>
           </ResponsiveContainer>
         </div>
@@ -165,13 +194,14 @@ export function AnalyticsPage() {
                 <CartesianGrid strokeDasharray="3 3" stroke={p.grid} vertical={false} />
                 <XAxis dataKey="name" tick={{ fill: p.tick, fontSize: 11 }} axisLine={{ stroke: p.axis }} tickLine={false} />
                 <YAxis tick={{ fill: p.tick, fontSize: 11 }} axisLine={false} tickLine={false} />
-                <Tooltip contentStyle={tip} labelStyle={tipLabel} />
+                <Tooltip {...tt} />
                 <Line
                   type="monotone"
                   dataKey="value"
                   stroke={p.emerald}
                   strokeWidth={2.5}
                   dot={{ r: 4, fill: p.emerald }}
+                  activeDot={{ r: 6, fill: p.emerald, fillOpacity: 0.85, stroke: p.tooltipBorder, strokeWidth: 1 }}
                 />
               </LineChart>
             </ResponsiveContainer>
@@ -188,9 +218,16 @@ export function AnalyticsPage() {
                 <CartesianGrid strokeDasharray="3 3" stroke={p.grid} vertical={false} />
                 <XAxis dataKey="name" tick={{ fill: p.tick, fontSize: 11 }} axisLine={{ stroke: p.axis }} tickLine={false} />
                 <YAxis tick={{ fill: p.tick, fontSize: 11 }} axisLine={false} tickLine={false} allowDecimals={false} />
-                <Tooltip contentStyle={tip} labelStyle={tipLabel} />
+                <Tooltip {...tt} />
                 <Legend wrapperStyle={{ fontSize: 12, color: p.tick }} />
-                <Bar dataKey="value" fill={p.linePrimary} name="Lead count" radius={[8, 8, 0, 0]} maxBarSize={48} />
+                <Bar
+                  dataKey="value"
+                  fill={p.linePrimary}
+                  name="Lead count"
+                  radius={[8, 8, 0, 0]}
+                  maxBarSize={48}
+                  activeBar={{ fill: p.cursorBand }}
+                />
               </BarChart>
             </ResponsiveContainer>
           </div>
@@ -219,8 +256,8 @@ export function AnalyticsPage() {
                 axisLine={{ stroke: p.axis }}
                 tickLine={false}
               />
-              <Tooltip contentStyle={tip} labelStyle={tipLabel} />
-              <Bar dataKey="value" fill={p.barPrimary} radius={[0, 8, 8, 0]} barSize={22} />
+              <Tooltip {...tt} />
+              <Bar dataKey="value" fill={p.barPrimary} radius={[0, 8, 8, 0]} barSize={22} activeBar={{ fill: p.cursorBand }} />
             </BarChart>
           </ResponsiveContainer>
         </div>

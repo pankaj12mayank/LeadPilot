@@ -12,6 +12,7 @@ os.environ["API_META_DB_PATH"] = str(_test_data / "api_meta.db")
 os.environ["SECRET_KEY"] = "pytest-secret-not-for-production"
 os.environ["CORS_ORIGINS"] = "*"
 os.environ["LOG_LEVEL"] = "WARNING"
+os.environ["API_ROOT_PATH"] = "/api"
 
 import pytest
 from fastapi.testclient import TestClient

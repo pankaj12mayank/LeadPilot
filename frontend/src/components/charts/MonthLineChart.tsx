@@ -8,7 +8,7 @@ import {
   YAxis,
 } from 'recharts'
 
-import { tooltipLabelStyle as tooltipLabelStyleFn, tooltipStyles, useChartPalette } from '@/lib/chartTheme'
+import { chartTooltipProps, useChartPalette } from '@/lib/chartTheme'
 
 export type MonthPoint = { month: string; count: number }
 
@@ -17,8 +17,7 @@ const wrap =
 
 export function MonthLineChart({ data }: { data: MonthPoint[] }) {
   const p = useChartPalette()
-  const tip = tooltipStyles(p)
-  const tipLabel = tooltipLabelStyleFn(p)
+  const tt = chartTooltipProps(p)
 
   return (
     <div className={wrap}>
@@ -37,14 +36,14 @@ export function MonthLineChart({ data }: { data: MonthPoint[] }) {
             tickLine={false}
             allowDecimals={false}
           />
-          <Tooltip contentStyle={tip} labelStyle={tipLabel} />
+          <Tooltip {...tt} />
           <Line
             type="monotone"
             dataKey="count"
             stroke={p.linePrimary}
             strokeWidth={2.5}
             dot={{ fill: p.linePrimary, r: 3, strokeWidth: 0 }}
-            activeDot={{ r: 5, fill: p.emerald }}
+            activeDot={{ r: 5, fill: p.emerald, stroke: p.tooltipBorder, strokeWidth: 1, fillOpacity: 0.95 }}
           />
         </LineChart>
       </ResponsiveContainer>

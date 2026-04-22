@@ -5,13 +5,15 @@ import { cn } from '@/lib/utils/cn'
 
 type ModalProps = {
   open: boolean
-  title: string
+  title: ReactNode
+  /** Optional native tooltip when title is plain text */
+  titleHint?: string
   onClose: () => void
   children: ReactNode
   className?: string
 }
 
-export function Modal({ open, title, onClose, children, className }: ModalProps) {
+export function Modal({ open, title, titleHint, onClose, children, className }: ModalProps) {
   useEffect(() => {
     if (!open) return
     const onKey = (e: KeyboardEvent) => {
@@ -43,8 +45,12 @@ export function Modal({ open, title, onClose, children, className }: ModalProps)
         )}
       >
         <div className="mb-4 flex items-start justify-between gap-4">
-          <h2 id="modal-title" className="font-display text-xl font-semibold tracking-tight text-ink sm:text-2xl">
-            {title}
+          <h2
+            id="modal-title"
+            title={titleHint}
+            className="min-w-0 max-w-[calc(100%-2.5rem)] font-display text-xl font-semibold leading-snug tracking-tight text-ink sm:text-2xl"
+          >
+            <span className="line-clamp-2 break-words">{title}</span>
           </h2>
           <button
             type="button"

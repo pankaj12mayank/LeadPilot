@@ -21,8 +21,8 @@ from backend.scraper.registry import list_platform_slugs
 from backend.scraper.runner import run_scrape_sync
 from backend.scraper.session_manager import SessionManager
 from backend.scraper.urls import LOGIN_START_URLS, login_url, supported_platforms
-from services import platform_registry_service
-from services.platform_channels import active_channel_slugs
+from backend.services import platform_registry_service
+from backend.services.platform_channels import active_channel_slugs
 import config as app_config
 
 router = APIRouter(prefix="/scraper", tags=["scraper"])

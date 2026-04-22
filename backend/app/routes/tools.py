@@ -13,7 +13,7 @@ from backend.app.api.deps import get_current_user
 from backend.lead_cleaning.engine import run_cleaning_pipeline
 from backend.lead_cleaning.summary import CleaningSummary
 from database.migrate_from_csv import migrate as migrate_csv_to_sqlite
-from services import bulk_message_service
+from backend.services import bulk_message_service
 
 router = APIRouter(prefix="/tools", tags=["tools"])
 

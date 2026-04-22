@@ -8,7 +8,7 @@ from jose import JWTError
 
 from backend.app.middleware.jwt import decode_access_token
 from database.orm.session import get_db  # noqa: F401 — re-exported for FastAPI route ``Depends()``
-from services import auth_service
+from backend.services import auth_service
 
 _bearer = HTTPBearer(auto_error=True)
 
@@ -27,6 +27,8 @@ def get_current_user(
     user = auth_service.get_user_by_id(sub)
     if not user:
         raise HTTPException(status_code=401, detail="User no longer exists")
+    if not user.get("is_active", True):
+        raise HTTPException(status_code=403, detail="Account is inactive")
     return user
 
 

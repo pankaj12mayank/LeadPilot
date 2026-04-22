@@ -19,6 +19,8 @@ class UserResponse(BaseModel):
     id: str
     email: str
     created_at: str
+    is_active: bool = True
+    last_login_at: str = ""
 
 
 class TokenResponse(BaseModel):

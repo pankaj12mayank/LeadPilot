@@ -5,7 +5,7 @@ from typing import Any, Dict, Optional
 from fastapi import APIRouter, Depends, Query
 
 from backend.app.api.deps import get_current_user
-from services import analytics_engine, analytics_service
+from backend.services import analytics_engine, analytics_service
 
 router = APIRouter(prefix="/analytics", tags=["analytics"])
 

@@ -65,6 +65,7 @@ export function AppShell() {
   const { pathname } = useLocation()
   const productName = useBrandingStore((s) => s.branding.product_name)
   const logoUrl = useBrandingStore((s) => s.branding.logo_url)
+  const mediaRevision = useBrandingStore((s) => s.mediaRevision)
   const { user, logout } = useAuthStore()
   const mobileOpen = useSidebarStore((s) => s.mobileOpen)
   const setMobileOpen = useSidebarStore((s) => s.setMobileOpen)
@@ -99,7 +100,7 @@ export function AppShell() {
         <div className="mb-8 flex items-center gap-2 px-2">
           {logoUrl ? (
             <img
-              src={resolveMediaUrl(logoUrl)}
+              src={`${resolveMediaUrl(logoUrl)}?v=${mediaRevision}`}
               alt=""
               className="h-10 w-10 shrink-0 rounded-xl border border-surface-border bg-field object-contain p-0.5"
             />
@@ -116,21 +117,31 @@ export function AppShell() {
         <nav className="flex flex-1 flex-col gap-1">
           <NavItems onNavigate={() => setMobileOpen(false)} />
         </nav>
-        <div className="mt-auto border-t border-surface-border pt-4">
-          <div className="truncate px-2 text-xs text-ink-subtle">{user?.email}</div>
-          <button
-            type="button"
-            onClick={() => logout()}
-            className="mt-2 flex w-full items-center gap-2 rounded-xl border border-transparent px-3 py-2.5 text-sm text-ink-muted transition hover:border-surface-border hover:bg-field/80 hover:text-ink dark:hover:bg-white/[0.04]"
-          >
-            <LogOut className="h-4 w-4" strokeWidth={1.5} />
-            Sign Out
-          </button>
-        </div>
       </aside>
 
       <div className="flex min-w-0 flex-1 flex-col lg:pl-0">
-        <TopNav title={title} subtitle={subtitle} />
+        <TopNav
+          title={title}
+          subtitle={subtitle}
+          headerActions={
+            <div className="flex items-center gap-2">
+              <span
+                className="hidden max-w-[200px] truncate text-xs text-ink-subtle lg:inline"
+                title={user?.email}
+              >
+                {user?.email}
+              </span>
+              <button
+                type="button"
+                onClick={() => logout()}
+                className="inline-flex items-center gap-1.5 rounded-lg border border-surface-border px-3 py-2 text-xs font-medium text-ink-muted transition hover:border-amber-500/25 hover:text-ink dark:hover:border-emerald-500/20"
+              >
+                <LogOut className="h-3.5 w-3.5" strokeWidth={1.5} />
+                Sign out
+              </button>
+            </div>
+          }
+        />
         <div className="flex-1 overflow-auto px-4 py-8 lg:px-10 lg:py-10">
           <Outlet />
           <MarketingFooter />

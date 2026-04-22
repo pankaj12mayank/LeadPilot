@@ -9,7 +9,7 @@ import {
   YAxis,
 } from 'recharts'
 
-import { tooltipLabelStyle as tooltipLabelStyleFn, tooltipStyles, useChartPalette } from '@/lib/chartTheme'
+import { chartTooltipProps, useChartPalette } from '@/lib/chartTheme'
 
 export type TierStackRow = { platform: string; hot: number; warm: number; cold: number }
 
@@ -18,8 +18,7 @@ const wrap =
 
 export function StackedTierByPlatform({ data }: { data: TierStackRow[] }) {
   const p = useChartPalette()
-  const tip = tooltipStyles(p)
-  const tipLabel = tooltipLabelStyleFn(p)
+  const tt = chartTooltipProps(p)
 
   return (
     <div className={wrap}>
@@ -38,7 +37,7 @@ export function StackedTierByPlatform({ data }: { data: TierStackRow[] }) {
             tickLine={false}
             allowDecimals={false}
           />
-          <Tooltip contentStyle={tip} labelStyle={tipLabel} />
+          <Tooltip {...tt} />
           <Legend
             wrapperStyle={{ fontSize: 12, color: p.tick }}
             formatter={(v) => (
@@ -47,9 +46,23 @@ export function StackedTierByPlatform({ data }: { data: TierStackRow[] }) {
               </span>
             )}
           />
-          <Bar dataKey="hot" stackId="t" fill={p.hot} radius={[0, 0, 0, 0]} maxBarSize={44} />
-          <Bar dataKey="warm" stackId="t" fill={p.warm} maxBarSize={44} />
-          <Bar dataKey="cold" stackId="t" fill={p.cold} radius={[8, 8, 0, 0]} maxBarSize={44} />
+          <Bar
+            dataKey="hot"
+            stackId="t"
+            fill={p.hot}
+            radius={[0, 0, 0, 0]}
+            maxBarSize={44}
+            activeBar={{ fill: p.cursorBand }}
+          />
+          <Bar dataKey="warm" stackId="t" fill={p.warm} maxBarSize={44} activeBar={{ fill: p.cursorBand }} />
+          <Bar
+            dataKey="cold"
+            stackId="t"
+            fill={p.cold}
+            radius={[8, 8, 0, 0]}
+            maxBarSize={44}
+            activeBar={{ fill: p.cursorBand }}
+          />
         </BarChart>
       </ResponsiveContainer>
     </div>

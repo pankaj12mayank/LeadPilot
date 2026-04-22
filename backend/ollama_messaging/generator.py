@@ -9,8 +9,8 @@ import config
 from backend.ollama_messaging.fallback import build_fallback_pack, merge_with_fallback
 from backend.ollama_messaging.ollama_service import OllamaGenerateService
 from backend.ollama_messaging.types import LeadMessageInput, LeadMessageOutput, ModelFamily
-from services import external_llm_service, runtime_settings
-from utils.logger import get_logger
+from backend.services import external_llm_service, runtime_settings
+from backend.utils.logger import get_logger
 
 logger = get_logger(__name__)
 

@@ -15,7 +15,7 @@ from backend.lead_cleaning.dedupe import remove_duplicates
 from backend.lead_cleaning.normalizers import normalize_company_name, normalize_job_title, normalize_name
 from backend.lead_cleaning.summary import CleaningSummary
 from backend.lead_cleaning.validators import validate_record, _is_row_empty
-from utils.logger import get_logger
+from backend.utils.logger import get_logger
 
 logger = get_logger(__name__)
 

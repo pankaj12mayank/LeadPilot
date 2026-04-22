@@ -1,7 +1,9 @@
 import { Loader2, Search } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import { toast } from 'sonner'
 import { useLocation, useNavigate } from 'react-router-dom'
 
+import { ApiLoadError } from '@/components/ui/ApiLoadError'
 import { FilterSelect } from '@/components/ui/FilterSelect'
 import { fetchScraperStatus, fetchScraperJob, startScraperJob, type ScraperJobStatus, type ScraperStatus } from '@/lib/api/scraper'
 import { listPlatforms } from '@/lib/api/platforms'
@@ -81,9 +83,11 @@ export function SearchLeadsPage() {
   const [job, setJob] = useState<ScraperJobStatus | null>(null)
   const [formError, setFormError] = useState<string | null>(null)
   const [starting, setStarting] = useState(false)
+  const [metaLoadErr, setMetaLoadErr] = useState<string | null>(null)
 
   const loadMeta = useCallback(async () => {
     setLoadingMeta(true)
+    setMetaLoadErr(null)
     try {
       const [plats, st] = await Promise.all([listPlatforms(), fetchScraperStatus()])
       const active = plats.filter((p) => p.active)
@@ -93,6 +97,10 @@ export function SearchLeadsPage() {
       setDelayMin(st.delay_seconds_range[0])
       setDelayMax(st.delay_seconds_range[1])
       setPlatform((prev) => (prev && active.some((p) => p.slug === prev) ? prev : active[0]?.slug ?? ''))
+    } catch {
+      setMetaLoadErr('Could not load platforms or scraper defaults. Ensure the API is running, then retry.')
+      setPlatforms([])
+      setScraper(null)
     } finally {
       setLoadingMeta(false)
     }
@@ -168,6 +176,7 @@ export function SearchLeadsPage() {
         max_scroll_rounds: maxScrollRounds,
       })
       setJobId(accepted.job_id)
+      toast.success('Lead search job started')
     } catch (e: unknown) {
       setFormError(e instanceof Error ? e.message : 'Unable to start lead search. Try again or verify platform access.')
     } finally {
@@ -175,11 +184,23 @@ export function SearchLeadsPage() {
     }
   }
 
-  if (loadingMeta || !scraper) {
+  if (loadingMeta) {
     return (
-        <div className="flex min-h-[40vh] items-center justify-center gap-2 text-sm text-ink-muted">
+      <div className="flex min-h-[40vh] items-center justify-center gap-2 text-sm text-ink-muted">
         <Loader2 className="h-4 w-4 animate-spin" />
         Loading search configuration
+      </div>
+    )
+  }
+
+  if (metaLoadErr || !scraper) {
+    return (
+      <div className="mx-auto max-w-[1400px]">
+        <ApiLoadError
+          title="Lead search unavailable"
+          message={metaLoadErr ?? 'Scraper configuration was not returned from the API.'}
+          onRetry={() => void loadMeta()}
+        />
       </div>
     )
   }

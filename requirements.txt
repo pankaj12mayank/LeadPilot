@@ -14,3 +14,5 @@ lxml
 playwright
 httpx
 streamlit>=1.28
+pytest>=8.0
+ruff>=0.8.0

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from modules.capture_score import score_lead
+from backend.safe_capture.capture_score import score_lead
 
 
 def test_score_founder_saas_company_website_startup_hot_tier() -> None:

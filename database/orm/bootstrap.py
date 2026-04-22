@@ -18,13 +18,15 @@ def get_engine():
         path = meta_db_path()
         _engine = create_engine(
             f"sqlite:///{path}",
-            connect_args={"check_same_thread": False},
+            connect_args={"check_same_thread": False, "timeout": 30.0},
         )
 
         @event.listens_for(_engine, "connect")
         def _sqlite_pragma(dbapi_connection, _connection_record) -> None:  # type: ignore[no-redef]
             cur = dbapi_connection.cursor()
             cur.execute("PRAGMA foreign_keys=ON")
+            cur.execute("PRAGMA journal_mode=WAL")
+            cur.execute("PRAGMA busy_timeout=30000")
             cur.close()
 
     return _engine
@@ -54,11 +56,25 @@ def _ensure_lead_columns(engine) -> None:
             cx.execute(text("ALTER TABLE leads ADD COLUMN follow_up_reminder_at VARCHAR(64) DEFAULT ''"))
 
 
+def _ensure_user_columns(engine) -> None:
+    """SQLite migrations for ``users`` (additive columns)."""
+    with engine.begin() as cx:
+        cur = cx.execute(text("PRAGMA table_info(users)"))
+        cols = {row[1] for row in cur.fetchall()}
+        if not cols:
+            return
+        if "is_active" not in cols:
+            cx.execute(text("ALTER TABLE users ADD COLUMN is_active INTEGER NOT NULL DEFAULT 1"))
+        if "last_login_at" not in cols:
+            cx.execute(text("ALTER TABLE users ADD COLUMN last_login_at VARCHAR(64) DEFAULT ''"))
+
+
 def init_sa_tables() -> None:
     """Create SQLAlchemy-managed tables if missing (SQLite)."""
     engine = get_engine()
     Base.metadata.create_all(bind=engine)
     _ensure_lead_columns(engine)
+    _ensure_user_columns(engine)
     _ensure_lead_indexes(engine)
 
 

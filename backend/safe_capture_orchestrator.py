@@ -7,17 +7,17 @@ import sys
 from typing import Any
 
 import config
-from connectors.capture_router import parse_lead_from_snapshot
-from connectors.dom_snapshot import snapshot_visible_page
+from backend.connectors.capture_router import parse_lead_from_snapshot
+from backend.connectors.dom_snapshot import snapshot_visible_page
 from database.safe_capture_store import init_safe_capture_db, insert_captured_lead
 from exports.safe_capture_csv_export import append_lead_row
-from modules.capture_enrich import enrich_lead
-from modules.capture_normalize import normalize_parsed_lead
-from modules.capture_score import score_lead
-from services.capture_browser import CaptureBrowser, launch_capture_browser
-from utils.capture_lock import CaptureLock
-from utils.platform_detect import detect_platform_from_url
-from utils.safe_capture_logging import get_safe_capture_logger
+from backend.safe_capture.capture_enrich import enrich_lead
+from backend.safe_capture.capture_normalize import normalize_parsed_lead
+from backend.safe_capture.capture_score import score_lead
+from backend.services.capture_browser import CaptureBrowser, launch_capture_browser
+from backend.utils.capture_lock import CaptureLock
+from backend.utils.platform_detect import detect_platform_from_url
+from backend.utils.safe_capture_logging import get_safe_capture_logger
 
 _log = get_safe_capture_logger("orchestrator")
 

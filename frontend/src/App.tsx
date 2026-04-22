@@ -14,7 +14,9 @@ const SettingsPage = lazy(() => import('@/pages/SettingsPage').then((m) => ({ de
 const AboutPage = lazy(() => import('@/pages/AboutPage').then((m) => ({ default: m.AboutPage })))
 const AdminLoginPage = lazy(() => import('@/pages/admin/AdminLoginPage').then((m) => ({ default: m.AdminLoginPage })))
 const AdminLayout = lazy(() => import('@/pages/admin/AdminLayout').then((m) => ({ default: m.AdminLayout })))
-const AdminDashboard = lazy(() => import('@/pages/admin/AdminDashboard').then((m) => ({ default: m.AdminDashboard })))
+const AdminOverviewPage = lazy(() => import('@/pages/admin/AdminOverviewPage').then((m) => ({ default: m.AdminOverviewPage })))
+const AdminUsersPage = lazy(() => import('@/pages/admin/AdminUsersPage').then((m) => ({ default: m.AdminUsersPage })))
+const AdminBrandingPage = lazy(() => import('@/pages/admin/AdminBrandingPage').then((m) => ({ default: m.AdminBrandingPage })))
 
 function PageFallback() {
   return (
@@ -40,7 +42,10 @@ export default function App() {
         <Route path="/login" element={<LoginPage />} />
         <Route path="/admin/login" element={<AdminLoginPage />} />
         <Route path="/admin" element={<AdminLayout />}>
-          <Route index element={<AdminDashboard />} />
+          <Route index element={<Navigate to="/admin/overview" replace />} />
+          <Route path="overview" element={<AdminOverviewPage />} />
+          <Route path="users" element={<AdminUsersPage />} />
+          <Route path="branding" element={<AdminBrandingPage />} />
         </Route>
         <Route element={<RequireAuth />}>
           <Route path="/" element={<Navigate to="/dashboard" replace />} />

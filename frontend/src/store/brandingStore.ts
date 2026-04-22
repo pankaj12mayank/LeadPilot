@@ -14,6 +14,8 @@ export type Branding = {
 type State = {
   branding: Branding
   loaded: boolean
+  /** Bumps when branding is re-fetched so logo/favicon URLs bypass browser cache. */
+  mediaRevision: number
   load: () => Promise<void>
   applyFavicon: () => void
 }
@@ -33,6 +35,7 @@ function applyFaviconHref(href: string) {
 export const useBrandingStore = create<State>((set, get) => ({
   branding: { product_name: 'LeadPilot', logo_url: '', favicon_url: '', footer_copyright: '' },
   loaded: false,
+  mediaRevision: 0,
   applyFavicon: () => {
     applyFaviconHref(get().branding.favicon_url)
   },
@@ -47,7 +50,7 @@ export const useBrandingStore = create<State>((set, get) => ({
         favicon_url: (data.favicon_url || '').trim(),
         footer_copyright: (data.footer_copyright ?? '').trim().slice(0, 280),
       }
-      set({ branding, loaded: true })
+      set({ branding, loaded: true, mediaRevision: get().mediaRevision + 1 })
       get().applyFavicon()
     } catch {
       set({ loaded: true })

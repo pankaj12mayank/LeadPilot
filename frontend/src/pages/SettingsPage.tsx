@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react'
+import { toast } from 'sonner'
 
+import { ApiLoadError } from '@/components/ui/ApiLoadError'
 import { FilterSelect } from '@/components/ui/FilterSelect'
 import { getSettings, patchSettings, testExternalApiConnection, testOllamaConnection } from '@/lib/api/settings'
 import type { AppSettings } from '@/types/models'
@@ -42,13 +44,20 @@ export function SettingsPage() {
   const [notes, setNotes] = useState('')
   const [msg, setMsg] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
+  const [settingsBootstrapping, setSettingsBootstrapping] = useState(true)
+  const [settingsLoadFailed, setSettingsLoadFailed] = useState(false)
+  const [settingsRetryNonce, setSettingsRetryNonce] = useState(0)
 
   useEffect(() => {
     let cancelled = false
+    setSettingsBootstrapping(true)
+    setSettingsLoadFailed(false)
+    setMsg(null)
     ;(async () => {
       try {
         const s = await getSettings()
         if (!cancelled) {
+          setSettingsLoadFailed(false)
           setSettings(s)
           const mn = str(s.model_name) || 'llama3'
           const preset = MODEL_PRESETS.find((p) => p.value === mn)?.value
@@ -74,13 +83,19 @@ export function SettingsPage() {
           setNotes(str(s.notes))
         }
       } catch {
-        if (!cancelled) setMsg('Unable to load settings. Refresh the page and try again.')
+        if (!cancelled) {
+          setSettings(null)
+          setSettingsLoadFailed(true)
+          setMsg('Unable to load settings. Check that the API is running, then try again.')
+        }
+      } finally {
+        if (!cancelled) setSettingsBootstrapping(false)
       }
     })()
     return () => {
       cancelled = true
     }
-  }, [])
+  }, [settingsRetryNonce])
 
   async function onSave(e: React.FormEvent) {
     e.preventDefault()
@@ -107,6 +122,7 @@ export function SettingsPage() {
       const next = await patchSettings(patch as AppSettings)
       setSettings(next)
       setMsg('Settings saved successfully.')
+      toast.success('Settings saved')
     } catch {
       setMsg('Unable to save settings. Verify your connection and try again.')
     } finally {
@@ -114,10 +130,22 @@ export function SettingsPage() {
     }
   }
 
-  if (!settings) {
+  if (settingsBootstrapping) {
     return (
       <div className="flex min-h-[40vh] items-center justify-center text-sm text-ink-muted">
         Loading workspace settings
+      </div>
+    )
+  }
+
+  if (settingsLoadFailed || !settings) {
+    return (
+      <div className="mx-auto max-w-3xl">
+        <ApiLoadError
+          title="Settings unavailable"
+          message={msg ?? 'Workspace settings could not be loaded from the API.'}
+          onRetry={() => setSettingsRetryNonce((n) => n + 1)}
+        />
       </div>
     )
   }
@@ -223,7 +251,9 @@ export function SettingsPage() {
                             : ''
                         setOllamaTestMsg(
                           r.ok
-                            ? `${r.auto_started ? 'Ollama was started in the background; ' : ''}Connected: ${r.detail || 'OK'}`
+                            ? r.auto_started
+                              ? `Ollama was not running; the API started it in the background. ${r.detail || 'OK'}`
+                              : `Ollama is already running. ${r.detail || 'OK'}`
                             : `Check failed: ${r.detail || 'Unknown'}${sample}`,
                         )
                         setOllamaTestHints(r.hints?.length ? r.hints : null)
@@ -240,7 +270,7 @@ export function SettingsPage() {
                   </button>
                   {ollamaTestBusy ? (
                     <span className="text-xs text-ink-muted">
-                      Checking the API, and if needed starting `ollama serve` or pulling the model (can take a few minutes).
+                      Contacting the API — it may start Ollama silently or pull a model (can take up to a few minutes the first time).
                     </span>
                   ) : null}
                 </div>

@@ -13,7 +13,7 @@ if str(ROOT) not in sys.path:
 import config  # noqa: E402
 from database.meta_db import init_meta_schema  # noqa: E402
 from database.orm.bootstrap import init_sa_tables  # noqa: E402
-from services import lead_service  # noqa: E402
+from backend.services import lead_service  # noqa: E402
 
 
 def main() -> None:

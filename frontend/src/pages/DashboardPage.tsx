@@ -4,6 +4,7 @@ import { PlatformBar, StatusPie } from '@/components/charts/DistributionCharts'
 import { MonthLineChart, type MonthPoint } from '@/components/charts/MonthLineChart'
 import { StackedTierByPlatform, type TierStackRow } from '@/components/charts/StackedTierByPlatform'
 import { StatCard } from '@/components/dashboard/StatCard'
+import { ApiLoadError } from '@/components/ui/ApiLoadError'
 import { fetchDashboard } from '@/lib/api/analytics'
 import { leadStatusLabel } from '@/lib/copy/appCopy'
 import type { DashboardData } from '@/types/models'
@@ -11,13 +12,24 @@ import type { DashboardData } from '@/types/models'
 export function DashboardPage() {
   const [dash, setDash] = useState<DashboardData | null>(null)
   const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState<string | null>(null)
+  const [retryNonce, setRetryNonce] = useState(0)
 
   useEffect(() => {
     let cancelled = false
+    setLoading(true)
+    setLoadError(null)
     ;(async () => {
       try {
         const d = await fetchDashboard()
         if (!cancelled) setDash(d)
+      } catch {
+        if (!cancelled) {
+          setDash(null)
+          setLoadError(
+            'The dashboard could not load from the API. Start the backend (port 8000 by default), confirm Vite proxy /api → API_ROOT_PATH, or set VITE_API_BASE_URL (e.g. http://localhost:8000/api), then try again.',
+          )
+        }
       } finally {
         if (!cancelled) setLoading(false)
       }
@@ -25,7 +37,7 @@ export function DashboardPage() {
     return () => {
       cancelled = true
     }
-  }, [])
+  }, [retryNonce])
 
   const { monthData, stackData } = useMemo(() => {
     const lm = dash?.leads_by_month ?? []
@@ -53,7 +65,7 @@ export function DashboardPage() {
     }))
   }, [dash])
 
-  if (loading || !dash) {
+  if (loading) {
     return (
       <div className="mx-auto max-w-[1600px] space-y-10">
         <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
@@ -69,6 +81,18 @@ export function DashboardPage() {
           <div className="skeleton-shimmer h-96 rounded-2xl" />
           <div className="skeleton-shimmer h-96 rounded-2xl" />
         </section>
+      </div>
+    )
+  }
+
+  if (loadError || !dash) {
+    return (
+      <div className="mx-auto max-w-[1600px]">
+        <ApiLoadError
+          title="Dashboard unavailable"
+          message={loadError ?? 'No dashboard payload was returned from the server.'}
+          onRetry={() => setRetryNonce((n) => n + 1)}
+        />
       </div>
     )
   }

@@ -8,9 +8,10 @@ import {
 } from '@tanstack/react-table'
 import { ChevronLeft, ChevronRight, Download, Loader2, Search, Sparkles, Trash2 } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import { toast } from 'sonner'
 import { useShallow } from 'zustand/react/shallow'
 
-import { Badge, StatusBadge } from '@/components/ui/Badge'
+import { Badge, statusBadgeClass } from '@/components/ui/Badge'
 import { FilterSelect } from '@/components/ui/FilterSelect'
 import { Modal } from '@/components/ui/Modal'
 import {
@@ -27,6 +28,7 @@ import {
   type HistoryEvent,
   type StatusHistRow,
 } from '@/lib/api/leads'
+import { getApiErrorMessage } from '@/lib/api/client'
 import { generateLeadMessage as genMsg } from '@/lib/api/messages'
 import { listPlatforms } from '@/lib/api/platforms'
 import { leadStatusLabel } from '@/lib/copy/appCopy'
@@ -95,6 +97,73 @@ function fromLocalInput(s: string) {
   return d.toISOString().slice(0, 19) + '+00:00'
 }
 
+/** Short heading for modals when ``full_name`` contains scraped LinkedIn noise. */
+function leadModalTitle(fullName: string): string {
+  const raw = (fullName || '').trim()
+  if (!raw) return 'Contact details'
+  const first = raw.split(/\s+[•·]\s*/)[0]?.trim() || raw
+  const cleaned = first.split(/\s{2,}/)[0]?.trim() || first
+  return cleaned.length > 72 ? `${cleaned.slice(0, 70)}…` : cleaned || 'Contact details'
+}
+
+/** Same shortening as the detail modal title; table uses ``—`` when empty. */
+function contactNameTableDisplay(fullName: string): string {
+  const raw = (fullName || '').trim()
+  if (!raw) return '—'
+  return leadModalTitle(raw)
+}
+
+function ContactNameCell({
+  lead,
+  patchLocal,
+}: {
+  lead: Lead
+  patchLocal: (id: string, patch: Partial<Lead>) => void
+}) {
+  const [editing, setEditing] = useState(false)
+  const full = lead.full_name || ''
+
+  if (editing) {
+    return (
+      <input
+        autoFocus
+        defaultValue={full}
+        title={full}
+        aria-label="Edit contact name"
+        className="w-full min-w-[8rem] max-w-[min(100vw,22rem)] rounded-lg border border-amber-500/40 bg-field/90 px-2 py-1 text-sm font-medium text-ink shadow-sm focus:outline-none focus:ring-1 focus:ring-amber-500/30 dark:bg-zinc-900/80"
+        onKeyDown={(e) => {
+          if (e.key === 'Escape') {
+            ;(e.currentTarget as HTMLInputElement).value = full
+            e.currentTarget.blur()
+          }
+        }}
+        onBlur={async (e) => {
+          const v = e.currentTarget.value.trim()
+          setEditing(false)
+          if (!v || v === full) return
+          try {
+            const u = await updateLead(lead.id, { full_name: v })
+            patchLocal(lead.id, u)
+          } catch {
+            e.currentTarget.value = full
+          }
+        }}
+      />
+    )
+  }
+
+  return (
+    <button
+      type="button"
+      title={full || 'Click to edit'}
+      className="max-w-[min(100%,12rem)] truncate rounded-lg border border-transparent px-1 py-1 text-left text-sm font-medium text-ink hover:border-surface-border hover:bg-field/50 focus-visible:border-amber-500/40 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-amber-500/25 sm:max-w-[16rem] lg:max-w-[18rem]"
+      onClick={() => setEditing(true)}
+    >
+      {contactNameTableDisplay(full)}
+    </button>
+  )
+}
+
 type TimelineRow = { at: string; kind: string; title: string; body: string }
 
 function buildOutreachTimeline(
@@ -142,8 +211,19 @@ export function LeadsPage() {
   const [notesDraft, setNotesDraft] = useState('')
   const [lastContactLocal, setLastContactLocal] = useState('')
   const [followUpLocal, setFollowUpLocal] = useState('')
+  const [titleDraft, setTitleDraft] = useState('')
+  const [companyDraft, setCompanyDraft] = useState('')
+  const [emailDraft, setEmailDraft] = useState('')
+  const [websiteDraft, setWebsiteDraft] = useState('')
+  const [linkedinDraft, setLinkedinDraft] = useState('')
+  const [companySizeDraft, setCompanySizeDraft] = useState('')
+  const [industryDraft, setIndustryDraft] = useState('')
+  const [locationDraft, setLocationDraft] = useState('')
+  const [phoneDraft, setPhoneDraft] = useState('')
+  const [messageDraft, setMessageDraft] = useState('')
   const [saveBusy, setSaveBusy] = useState(false)
-  const [genBusy, setGenBusy] = useState(false)
+  /** Lead id currently generating message (only that row's button disabled). */
+  const [genBusyLeadId, setGenBusyLeadId] = useState<string | null>(null)
   const [genErr, setGenErr] = useState<string | null>(null)
   const [loadErr, setLoadErr] = useState<string | null>(null)
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({})
@@ -258,6 +338,16 @@ export function LeadsPage() {
     setNotesDraft(lead.notes || '')
     setLastContactLocal(toLocalInput(lead.last_contacted_at || ''))
     setFollowUpLocal(toLocalInput(lead.follow_up_reminder_at || ''))
+    setTitleDraft(lead.title || '')
+    setCompanyDraft(lead.company_name || '')
+    setEmailDraft(lead.email || '')
+    setWebsiteDraft(lead.company_website || '')
+    setLinkedinDraft(lead.linkedin_url || '')
+    setCompanySizeDraft(lead.company_size || '')
+    setIndustryDraft(lead.industry || '')
+    setLocationDraft(lead.location || '')
+    setPhoneDraft(lead.phone || '')
+    setMessageDraft(lead.personalized_message || '')
     setGenErr(null)
     try {
       const [h, sh, em] = await Promise.all([
@@ -321,21 +411,7 @@ export function LeadsPage() {
       columnHelper.accessor('full_name', {
         header: 'Contact name',
         cell: ({ row }) => (
-          <input
-            key={row.original.id + row.original.updated_at}
-            defaultValue={row.original.full_name}
-            className="w-full min-w-[120px] rounded-lg border border-transparent bg-transparent px-1 py-0.5 text-sm font-medium text-ink hover:border-surface-border focus:border-amber-500/50 focus:ring-1 focus:ring-amber-500/20"
-            onBlur={async (e) => {
-              const v = e.target.value.trim()
-              if (!v || v === row.original.full_name) return
-              try {
-                const u = await updateLead(row.original.id, { full_name: v })
-                patchLocal(row.original.id, u)
-              } catch {
-                e.target.value = row.original.full_name
-              }
-            }}
-          />
+          <ContactNameCell key={row.original.id + row.original.updated_at} lead={row.original} patchLocal={patchLocal} />
         ),
       }),
       columnHelper.accessor('company_name', {
@@ -381,19 +457,23 @@ export function LeadsPage() {
       }),
       columnHelper.accessor('status', {
         header: 'Pipeline status',
-        cell: ({ row }) => (
-          <div className="flex min-w-[140px] max-w-[200px] flex-col gap-1.5">
-            <StatusBadge status={row.original.status || 'new'} />
+        cell: ({ row }) => {
+          const st = row.original.status || 'new'
+          return (
             <FilterSelect
               size="sm"
-              className="w-full min-w-0"
+              className="w-full min-w-[140px] max-w-[220px]"
+              buttonClassName={cn(
+                'rounded-full border font-medium shadow-none ring-0 hover:ring-1 hover:ring-amber-500/20',
+                statusBadgeClass(st),
+              )}
               options={PIPELINE_STATUS_SELECT_OPTIONS}
-              value={row.original.status || 'new'}
+              value={st}
               onChange={(v) => void onStatusChange(row.original, v)}
-              aria-label="Change pipeline status"
+              aria-label="Pipeline status — click to change"
             />
-          </div>
-        ),
+          )
+        },
       }),
       columnHelper.accessor('last_contacted_at', {
         header: 'Last contact',
@@ -407,41 +487,48 @@ export function LeadsPage() {
         id: 'actions',
         header: 'Actions',
         cell: ({ row }) => (
-          <div className="flex flex-wrap justify-end gap-2">
+          <div className="flex w-[min(100%,220px)] min-w-0 flex-col items-stretch gap-2 sm:ml-auto sm:w-auto sm:min-w-[200px] sm:items-end">
             <button
               type="button"
               onClick={() => void openModal(row.original)}
-              className="rounded-lg border border-surface-border bg-field/90 px-2 py-1 text-xs font-medium text-ink-muted transition hover:border-amber-500/30 hover:text-ink dark:bg-zinc-900/50"
+              className="whitespace-nowrap rounded-lg border border-surface-border bg-field/90 px-3 py-2 text-left text-xs font-medium text-ink-muted transition hover:border-amber-500/30 hover:text-ink dark:bg-zinc-900/50 sm:text-center"
             >
-              View Details
+              View details
             </button>
             <button
               type="button"
               onClick={async () => {
                 setGenErr(null)
-                setGenBusy(true)
+                const id = row.original.id
+                setGenBusyLeadId(id)
                 try {
-                  await genMsg(row.original.id)
-                  await load()
-                } catch {
-                  setGenErr('Unable to generate outreach message. Please try again.')
+                  const res = await genMsg(id)
+                  patchLocal(id, {
+                    personalized_message: res.message,
+                  })
+                  toast.success('Draft message saved to the lead (pipeline status unchanged).')
+                } catch (e) {
+                  const msg = getApiErrorMessage(e, 'Could not generate message')
+                  setGenErr(msg)
+                  toast.error(msg)
                 } finally {
-                  setGenBusy(false)
+                  setGenBusyLeadId((cur) => (cur === id ? null : cur))
+                  void load()
                 }
               }}
-              disabled={genBusy}
-              title="Generate outreach message"
+              disabled={genBusyLeadId === row.original.id}
+              title="Generate a draft outreach message (does not send email)"
               aria-label="Generate outreach message"
-              className="inline-flex items-center gap-1 rounded-lg bg-gradient-to-r from-amber-600 to-amber-700 px-2 py-1 text-xs font-semibold text-white shadow-sm ring-1 ring-amber-500/25 transition hover:from-amber-500 hover:to-amber-600 disabled:opacity-50 dark:from-amber-500 dark:to-amber-600"
+              className="inline-flex items-center justify-center gap-1.5 whitespace-nowrap rounded-lg bg-gradient-to-r from-amber-600 to-amber-700 px-3 py-2 text-xs font-semibold text-white shadow-sm ring-1 ring-amber-500/25 transition hover:from-amber-500 hover:to-amber-600 disabled:opacity-50 dark:from-amber-500 dark:to-amber-600"
             >
-              <Sparkles className="h-3 w-3 shrink-0" aria-hidden />
-              <span className="hidden min-[1280px]:inline">Generate Message</span>
+              <Sparkles className="h-3.5 w-3.5 shrink-0" aria-hidden />
+              Generate message
             </button>
           </div>
         ),
       }),
     ],
-    [genBusy, load, onStatusChange, openModal, patchLocal],
+    [genBusyLeadId, load, onStatusChange, openModal, patchLocal],
   )
 
   const table = useReactTable({
@@ -470,9 +557,14 @@ export function LeadsPage() {
       )
     )
       return
-    await bulkDeleteLeads(selectedIds)
-    setRowSelection({})
-    await load()
+    try {
+      const r = await bulkDeleteLeads(selectedIds)
+      setRowSelection({})
+      await load()
+      toast.success(r.deleted ? `Deleted ${r.deleted} lead(s)` : 'Leads removed')
+    } catch {
+      toast.error('Bulk delete failed')
+    }
   }
 
   async function onExportFiltered() {
@@ -484,6 +576,9 @@ export function LeadsPage() {
         tier: filters.tier || undefined,
         platform: filters.platform || undefined,
       })
+      toast.success('Export started — check your downloads')
+    } catch {
+      toast.error('Export failed')
     } finally {
       setExportBusy(false)
     }
@@ -494,6 +589,9 @@ export function LeadsPage() {
     setExportBusy(true)
     try {
       await exportLeadsCsv({ ids: selectedIds })
+      toast.success('Export started — check your downloads')
+    } catch {
+      toast.error('Export failed')
     } finally {
       setExportBusy(false)
     }
@@ -504,12 +602,25 @@ export function LeadsPage() {
     setSaveBusy(true)
     try {
       const u = await updateLead(modalLead.id, {
+        title: titleDraft.trim(),
+        company_name: companyDraft.trim(),
+        email: emailDraft.trim(),
+        company_website: websiteDraft.trim(),
+        linkedin_url: linkedinDraft.trim(),
+        company_size: companySizeDraft.trim(),
+        industry: industryDraft.trim(),
+        location: locationDraft.trim(),
+        phone: phoneDraft.trim(),
+        personalized_message: messageDraft,
         notes: notesDraft,
         last_contacted_at: lastContactLocal ? fromLocalInput(lastContactLocal) : '',
         follow_up_reminder_at: followUpLocal ? fromLocalInput(followUpLocal) : '',
       })
       patchLocal(modalLead.id, u)
       setModalLead(u)
+      toast.success('Lead details saved')
+    } catch {
+      toast.error('Could not save lead details')
     } finally {
       setSaveBusy(false)
     }
@@ -748,40 +859,157 @@ export function LeadsPage() {
         </div>
       </div>
 
-      <Modal open={!!modalLead} title={modalLead?.full_name || 'Contact details'} onClose={() => setModalLead(null)}>
+      <Modal
+        open={!!modalLead}
+        title={modalLead ? leadModalTitle(modalLead.full_name) : 'Contact details'}
+        titleHint={modalLead?.full_name}
+        onClose={() => setModalLead(null)}
+      >
         {modalLead ? (
           <div className="space-y-6 text-sm">
             <div className="flex flex-wrap items-center gap-2">
               <Badge variant={tierVariant(modalLead.tier)}>Qualification tier: {tierLabel(modalLead.tier)}</Badge>
-              <StatusBadge status={modalLead.status || 'new'} />
               <span className={cn('rounded-full border border-surface-border px-2 py-0.5 text-xs tabular-nums', scoreTone(Number(modalLead.score)))}>
                 Lead score {Math.round(Number(modalLead.score ?? 0))}
               </span>
               <FilterSelect
                 size="sm"
                 className="min-w-[200px]"
+                buttonClassName={cn(
+                  'rounded-full border font-medium shadow-none ring-0 hover:ring-1 hover:ring-amber-500/20',
+                  statusBadgeClass(modalLead.status || 'new'),
+                )}
                 options={PIPELINE_STATUS_SELECT_OPTIONS}
                 value={modalLead.status || 'new'}
                 onChange={(v) => void onStatusChange(modalLead, v)}
-                aria-label="Pipeline status"
+                aria-label="Pipeline status — click to change"
               />
             </div>
             <div className="grid gap-3 sm:grid-cols-2">
-              {[
-                ['Title', modalLead.title],
-                ['Company', modalLead.company_name],
-                ['Email', modalLead.email],
-                ['Website', modalLead.company_website],
-                ['LinkedIn', modalLead.linkedin_url],
-                ['Industry', modalLead.industry],
-                ['Location', modalLead.location],
-              ].map(([k, v]) => (
-                <div key={k} className="rounded-xl border border-surface-border bg-field/60 px-3 py-2 dark:bg-zinc-900/40">
-                  <div className="text-[10px] font-semibold uppercase tracking-wider text-ink-subtle">{k}</div>
-                  <div className="mt-1 break-all text-ink">{v || '—'}</div>
-                </div>
-              ))}
+              <div className="rounded-xl border border-surface-border bg-field/60 px-3 py-2 dark:bg-zinc-900/40">
+                <div className="text-[10px] font-semibold uppercase tracking-wider text-ink-subtle">Lead source</div>
+                <div className="mt-1 break-all text-ink">{modalLead.source_platform || '—'}</div>
+              </div>
+              <div className="rounded-xl border border-surface-border bg-field/60 px-3 py-2 dark:bg-zinc-900/40">
+                <div className="text-[10px] font-semibold uppercase tracking-wider text-ink-subtle">Created</div>
+                <div className="mt-1 text-ink tabular-nums">{fmtShort(modalLead.created_at || '')}</div>
+              </div>
+              <div className="rounded-xl border border-surface-border bg-field/60 px-3 py-2 dark:bg-zinc-900/40">
+                <div className="text-[10px] font-semibold uppercase tracking-wider text-ink-subtle">Updated</div>
+                <div className="mt-1 text-ink tabular-nums">{fmtShort(modalLead.updated_at || '')}</div>
+              </div>
+              <div className="sm:col-span-2">
+                <label className="text-[10px] font-semibold uppercase tracking-wider text-ink-subtle" htmlFor="m-title">
+                  Title
+                </label>
+                <input
+                  id="m-title"
+                  value={titleDraft}
+                  onChange={(e) => setTitleDraft(e.target.value)}
+                  className="field-input mt-1 w-full text-sm"
+                  placeholder="Job title or headline"
+                />
+              </div>
+              <div>
+                <label className="text-[10px] font-semibold uppercase tracking-wider text-ink-subtle" htmlFor="m-co">
+                  Company
+                </label>
+                <input
+                  id="m-co"
+                  value={companyDraft}
+                  onChange={(e) => setCompanyDraft(e.target.value)}
+                  className="field-input mt-1 w-full text-sm"
+                  placeholder="Organization"
+                />
+              </div>
+              <div>
+                <label className="text-[10px] font-semibold uppercase tracking-wider text-ink-subtle" htmlFor="m-em">
+                  Email
+                </label>
+                <input
+                  id="m-em"
+                  type="email"
+                  value={emailDraft}
+                  onChange={(e) => setEmailDraft(e.target.value)}
+                  className="field-input mt-1 w-full text-sm"
+                  placeholder="name@company.com"
+                />
+              </div>
+              <div className="sm:col-span-2">
+                <label className="text-[10px] font-semibold uppercase tracking-wider text-ink-subtle" htmlFor="m-web">
+                  Website
+                </label>
+                <input
+                  id="m-web"
+                  value={websiteDraft}
+                  onChange={(e) => setWebsiteDraft(e.target.value)}
+                  className="field-input mt-1 w-full text-sm"
+                  placeholder="https://…"
+                />
+              </div>
+              <div className="sm:col-span-2">
+                <label className="text-[10px] font-semibold uppercase tracking-wider text-ink-subtle" htmlFor="m-li">
+                  LinkedIn
+                </label>
+                <input
+                  id="m-li"
+                  value={linkedinDraft}
+                  onChange={(e) => setLinkedinDraft(e.target.value)}
+                  className="field-input mt-1 w-full text-sm"
+                  placeholder="Profile URL"
+                />
+              </div>
+              <div>
+                <label className="text-[10px] font-semibold uppercase tracking-wider text-ink-subtle" htmlFor="m-sz">
+                  Company size
+                </label>
+                <input
+                  id="m-sz"
+                  value={companySizeDraft}
+                  onChange={(e) => setCompanySizeDraft(e.target.value)}
+                  className="field-input mt-1 w-full text-sm"
+                />
+              </div>
+              <div>
+                <label className="text-[10px] font-semibold uppercase tracking-wider text-ink-subtle" htmlFor="m-ind">
+                  Industry
+                </label>
+                <input
+                  id="m-ind"
+                  value={industryDraft}
+                  onChange={(e) => setIndustryDraft(e.target.value)}
+                  className="field-input mt-1 w-full text-sm"
+                />
+              </div>
+              <div>
+                <label className="text-[10px] font-semibold uppercase tracking-wider text-ink-subtle" htmlFor="m-loc">
+                  Location
+                </label>
+                <input
+                  id="m-loc"
+                  value={locationDraft}
+                  onChange={(e) => setLocationDraft(e.target.value)}
+                  className="field-input mt-1 w-full text-sm"
+                />
+              </div>
+              <div>
+                <label className="text-[10px] font-semibold uppercase tracking-wider text-ink-subtle" htmlFor="m-ph">
+                  Phone
+                </label>
+                <input
+                  id="m-ph"
+                  value={phoneDraft}
+                  onChange={(e) => setPhoneDraft(e.target.value)}
+                  className="field-input mt-1 w-full text-sm"
+                />
+              </div>
             </div>
+            {modalLead.followup_message ? (
+              <div className="rounded-xl border border-surface-border bg-field/60 px-3 py-2 dark:bg-zinc-900/40">
+                <div className="text-[10px] font-semibold uppercase tracking-wider text-ink-subtle">Follow-up draft</div>
+                <div className="mt-1 whitespace-pre-wrap text-xs text-ink-muted">{modalLead.followup_message}</div>
+              </div>
+            ) : null}
             <div>
               <div className="text-[10px] font-semibold uppercase tracking-wider text-ink-subtle">Internal notes</div>
               <textarea
@@ -822,17 +1050,22 @@ export function LeadsPage() {
               </button>
               <button
                 type="button"
-                disabled={genBusy}
+                disabled={modalLead ? genBusyLeadId === modalLead.id : false}
                 onClick={async () => {
                   if (!modalLead) return
-                  setGenBusy(true)
+                  const id = modalLead.id
+                  setGenBusyLeadId(id)
                   try {
-                    await genMsg(modalLead.id)
-                    await load()
-                    const fresh = await getLead(modalLead.id)
+                    const res = await genMsg(id)
+                    patchLocal(id, { personalized_message: res.message })
+                    const fresh = await getLead(id)
                     await openModal(fresh)
+                    toast.success('Draft message saved (status unchanged until you move the pipeline).')
+                  } catch (e) {
+                    toast.error(getApiErrorMessage(e, 'Could not generate message'))
                   } finally {
-                    setGenBusy(false)
+                    setGenBusyLeadId((cur) => (cur === id ? null : cur))
+                    void load()
                   }
                 }}
                 className="inline-flex items-center gap-2 rounded-xl border border-amber-500/35 bg-amber-500/5 px-4 py-2 text-xs font-semibold text-amber-900 transition hover:border-amber-500/50 dark:text-amber-200"
@@ -861,13 +1094,16 @@ export function LeadsPage() {
                 )}
               </div>
             </div>
-            <textarea
-              readOnly
-              value={modalLead.personalized_message || ''}
-              rows={5}
-              className="field-input w-full resize-none py-2 text-xs"
-              placeholder="Generated outreach message"
-            />
+            <div>
+              <div className="text-[10px] font-semibold uppercase tracking-wider text-ink-subtle">Outreach draft</div>
+              <textarea
+                value={messageDraft}
+                onChange={(e) => setMessageDraft(e.target.value)}
+                rows={5}
+                className="field-input mt-2 w-full resize-y py-2 text-xs"
+                placeholder="Generated message — edit here, then Save changes. Sending email is separate once SMTP is configured."
+              />
+            </div>
           </div>
         ) : null}
       </Modal>

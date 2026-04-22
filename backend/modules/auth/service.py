@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Any, Dict, Optional
 
-from services import auth_service
+from backend.services import auth_service
 
 
 def register_user(email: str, password: str) -> Dict[str, Any]:

@@ -5,8 +5,11 @@ from sqlalchemy.orm import Session
 
 from backend.app.api.deps import get_current_user, get_db
 from backend.app.schemas.message import MessageResponse
-from services import email_service, history_service, lead_orm_service, message_service, status_history_service
-from settings.lead_schema import utc_now_iso
+from backend.services import email_service, history_service, lead_orm_service, message_service, status_history_service
+from backend.settings.lead_schema import utc_now_iso
+from backend.utils.logger import get_logger
+
+logger = get_logger(__name__)
 
 router = APIRouter(prefix="/messages", tags=["messages"])
 
@@ -29,20 +32,19 @@ def generate_message(
     subject = message_service.build_subject(ai)
     msg_lead = {**ai, "subject": subject}
     text = message_service.build_outreach_message(msg_lead)
-    prev_status = str(row.status or "")
     row.personalized_message = text
-    row.status = "follow_up_sent"
     row.updated_at = utc_now_iso()
-    db.flush()
-    if prev_status == "new":
-        status_history_service.record_change(lead_id, "new", "follow_up_sent")
-    history_service.record_event(
-        lead_id,
-        "message.generated",
-        {"length": len(text or "")},
-        user["id"],
-    )
+    # Draft only: do not change pipeline status (e.g. avoid implying "sent" before SMTP is configured).
     db.commit()
+    try:
+        history_service.record_event(
+            lead_id,
+            "message.generated",
+            {"length": len(text or ""), "draft_only": True},
+            user["id"],
+        )
+    except Exception:
+        logger.exception("message.generate: meta history write failed (lead already saved)")
     final = lead_orm_service.get_lead(db, lead_id) or row
     return MessageResponse(
         lead_id=lead_id,
@@ -67,27 +69,34 @@ def send_message(
     if not to_addr:
         raise HTTPException(status_code=400, detail="Lead has no email; cannot send")
     subj = _subject_for_lead(row)
+    # Release ORM transaction before email_history (same SQLite file as leads).
+    db.commit()
     ok = email_service.send_email(
         to_addr, subj, body, lead_id=lead_id, record_history=True
     )
-    history_service.record_event(
-        lead_id,
-        "message.send_requested",
-        {"to": to_addr, "success": ok},
-        user["id"],
-    )
+    row = lead_orm_service.get_lead(db, lead_id)
+    if not row:
+        raise HTTPException(status_code=404, detail="Lead not found")
     prev = str(row.status or "")
     final_row = row
     if ok and prev != "contacted":
         row.status = "contacted"
         row.last_contacted_at = utc_now_iso()
         row.updated_at = utc_now_iso()
-        db.flush()
-        status_history_service.record_change(lead_id, prev or "new", "contacted")
-        db.commit()
+    db.commit()
+    try:
+        history_service.record_event(
+            lead_id,
+            "message.send_requested",
+            {"to": to_addr, "success": ok},
+            user["id"],
+        )
+        if ok and prev != "contacted":
+            status_history_service.record_change(lead_id, prev or "new", "contacted")
+    except Exception:
+        logger.exception("message.send: meta history write failed (lead row already committed)")
+    if ok and prev != "contacted":
         final_row = lead_orm_service.get_lead(db, lead_id) or row
-    else:
-        db.commit()
     return MessageResponse(
         lead_id=lead_id,
         message=body,

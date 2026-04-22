@@ -10,8 +10,8 @@ from sqlalchemy.orm import Session
 import config as app_config
 from database.orm.bootstrap import get_session_factory
 from database.orm.models import RawScrapeRecord
-from services import analytics_service, lead_orm_service
-from settings.lead_schema import utc_now_iso
+from backend.services import analytics_service, lead_orm_service
+from backend.settings.lead_schema import utc_now_iso
 
 
 class RawLeadSaver:

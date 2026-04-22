@@ -12,7 +12,7 @@ from backend.lead_cleaning import (
     remove_duplicates,
     validate_record,
 )
-from services.platform_service import normalize_platform
+from backend.services.platform_service import normalize_platform
 
 
 def clean_and_validate(lead: Dict[str, Any]) -> Tuple[bool, List[str], Dict[str, Any]]:

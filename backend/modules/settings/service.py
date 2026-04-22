@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Any, Dict
 
-from services import settings_service
+from backend.services import settings_service
 
 
 def load_app_settings() -> Dict[str, Any]:

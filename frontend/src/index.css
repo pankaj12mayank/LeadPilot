@@ -119,6 +119,13 @@
   .text-balance {
     text-wrap: balance;
   }
+
+  /* Recharts default tooltip wrapper uses a white shell; inner box uses chartTheme */
+  .recharts-default-tooltip {
+    background-color: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+  }
 }
 
 @keyframes shimmer {

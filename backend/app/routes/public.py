@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from fastapi import APIRouter
 
-from services import runtime_settings
+from backend.services import runtime_settings
 
 router = APIRouter(prefix="/public", tags=["public"])
 

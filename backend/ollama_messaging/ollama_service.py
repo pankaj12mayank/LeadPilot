@@ -6,7 +6,7 @@ from typing import Any, Optional
 import httpx
 
 import config
-from utils.logger import get_logger
+from backend.utils.logger import get_logger
 
 logger = get_logger(__name__)
 

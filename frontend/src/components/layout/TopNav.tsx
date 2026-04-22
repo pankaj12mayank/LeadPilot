@@ -1,4 +1,5 @@
 import { Menu } from 'lucide-react'
+import type { ReactNode } from 'react'
 
 import { ThemeToggle } from '@/components/layout/ThemeToggle'
 import { cn } from '@/lib/utils/cn'
@@ -7,9 +8,11 @@ import { useSidebarStore } from '@/store/sidebarStore'
 type TopNavProps = {
   title: string
   subtitle?: string
+  /** Extra controls before the theme toggle (e.g. account / sign out). */
+  headerActions?: ReactNode
 }
 
-export function TopNav({ title, subtitle }: TopNavProps) {
+export function TopNav({ title, subtitle, headerActions }: TopNavProps) {
   const toggleMobile = useSidebarStore((s) => s.toggleMobile)
 
   return (
@@ -28,7 +31,10 @@ export function TopNav({ title, subtitle }: TopNavProps) {
           <p className="mt-2 max-w-3xl text-base font-normal leading-relaxed text-ink-muted">{subtitle}</p>
         ) : null}
       </div>
-      <ThemeToggle className="shrink-0" />
+      <div className="flex shrink-0 items-center gap-2">
+        {headerActions}
+        <ThemeToggle className="shrink-0" />
+      </div>
     </header>
   )
 }
