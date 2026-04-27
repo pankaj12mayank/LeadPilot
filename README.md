@@ -18,6 +18,7 @@ Monorepo: **FastAPI** backend + **React (Vite)** SPA. CRM leads live in **SQLite
 | **API tests** | `pip install -r requirements.txt` then `pytest` |
 | **Frontend tests** | `cd frontend && npm run test` |
 | **All tests** | API: `pytest` · Web: `cd frontend && npm run test` |
+| **Selenium LinkedIn + full pipeline (scrape → enrich → score)** | **UI:** Lead search page → **LinkedIn desktop pipeline (Selenium)** — runs `python -m backend.leadpilot` on the API host. **CLI (repo root):** `python leadpilot_single.py` or `python -m backend.leadpilot` or `python -m backend.leadpilot.lead_scraper` — see **Selenium LinkedIn pipeline** below. Push uses **`LNN_BASE_URL`** (UI sets it to this API automatically). |
 
 API docs (when backend is up): **http://127.0.0.1:8000/docs** (OpenAPI paths include the **`/api`** prefix by default)
 
@@ -27,7 +28,12 @@ API docs (when backend is up): **http://127.0.0.1:8000/docs** (OpenAPI paths inc
 
 ```text
 LeadPilot/
-├── backend/                  # Python: FastAPI app, services, connectors, scraper, safe capture, prompts
+├── app/                      # Thin package: `uvicorn app.main:app` re-exports `backend.app.main`
+├── leadpilot_single.py       # Shim → `backend.leadpilot.main` (same as `python -m backend.leadpilot`)
+├── scraper.env.example       # Template for `scraper.env` (optional; `run.bat` may create `scraper.env` once)
+├── scraper.env               # Local overrides (optional); loaded after `.env` by Selenium tools
+├── backend/                  # FastAPI + Selenium LinkedIn pipeline package
+│   ├── leadpilot/            # Chrome/Selenium: `scraper_core`, `lead_scraper`, `preflight`, pipeline (`python -m backend.leadpilot`)
 │   ├── app/main.py           # FastAPI entry + lifespan
 │   ├── services/             # Auth, ORM leads, analytics, messaging, …
 │   ├── connectors/         # Safe-capture parsers + platform ids
@@ -54,9 +60,22 @@ LeadPilot/
 ├── docker-compose.yml
 ├── requirements.txt          # All Python deps (app + pytest + ruff)
 ├── pytest.ini
-├── run.bat                   # Single Windows launcher (full stack + capture + dashboard + export)
+├── run.bat                   # Windows: venv, pip, DB init, import check, then API + Vite (see `scripts\dev_server.py`)
 └── .env.example
 ```
+
+### Selenium LinkedIn pipeline (one project, repo root)
+
+Run **from the repository root** (same folder as `config.py`). `scraper_core` loads **`.env`** then **`scraper.env`** (later wins on duplicate keys).
+
+| Goal | Command |
+|------|--------|
+| **Full run** (LinkedIn → Apollo/Skrapp → score → `.xlsx`) | `python leadpilot_single.py` or `python -m backend.leadpilot` |
+| **Quick test** (caps leads when `LEADPILOT_TEST=1` / `--test`) | `python leadpilot_single.py --test -n 5` |
+| **Excel-only legacy** (no enrichment step) | `python -m backend.leadpilot.lead_scraper` |
+| **Health checks only** | `python -m backend.leadpilot.lead_scraper --verify-only` |
+
+Pipeline code lives under **`backend/leadpilot/`** (`scraper.py` wraps `collect_linkedin_leads` in `lead_scraper.py`, plus `enrichment.py`, `scoring.py`, `export.py`, `scraper_core.py`, `preflight.py`). Set **`APOLLO_API_KEY`**, **`SKRAPP_API_KEY`** for enrichment; **`LNN_BASE_URL`** to push rows into this app’s API.
 
 ---
 
@@ -119,7 +138,7 @@ python scripts/init_database.py
 python scripts/seed_demo_data.py       # optional demo login (see script env vars)
 ```
 
-**Option A — Windows (recommended):** **`run.bat`** → **1** (pip, API in new window, then Vite).
+**Option A — Windows (recommended):** double-click **`run.bat`** from the repo root (installs/updates venv and deps, initializes DB, verifies `app` + `backend.leadpilot` imports, then starts **API + Vite** in one window).
 
 **Option B — manual two terminals:** `scripts\start-api.bat` then `scripts\start-frontend.bat` (or `uvicorn` / `npm run dev` yourself from repo root / `frontend\`).
 

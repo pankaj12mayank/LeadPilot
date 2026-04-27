@@ -5,6 +5,7 @@ import { useLocation, useNavigate } from 'react-router-dom'
 
 import { ApiLoadError } from '@/components/ui/ApiLoadError'
 import { FilterSelect } from '@/components/ui/FilterSelect'
+import { SeleniumLeadpilotPanel } from '@/components/scraper/SeleniumLeadpilotPanel'
 import { fetchScraperStatus, fetchScraperJob, startScraperJob, type ScraperJobStatus, type ScraperStatus } from '@/lib/api/scraper'
 import { listPlatforms } from '@/lib/api/platforms'
 import { cn } from '@/lib/utils/cn'
@@ -517,6 +518,8 @@ export function SearchLeadsPage() {
           </div>
         </div>
       </div>
+
+      <SeleniumLeadpilotPanel />
     </div>
   )
 }

@@ -24,6 +24,7 @@ from backend.app.routes import (
     public,
     scraper,
     settings_routes,
+    selenium_leadpilot,
     tools,
 )
 from database.meta_db import init_meta_schema
@@ -96,6 +97,7 @@ app.include_router(settings_routes.router, prefix=_api_root)
 app.include_router(analytics.router, prefix=_api_root)
 app.include_router(exports.router, prefix=_api_root)
 app.include_router(scraper.router, prefix=_api_root)
+app.include_router(selenium_leadpilot.router, prefix=_api_root)
 app.include_router(tools.router, prefix=_api_root)
 
 _startup_log.info(

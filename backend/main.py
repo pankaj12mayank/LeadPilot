@@ -1,8 +1,6 @@
 """
-Lead capture entry point for Windows ``run.bat`` (menu option 1).
-
-Ensures the repository root is on ``sys.path`` when launched as
-``python backend\\main.py`` from the project root.
+Safe manual capture CLI (Playwright). Ensures repo root is on ``sys.path`` when run as
+``python backend\\main.py`` or ``python -m backend.main`` from the project root.
 """
 
 from __future__ import annotations

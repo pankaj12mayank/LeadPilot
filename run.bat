@@ -7,14 +7,15 @@ set "ERR=0"
 
 echo.
 echo ============================================================
-echo   LeadPilot — one-click launcher
+echo   LeadPilot — full web stack ^(FastAPI + Vite^)
 echo   Root: %ROOT%
 echo ============================================================
-echo   Browsers show ERR_CONNECTION_REFUSED when nothing is listening
-echo   on ports 8000 / 5173. This script starts API + Vite in THIS window;
-echo   keep it open until you press Ctrl+C.
+echo   This script: venv, pip, DB init, then API + Vite in THIS window.
+echo   LinkedIn/Selenium pipeline: run separately in a 2nd terminal ^(see below^).
+echo   Ports 8000 ^(API^) / 5173 ^(UI^) — keep this window open; Ctrl+C stops both.
 echo ============================================================
 echo.
+set "PYTHONPATH=%ROOT%"
 
 REM ----- Critical: Python -----
 where python >nul 2>&1
@@ -89,6 +90,17 @@ if not exist "%ROOT%\.env" (
   echo [OK] .env already present.
 )
 
+REM ----- Optional scraper.env (Selenium / leadpilot pipeline; same keys as .env) -----
+if not exist "%ROOT%\scraper.env" (
+  if exist "%ROOT%\scraper.env.example" (
+    echo [..] Creating scraper.env from scraper.env.example ...
+    copy /y "%ROOT%\scraper.env.example" "%ROOT%\scraper.env" >nul
+    echo [OK] Created scraper.env ^(edit Chrome / LinkedIn keys as needed^).
+  )
+) else (
+  echo [OK] scraper.env already present.
+)
+
 REM ----- Backend dependencies -----
 echo.
 echo [..] Installing Python dependencies ^(requirements.txt^) ...
@@ -100,6 +112,17 @@ if errorlevel 1 (
   goto :end
 )
 echo [OK] Backend dependencies installed.
+
+REM ----- Import smoke test (root app re-export + merged leadpilot package) -----
+echo.
+echo [..] Verifying imports: app.main + leadpilot ...
+cd /d "%ROOT%"
+"%PY%" -c "import app.main; import backend.leadpilot; print('[OK] app.main and backend.leadpilot import successfully')"
+if errorlevel 1 (
+  echo [FAIL] Python import check failed. Fix errors above, then re-run run.bat
+  set ERR=1
+  goto :end
+)
 
 REM ----- Database files / schema -----
 echo.
@@ -142,6 +165,15 @@ if not exist "%ROOT%\frontend\.env" (
 cd /d "%ROOT%"
 
 REM ----- Start API + Vite in THIS window (reliable; avoids orphan / closing CMD windows) -----
+echo.
+echo   ----------------------------------------------------------------
+echo   Web stack: API http://127.0.0.1:8000  ^|  UI http://localhost:5173
+echo   ----------------------------------------------------------------
+echo   For LinkedIn pipeline ^(Selenium^): open a NEW terminal in this folder:
+echo     .venv\Scripts\activate
+echo     python leadpilot_single.py --help   ^(or: python -m backend.leadpilot^)
+echo   Push into this API: set LNN_BASE_URL=http://127.0.0.1:8000/api in .env or scraper.env
+echo   ----------------------------------------------------------------
 echo.
 echo [..] Starting API + Vite in this window ^(Ctrl+C stops both^) ...
 echo.

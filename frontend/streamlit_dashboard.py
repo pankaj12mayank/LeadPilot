@@ -103,8 +103,8 @@ def main() -> None:
     rows = fetch_all_leads()
     if not rows:
         st.info(
-            "No leads yet. Capture from the terminal: "
-            "**`run.bat`** option 1 (full stack), option 3 (this dashboard), or **`python -m backend.main`** for capture only."
+            "No leads yet. Start the API with **`run.bat`**, then capture from a terminal: "
+            "**`python -m backend.main`** (safe manual capture), or use the in-app capture flows when connected."
         )
         st.code(f"Database: {config.SAFE_CAPTURE_DB_PATH}", language="text")
         st.code(f"CSV mirror: {config.SAFE_CAPTURE_CSV_PATH}", language="text")

@@ -87,7 +87,10 @@ def main() -> int:
     print(f"[dev] Repo:  {ROOT}")
     print("[dev] API:   http://127.0.0.1:8000/docs   (JSON under /api)")
     print("[dev] Web:   http://localhost:5173/")
-    print("[dev] Press Ctrl+C here to stop BOTH.")
+    print("[dev] LinkedIn (Selenium) full pipeline: open a 2nd terminal, repo root:")
+    print("[dev]         python leadpilot_single.py --help   (or: python -m backend.leadpilot)")
+    print("[dev]         LNN_BASE_URL=http://127.0.0.1:8000/api  to push leads into this API")
+    print("[dev] Press Ctrl+C here to stop BOTH (API + Vite).")
     print("=" * 60)
 
     procs: list[subprocess.Popen] = []
