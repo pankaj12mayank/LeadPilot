@@ -210,6 +210,89 @@ def ingest_scrape_rows_into_leads(
     return {"ingested_leads": created, "skipped": skipped}
 
 
+def _tier_from_leadpilot_priority(priority: str) -> str:
+    x = (priority or "").strip().lower()
+    if "hot" in x:
+        return "hot"
+    if "warm" in x:
+        return "warm"
+    if "cold" in x:
+        return "cold"
+    return ""
+
+
+def ingest_leadpilot_v3_scored_rows(
+    db: Session,
+    rows: List[Dict[str, Any]],
+) -> Dict[str, int]:
+    """
+    Insert rows from ``backend.leadpilot`` pipeline (Name, Profile Link, Role, Company, lead_score, priority, …)
+    into the main ``leads`` table. Skips duplicates by LinkedIn URL (same as scrape ingest).
+    """
+    plat = normalize_platform("linkedin")
+    created = 0
+    skipped = 0
+    now = utc_now_iso()
+    for r in rows:
+        url = str(r.get("Profile Link") or r.get("linkedin_url") or "").strip()
+        if not url or "/in/" not in url.lower():
+            skipped += 1
+            continue
+        key = _norm_profile_url(url)
+        if not key:
+            skipped += 1
+            continue
+        dup = db.scalar(
+            select(Lead.id).where(func.lower(func.trim(Lead.linkedin_url)) == key).limit(1)
+        )
+        if dup is not None:
+            skipped += 1
+            continue
+        name = (str(r.get("Name") or "").strip() or "Unknown")[:255]
+        try:
+            sc = float(r.get("lead_score") or 0)
+        except (TypeError, ValueError):
+            sc = 0.0
+        tier = _tier_from_leadpilot_priority(str(r.get("priority") or ""))
+        if not tier:
+            tier = "hot" if sc >= 80 else "warm" if sc >= 50 else "cold"
+        parts: List[str] = []
+        if r.get("scoring_reasoning"):
+            parts.append(str(r.get("scoring_reasoning"))[:5000])
+        if r.get("problems_refined"):
+            parts.append("Problems: " + str(r.get("problems_refined"))[:3000])
+        if r.get("enrichment_status"):
+            parts.append("Enrichment: " + str(r.get("enrichment_status"))[:500])
+        notes = "\n\n".join(parts)[:7900]
+        lead = Lead(
+            id=str(uuid.uuid4()),
+            full_name=name,
+            title=(str(r.get("Role") or ""))[:4000],
+            company_name=(str(r.get("Company") or ""))[:4000],
+            company_website=str(r.get("company_website") or "")[:4000],
+            linkedin_url=url[:4000],
+            email=str(r.get("work_email") or r.get("email") or "")[:320],
+            phone=str(r.get("phone") or "")[:64],
+            company_size=str(r.get("Team Size") or r.get("company_size") or "")[:64],
+            industry=str(r.get("industry") or "")[:128],
+            location="",
+            source_platform=plat,
+            notes=notes,
+            score=sc,
+            tier=tier,
+            status="new",
+            personalized_message="",
+            followup_message="",
+            last_contacted_at="",
+            follow_up_reminder_at="",
+            created_at=now,
+            updated_at=now,
+        )
+        db.add(lead)
+        created += 1
+    return {"ingested_leads": created, "skipped": skipped}
+
+
 def create_lead(db: Session, data: Dict[str, Any]) -> Lead:
     lid = str(uuid.uuid4())
     now = utc_now_iso()

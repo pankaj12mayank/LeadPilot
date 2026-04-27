@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { toast } from 'sonner'
 
 import { ApiLoadError } from '@/components/ui/ApiLoadError'
+import { SeleniumLeadpilotPanel } from '@/components/scraper/SeleniumLeadpilotPanel'
 import { FilterSelect } from '@/components/ui/FilterSelect'
 import { getSettings, patchSettings, testExternalApiConnection, testOllamaConnection } from '@/lib/api/settings'
 import type { AppSettings } from '@/types/models'
@@ -358,7 +359,7 @@ export function SettingsPage() {
           <h2 className="type-panel-title mb-2">Delay and safety settings</h2>
           <p className="mt-2 text-xs leading-relaxed text-ink-muted">
             Workspace defaults for prospecting cadence and batch size. Individual runs can still override delays from
-            platform or lead search dialogs.
+            the LinkedIn search screen.
           </p>
           <div className="mt-6 grid gap-4 sm:grid-cols-3">
             <div>
@@ -440,6 +441,17 @@ export function SettingsPage() {
           {busy ? 'Saving' : 'Save Changes'}
         </button>
       </form>
+
+      <div className="mt-10 space-y-3">
+        <h2 className="type-section-heading">Desktop LinkedIn (Selenium)</h2>
+        <p className="text-xs text-ink-muted">
+          Optional: run the same flow as <span className="font-mono">python -m backend.leadpilot</span> on this
+          machine. No &quot;Press Enter&quot; in the terminal when started from here — the run waits a few seconds so you
+          can focus Chrome on People search. New leads are written to the <span className="text-ink">Leads</span> list
+          and to Excel.
+        </p>
+        <SeleniumLeadpilotPanel />
+      </div>
     </div>
   )
 }

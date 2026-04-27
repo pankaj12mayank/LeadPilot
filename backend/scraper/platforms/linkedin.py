@@ -88,6 +88,23 @@ _JS_EXTRACT = r"""
       }
     }
 
+    let location = '';
+    if (container) {
+      const lines = (container.innerText || '')
+        .split('\n')
+        .map((x) => x.trim())
+        .filter(Boolean);
+      for (let j = 2; j < Math.min(lines.length, 6); j++) {
+        const t = lines[j] || '';
+        if (!t) continue;
+        if (t.toLowerCase().includes(' at ')) continue;
+        if (t.length > 1 && t.length < 120 && !/^connect$/i.test(t) && !/^message$/i.test(t)) {
+          location = t.slice(0, 200);
+          break;
+        }
+      }
+    }
+
     out.push({
       linkedin_url: canon,
       url: canon,
@@ -95,6 +112,7 @@ _JS_EXTRACT = r"""
       full_name: name || 'Unknown',
       title,
       company_name: company,
+      location,
     });
   }
   return out;
@@ -256,6 +274,7 @@ class LinkedInScraper(BaseScraper):
                     "full_name": name,
                     "title": str(item.get("title") or "").strip(),
                     "company_name": str(item.get("company_name") or "").strip(),
+                    "location": str(item.get("location") or "").strip(),
                 }
             )
 

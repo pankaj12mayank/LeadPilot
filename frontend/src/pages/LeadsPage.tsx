@@ -30,12 +30,11 @@ import {
 } from '@/lib/api/leads'
 import { getApiErrorMessage } from '@/lib/api/client'
 import { generateLeadMessage as genMsg } from '@/lib/api/messages'
-import { listPlatforms } from '@/lib/api/platforms'
 import { leadStatusLabel } from '@/lib/copy/appCopy'
 import { useDebouncedValue } from '@/hooks/useDebouncedValue'
 import { cn } from '@/lib/utils/cn'
 import { useLeadsUiStore } from '@/store/leadsUiStore'
-import type { Lead, PlatformRow } from '@/types/models'
+import type { Lead } from '@/types/models'
 
 const LEAD_STATUSES = [
   'new',
@@ -229,41 +228,17 @@ export function LeadsPage() {
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({})
   const [pagination, setPagination] = useState<PaginationState>({ pageIndex: 0, pageSize: 25 })
 
-  const { filters, setSearch, setTier, setPlatform, setStatus, resetFilters } = useLeadsUiStore(
+  const { filters, setSearch, setTier, setStatus, resetFilters } = useLeadsUiStore(
     useShallow((s) => ({
       filters: s.filters,
       setSearch: s.setSearch,
       setTier: s.setTier,
-      setPlatform: s.setPlatform,
       setStatus: s.setStatus,
       resetFilters: s.resetFilters,
     })),
   )
 
   const debouncedSearch = useDebouncedValue(filters.search, 400)
-  const [platformChoices, setPlatformChoices] = useState<PlatformRow[]>([])
-
-  const loadPlatforms = useCallback(() => {
-    void listPlatforms()
-      .then((pl) => setPlatformChoices(pl.filter((p) => p.active)))
-      .catch(() => setPlatformChoices([]))
-  }, [])
-
-  useEffect(() => {
-    loadPlatforms()
-  }, [loadPlatforms])
-
-  useEffect(() => {
-    const onCh = () => loadPlatforms()
-    window.addEventListener('leadpilot-platforms-changed', onCh)
-    return () => window.removeEventListener('leadpilot-platforms-changed', onCh)
-  }, [loadPlatforms])
-
-  useEffect(() => {
-    if (filters.platform && !platformChoices.some((p) => p.slug === filters.platform)) {
-      setPlatform('')
-    }
-  }, [filters.platform, platformChoices, setPlatform])
 
   const tierFilterOptions = useMemo(
     () => [
@@ -278,14 +253,6 @@ export function LeadsPage() {
   const statusFilterOptions = useMemo(
     () => [{ value: '', label: 'All statuses' }, ...PIPELINE_STATUS_SELECT_OPTIONS],
     [],
-  )
-
-  const platformFilterOptions = useMemo(
-    () => [
-      { value: '', label: 'All sources' },
-      ...platformChoices.map((p) => ({ value: p.slug, label: `${p.label} (${p.slug})` })),
-    ],
-    [platformChoices],
   )
 
   const pageSizeOptions = useMemo(
@@ -303,7 +270,6 @@ export function LeadsPage() {
         search: debouncedSearch.trim() || undefined,
         status: filters.status || undefined,
         tier: filters.tier || undefined,
-        platform: filters.platform || undefined,
         sort: 'created_at_desc',
       })
       setRows(r.items)
@@ -314,7 +280,7 @@ export function LeadsPage() {
     } finally {
       setLoading(false)
     }
-  }, [pagination.pageIndex, pagination.pageSize, debouncedSearch, filters.status, filters.tier, filters.platform])
+  }, [pagination.pageIndex, pagination.pageSize, debouncedSearch, filters.status, filters.tier])
 
   useEffect(() => {
     void load()
@@ -324,14 +290,13 @@ export function LeadsPage() {
     let n = 0
     if (filters.status) n += 1
     if (filters.tier) n += 1
-    if (filters.platform) n += 1
     if (filters.search.trim()) n += 1
     return n
-  }, [filters.search, filters.status, filters.tier, filters.platform])
+  }, [filters.search, filters.status, filters.tier])
 
   useEffect(() => {
     setPagination((p) => ({ ...p, pageIndex: 0 }))
-  }, [debouncedSearch, filters.status, filters.tier, filters.platform])
+  }, [debouncedSearch, filters.status, filters.tier])
 
   const openModal = useCallback(async (lead: Lead) => {
     setModalLead(lead)
@@ -574,7 +539,6 @@ export function LeadsPage() {
         search: filters.search.trim() || undefined,
         status: filters.status || undefined,
         tier: filters.tier || undefined,
-        platform: filters.platform || undefined,
       })
       toast.success('Export started — check your downloads')
     } catch {
@@ -708,7 +672,7 @@ export function LeadsPage() {
               ) : null}
             </div>
           </div>
-          <div className="grid gap-3 sm:grid-cols-3 lg:col-span-7">
+          <div className="grid gap-3 sm:grid-cols-2 lg:col-span-7">
             <div className="space-y-1.5">
               <label htmlFor="leads-tier" className="text-xs font-semibold uppercase tracking-wider text-ink-muted">
                 Tier
@@ -719,18 +683,6 @@ export function LeadsPage() {
                 value={filters.tier}
                 onChange={setTier}
                 placeholder="All tiers"
-              />
-            </div>
-            <div className="space-y-1.5">
-              <label htmlFor="leads-platform" className="text-xs font-semibold uppercase tracking-wider text-ink-muted">
-                Lead source
-              </label>
-              <FilterSelect
-                id="leads-platform"
-                options={platformFilterOptions}
-                value={filters.platform}
-                onChange={setPlatform}
-                placeholder="All sources"
               />
             </div>
             <div className="space-y-1.5">

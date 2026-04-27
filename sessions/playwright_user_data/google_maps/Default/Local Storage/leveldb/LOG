@@ -1,3 +1,2 @@
-2026/04/16-21:54:15.497 5244 Reusing MANIFEST D:\Py_Projects\LeadPilot\sessions\playwright_user_data\google_maps\Default\Local Storage\leveldb/MANIFEST-000001
-2026/04/16-21:54:15.501 5244 Recovering log #3
-2026/04/16-21:54:15.501 5244 Reusing old log D:\Py_Projects\LeadPilot\sessions\playwright_user_data\google_maps\Default\Local Storage\leveldb/000003.log 
+2026/04/27-16:43:26.611 2ee4 Creating DB D:\Py_Projects\Leadpilot\sessions\playwright_user_data\google_maps\Default\Local Storage\leveldb since it was missing.
+2026/04/27-16:43:26.663 2ee4 Reusing MANIFEST D:\Py_Projects\Leadpilot\sessions\playwright_user_data\google_maps\Default\Local Storage\leveldb/MANIFEST-000001

@@ -125,8 +125,13 @@ def build_chrome_options(*, attach: bool, remote_port: int) -> Any:
 
 
 def env_attach_existing_chrome() -> bool:
-    """True: connect to Chrome on REMOTE_DEBUG_PORT. False: let Selenium launch a new browser."""
-    return _env_bool("ATTACH_EXISTING_CHROME", default=True) or (
+    """
+    True: connect to Chrome on REMOTE_DEBUG_PORT (you start Chrome with --remote-debugging-port first).
+    False: Selenium launches Chrome — no 9222, a normal window opens (default for new setups).
+
+    Set ATTACH_EXISTING_CHROME=1 in .env or scraper.env to force attach mode.
+    """
+    return _env_bool("ATTACH_EXISTING_CHROME", default=False) or (
         (_env_str("ATTACH", "") or "").lower() in ("1", "true", "yes")
     )
 

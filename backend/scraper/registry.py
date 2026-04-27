@@ -3,26 +3,16 @@ from __future__ import annotations
 from typing import Dict, Type
 
 from backend.scraper.base import BaseScraper
-from backend.scraper.platforms.apollo import ApolloScraper
-from backend.scraper.platforms.clutch import ClutchScraper
-from backend.scraper.platforms.crunchbase import CrunchbaseScraper
-from backend.scraper.platforms.fiverr import FiverrScraper
-from backend.scraper.platforms.google_maps import GoogleMapsScraper
-from backend.scraper.platforms.justdial import JustdialScraper
 from backend.scraper.platforms.linkedin import LinkedInScraper
-from backend.scraper.platforms.upwork import UpworkScraper
-from backend.scraper.platforms.wellfound import WellfoundScraper
+
+# ---------------------------------------------------------------------------
+# LinkedIn-only execution path (see ``main.py`` / ``backend.pipeline``).
+# Other platform scrapers remain on disk for future use but are not registered
+# and must not be imported here (keeps runtime free of multi-source routing).
+# ---------------------------------------------------------------------------
 
 PLATFORMS: Dict[str, Type[BaseScraper]] = {
     "linkedin": LinkedInScraper,
-    "apollo": ApolloScraper,
-    "upwork": UpworkScraper,
-    "fiverr": FiverrScraper,
-    "clutch": ClutchScraper,
-    "crunchbase": CrunchbaseScraper,
-    "wellfound": WellfoundScraper,
-    "google_maps": GoogleMapsScraper,
-    "justdial": JustdialScraper,
 }
 
 

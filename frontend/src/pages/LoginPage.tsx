@@ -1,12 +1,14 @@
 import { useEffect, useState } from 'react'
-import { Navigate } from 'react-router-dom'
+import { Navigate, useNavigate, useSearchParams } from 'react-router-dom'
 
 import { ThemeToggle } from '@/components/layout/ThemeToggle'
 import { PasswordField } from '@/components/ui/PasswordField'
+import { adminLogin } from '@/lib/api/admin'
 import { useBrandingStore } from '@/store/brandingStore'
 import { fetchMe, login, register } from '@/lib/api/auth'
 import { getApiErrorMessage } from '@/lib/api/client'
 import { useAuthStore } from '@/store/authStore'
+import { useAdminStore } from '@/store/adminStore'
 
 /** Shown under the heading (compact for small viewports). */
 const LOGIN_DESC_VISIBLE =
@@ -19,9 +21,48 @@ const LOGIN_DESC_META =
 const REGISTER_DESC_META =
   'Create your workspace to manage prospecting, lead scoring, outreach tracking, and sales performance in a single CRM platform.'
 
+function isSafeAppPath(p: string): boolean {
+  return (
+    p.startsWith('/') &&
+    !p.startsWith('//') &&
+    !p.startsWith('/admin') &&
+    p.length < 200
+  )
+}
+
+function adminErrorFromCatch(e: unknown): string {
+  const ax = e as { response?: { status?: number; data?: { detail?: unknown } } }
+  const st = ax.response?.status
+  const d = ax.response?.data?.detail
+  const msg =
+    typeof d === 'string'
+      ? d
+      : Array.isArray(d)
+        ? d
+            .map((x) => (typeof x === 'object' && x && 'msg' in x ? String((x as { msg: string }).msg) : String(x)))
+            .join(' ')
+        : null
+  if (st === 503) {
+    return (
+      msg ||
+      'Admin console is off. Set ADMIN_EMAIL and ADMIN_PASSWORD in the API .env, then restart the server.'
+    )
+  }
+  if (st === 401) {
+    return msg || 'Invalid email or password for both workspace and server admin accounts.'
+  }
+  return (
+    msg ||
+    'Sign-in failed. If you use the server admin account, it must match ADMIN_EMAIL / ADMIN_PASSWORD in the API .env.'
+  )
+}
+
 export function LoginPage() {
   const { token, setAuth } = useAuthStore()
+  const setAdminToken = useAdminStore((s) => s.setToken)
   const productName = useBrandingStore((s) => s.branding.product_name)
+  const [searchParams] = useSearchParams()
+  const navigate = useNavigate()
   const [mode, setMode] = useState<'login' | 'register'>('login')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -62,21 +103,61 @@ export function LoginPage() {
       return
     }
     setBusy(true)
+    const next = searchParams.get('next')?.trim() || ''
     try {
-      const data =
-        mode === 'login'
-          ? await login(email.trim(), password)
-          : await register(email.trim(), password)
-      const user = data.user ?? (await fetchMe())
-      setAuth(data.access_token, user)
+      if (mode === 'register') {
+        const data = await register(email.trim(), password)
+        const user = data.user ?? (await fetchMe())
+        setAuth(data.access_token, user)
+        return
+      }
+      // Login: app user first, then same form tries server admin (API .env), same as one sign-in page.
+      try {
+        const data = await login(email.trim(), password)
+        const user = data.user ?? (await fetchMe())
+        setAuth(data.access_token, user)
+        if (next.startsWith('/admin')) {
+          try {
+            const ad = await adminLogin(email.trim(), password)
+            setAdminToken(ad.access_token)
+            navigate(next, { replace: true })
+          } catch {
+            navigate('/dashboard', { replace: true })
+          }
+          return
+        }
+        if (isSafeAppPath(next)) {
+          navigate(next, { replace: true })
+        } else {
+          navigate('/dashboard', { replace: true })
+        }
+        } catch (eApp) {
+        try {
+          const ad = await adminLogin(email.trim(), password)
+          setAdminToken(ad.access_token)
+          const dest = next.startsWith('/admin') ? next : '/admin'
+          navigate(dest, { replace: true })
+        } catch (eAdmin) {
+          const aSt = (eAdmin as { response?: { status?: number } }).response?.status
+          if (aSt === 503) {
+            setError(adminErrorFromCatch(eAdmin))
+          } else {
+            setError(
+              getApiErrorMessage(
+                eApp,
+                'Sign-in failed. Check your email and password (workspace or server admin from API .env).',
+              ),
+            )
+          }
+        }
+      }
     } catch (e) {
-      const hint = getApiErrorMessage(
-        e,
-        mode === 'login'
-          ? 'Sign-in failed. Check your email and password, then try again.'
-          : 'Registration could not be completed. Verify your details or contact your administrator.',
+      setError(
+        getApiErrorMessage(
+          e,
+          'Registration could not be completed. Verify your details or contact your administrator.',
+        ),
       )
-      setError(hint)
     } finally {
       setBusy(false)
     }
@@ -102,6 +183,11 @@ export function LoginPage() {
         <p className="mt-2 text-sm leading-snug text-ink-muted sm:mt-3 sm:text-base sm:leading-relaxed">
           {mode === 'login' ? LOGIN_DESC_VISIBLE : REGISTER_DESC_VISIBLE}
         </p>
+        {mode === 'login' ? (
+          <p className="mt-1.5 text-xs leading-snug text-ink-subtle sm:mt-2 sm:text-sm">
+            Workspace and server admin (if set in the API) sign in on this same page.
+          </p>
+        ) : null}
 
         <div className="mt-5 flex gap-1 rounded-xl border border-surface-border bg-field/80 p-1 dark:bg-zinc-900/50 sm:mt-6">
           <button

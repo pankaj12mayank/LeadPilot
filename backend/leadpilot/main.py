@@ -57,7 +57,12 @@ def run_pipeline(
             log.error("Preflight failed")
             print_pipeline_footer(
                 success=False,
-                error="Preflight failed — fix checks above or set SKIP_PREFLIGHT=1.",
+                error=(
+                    "Preflight failed (see checks above). "
+                    "If Ollama/Chrome optional steps failed, set lenient default in scraper.env: "
+                    "LEADPILOT_STRICT_PREFLIGHT=0, or SKIP_PREFLIGHT=1. "
+                    "Attach+no port: auto-switches to launch mode when possible."
+                ),
                 rows=0,
             )
             sys.exit(1)
@@ -104,6 +109,44 @@ def run_pipeline(
             output_excel=out_x,
         )
         raise
+
+    if env_bool("LEADPILOT_INGEST_TO_CRM", True):
+        try:
+            from database.orm.bootstrap import get_session_factory
+            from backend.services import analytics_service, lead_orm_service
+
+            db = get_session_factory()()
+            try:
+                st = lead_orm_service.ingest_leadpilot_v3_scored_rows(db, scored)
+                db.commit()
+                log.info("ingest_leadpilot_v3_scored_rows: %s", st)
+                try:
+                    analytics_service.invalidate_analytics_cache()
+                except Exception:  # noqa: BLE001
+                    pass
+                print(
+                    f"  Leads (app): {st.get('ingested_leads', 0)} new, {st.get('skipped', 0)} skipped (duplicate or no /in/ URL).",
+                    flush=True,
+                )
+            except Exception as e:  # noqa: BLE001
+                try:
+                    db.rollback()
+                except Exception:  # noqa: BLE001
+                    pass
+                log.warning("CRM ingest failed: %s", e)
+                print(
+                    f"  [WARN] App database ingest skipped: {e!s} (Excel was still written).",
+                    flush=True,
+                )
+            finally:
+                db.close()
+        except Exception as e:  # noqa: BLE001
+            log.warning("CRM ingest unavailable: %s", e)
+            print(
+                f"  [WARN] Could not open app database for Leads: {e!s}",
+                flush=True,
+            )
+
     print_pipeline_footer(
         success=True,
         rows=len(scored),
@@ -150,11 +193,18 @@ def _cli() -> argparse.Namespace:
     p.add_argument(
         "--test", action="store_true", help="LEADPILOT_TEST: cap 10 leads, DEBUG-friendly"
     )
+    p.add_argument(
+        "--launch-chrome",
+        action="store_true",
+        help="This run only: force Selenium to launch Chrome (sets ATTACH_EXISTING_CHROME=0). Use when scraper.env has attach=1 but you want a one-off launch (default without env is already launch).",
+    )
     return p.parse_args()
 
 
 def main() -> None:
     args = _cli()
+    if args.launch_chrome:
+        os.environ["ATTACH_EXISTING_CHROME"] = "0"
     if args.test:
         os.environ["LEADPILOT_TEST"] = "1"
         os.environ.setdefault("DEBUG", "1")

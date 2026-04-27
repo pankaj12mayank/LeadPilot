@@ -656,3 +656,44 @@ sqlite3.OperationalError: database is locked
 2026-04-27 16:03:03,576 | INFO | leadpilot.startup | Lead storage initialized (STORAGE_MODE=csv).
 2026-04-27 16:03:03,576 | INFO | leadpilot.startup | LeadPilot API — ready to accept requests.
 2026-04-27 16:05:18,631 | INFO | leadpilot.startup | LeadPilot API — shutdown.
+2026-04-27 16:12:06,471 | INFO | leadpilot.startup | LeadPilot API — startup beginning.
+2026-04-27 16:12:06,471 | INFO | leadpilot.startup | python-dotenv: loaded .env from repository root (see config.py).
+2026-04-27 16:12:06,472 | INFO | leadpilot.startup | Runtime directories ready (exports, sessions, logs, DB parents, branding).
+2026-04-27 16:12:06,474 | INFO | leadpilot.startup | Meta SQLite schema OK (database/api_meta.db).
+2026-04-27 16:12:06,490 | INFO | leadpilot.startup | SQLAlchemy tables OK (ORM / leads schema).
+2026-04-27 16:12:06,491 | INFO | leadpilot.startup | Lead storage initialized (STORAGE_MODE=csv).
+2026-04-27 16:12:06,491 | INFO | leadpilot.startup | LeadPilot API — ready to accept requests.
+2026-04-27 16:13:32,599 | INFO | leadpilot.startup | LeadPilot API — shutdown.
+2026-04-27 16:31:06,125 | INFO | leadpilot.startup | LeadPilot API — startup beginning.
+2026-04-27 16:31:06,125 | INFO | leadpilot.startup | python-dotenv: loaded .env from repository root (see config.py).
+2026-04-27 16:31:06,126 | INFO | leadpilot.startup | Runtime directories ready (exports, sessions, logs, DB parents, branding).
+2026-04-27 16:31:06,128 | INFO | leadpilot.startup | Meta SQLite schema OK (database/api_meta.db).
+2026-04-27 16:31:06,140 | INFO | leadpilot.startup | SQLAlchemy tables OK (ORM / leads schema).
+2026-04-27 16:31:06,140 | INFO | leadpilot.startup | Lead storage initialized (STORAGE_MODE=csv).
+2026-04-27 16:31:06,141 | INFO | leadpilot.startup | LeadPilot API — ready to accept requests.
+2026-04-27 16:35:03,591 | INFO | leadpilot.startup | LeadPilot API — shutdown.
+2026-04-27 16:37:13,975 | INFO | leadpilot.startup | LeadPilot API — startup beginning.
+2026-04-27 16:37:13,976 | INFO | leadpilot.startup | python-dotenv: loaded .env from repository root (see config.py).
+2026-04-27 16:37:13,977 | INFO | leadpilot.startup | Runtime directories ready (exports, sessions, logs, DB parents, branding).
+2026-04-27 16:37:13,979 | INFO | leadpilot.startup | Meta SQLite schema OK (database/api_meta.db).
+2026-04-27 16:37:13,996 | INFO | leadpilot.startup | SQLAlchemy tables OK (ORM / leads schema).
+2026-04-27 16:37:13,996 | INFO | leadpilot.startup | Lead storage initialized (STORAGE_MODE=csv).
+2026-04-27 16:37:13,997 | INFO | leadpilot.startup | LeadPilot API — ready to accept requests.
+2026-04-27 16:37:43,695 | INFO | leadpilot.startup | LeadPilot API — shutdown.
+2026-04-27 16:40:36,761 | INFO | leadpilot.startup | LeadPilot API — startup beginning.
+2026-04-27 16:40:36,761 | INFO | leadpilot.startup | python-dotenv: loaded .env from repository root (see config.py).
+2026-04-27 16:40:36,762 | INFO | leadpilot.startup | Runtime directories ready (exports, sessions, logs, DB parents, branding).
+2026-04-27 16:40:36,764 | INFO | leadpilot.startup | Meta SQLite schema OK (database/api_meta.db).
+2026-04-27 16:40:36,778 | INFO | leadpilot.startup | SQLAlchemy tables OK (ORM / leads schema).
+2026-04-27 16:40:36,778 | INFO | leadpilot.startup | Lead storage initialized (STORAGE_MODE=csv).
+2026-04-27 16:40:36,779 | INFO | leadpilot.startup | LeadPilot API — ready to accept requests.
+2026-04-27 16:43:32,651 | ERROR | backend.app.middleware.error_handlers | POST /api/scraper/sessions/google_maps/manual-login -> HTTP 500: Manual login flow failed: Page.wait_for_timeout: Target page, context or browser has been closed
+2026-04-27 16:43:52,712 | INFO | leadpilot.startup | LeadPilot API — shutdown.
+2026-04-27 16:47:43,466 | INFO | leadpilot.startup | LeadPilot API — startup beginning.
+2026-04-27 16:47:43,466 | INFO | leadpilot.startup | python-dotenv: loaded .env from repository root (see config.py).
+2026-04-27 16:47:43,467 | INFO | leadpilot.startup | Runtime directories ready (exports, sessions, logs, DB parents, branding).
+2026-04-27 16:47:43,469 | INFO | leadpilot.startup | Meta SQLite schema OK (database/api_meta.db).
+2026-04-27 16:47:43,491 | INFO | leadpilot.startup | SQLAlchemy tables OK (ORM / leads schema).
+2026-04-27 16:47:43,491 | INFO | leadpilot.startup | Lead storage initialized (STORAGE_MODE=csv).
+2026-04-27 16:47:43,491 | INFO | leadpilot.startup | LeadPilot API — ready to accept requests.
+2026-04-27 16:56:07,970 | INFO | leadpilot.startup | LeadPilot API — shutdown.

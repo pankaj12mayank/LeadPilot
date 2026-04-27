@@ -11,7 +11,7 @@ echo   LeadPilot — full web stack ^(FastAPI + Vite^)
 echo   Root: %ROOT%
 echo ============================================================
 echo   This script: venv, pip, DB init, then API + Vite in THIS window.
-echo   LinkedIn/Selenium pipeline: run separately in a 2nd terminal ^(see below^).
+echo   LinkedIn pipeline ^(Playwright + Ollama^): run in a 2nd terminal ^(see below^).
 echo   Ports 8000 ^(API^) / 5173 ^(UI^) — keep this window open; Ctrl+C stops both.
 echo ============================================================
 echo.
@@ -90,7 +90,7 @@ if not exist "%ROOT%\.env" (
   echo [OK] .env already present.
 )
 
-REM ----- Optional scraper.env (Selenium / leadpilot pipeline; same keys as .env) -----
+REM ----- Optional scraper.env (legacy Selenium / leadpilot; same keys as .env) -----
 if not exist "%ROOT%\scraper.env" (
   if exist "%ROOT%\scraper.env.example" (
     echo [..] Creating scraper.env from scraper.env.example ...
@@ -169,10 +169,15 @@ echo.
 echo   ----------------------------------------------------------------
 echo   Web stack: API http://127.0.0.1:8000  ^|  UI http://localhost:5173
 echo   ----------------------------------------------------------------
-echo   For LinkedIn pipeline ^(Selenium^): open a NEW terminal in this folder:
+echo   LinkedIn lead pipeline ^(repo root, separate terminal^):
 echo     .venv\Scripts\activate
-echo     python leadpilot_single.py --help   ^(or: python -m backend.leadpilot^)
-echo   Push into this API: set LNN_BASE_URL=http://127.0.0.1:8000/api in .env or scraper.env
+echo     python main.py --help
+echo     python main.py --keyword "role" --country "region" --max-leads 20
+echo   Legacy Selenium ^(optional^: leadpilot_single.py or python -m backend.leadpilot
+echo   Selenium: ChromeDriver is resolved by Selenium 4.6+ ^(pip install -U selenium^) — preflight can test.
+echo   Ollama: start Ollama app or run  ollama serve  then  ollama pull your-model
+echo   Optional API push: set LNN_BASE_URL=http://127.0.0.1:8000/api in .env or scraper.env
+echo   Preflight only:  python -m backend.leadpilot.preflight
 echo   ----------------------------------------------------------------
 echo.
 echo [..] Starting API + Vite in this window ^(Ctrl+C stops both^) ...

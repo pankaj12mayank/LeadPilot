@@ -113,11 +113,10 @@ export function SeleniumLeadpilotPanel() {
         <div>
           <h2 className="type-panel-title">LinkedIn desktop pipeline (Selenium)</h2>
           <p className="mt-1 max-w-[720px] text-xs text-ink-muted">
-            Runs the same flow as <span className="font-mono">python -m backend.leadpilot</span> on the server: attach
-            to
-            Chrome (remote debugging), your open People search, then scrape → optional enrich → score → Excel. Start
-            Chrome with <span className="font-mono">--remote-debugging-port=9222</span>, open LinkedIn People search, then
-            press Start.
+            Runs <span className="font-mono">python -m backend.leadpilot</span> on the server. After start, you get a
+            short countdown — switch to Chrome on <strong>People</strong> search results (no need to press Enter in the
+            log). Uses launch or attach from <span className="font-mono">scraper.env</span>. Leads are saved to Excel
+            and to the app <strong>Leads</strong> list when ingest is enabled.
           </p>
         </div>
         <span

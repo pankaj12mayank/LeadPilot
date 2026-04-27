@@ -4,12 +4,11 @@ import { toast } from 'sonner'
 import { useLocation, useNavigate } from 'react-router-dom'
 
 import { ApiLoadError } from '@/components/ui/ApiLoadError'
-import { FilterSelect } from '@/components/ui/FilterSelect'
-import { SeleniumLeadpilotPanel } from '@/components/scraper/SeleniumLeadpilotPanel'
 import { fetchScraperStatus, fetchScraperJob, startScraperJob, type ScraperJobStatus, type ScraperStatus } from '@/lib/api/scraper'
-import { listPlatforms } from '@/lib/api/platforms'
 import { cn } from '@/lib/utils/cn'
-import type { PlatformRow } from '@/types/models'
+
+/** Product scope: LinkedIn people search only (Playwright job API). */
+const LINKEDIN_SLUG = 'linkedin' as const
 
 function phaseLabel(phase: string, message: string): string {
   const m = message.toLowerCase()
@@ -18,7 +17,7 @@ function phaseLabel(phase: string, message: string): string {
     case 'queued':
       return 'Queued for execution'
     case 'searching':
-      return 'Searching lead source'
+      return 'Searching LinkedIn'
     case 'extracting_data':
       return 'Extracting prospect data'
     case 'saving_lead':
@@ -63,11 +62,9 @@ function cell(row: Record<string, unknown>, ...keys: string[]): string {
 export function SearchLeadsPage() {
   const location = useLocation()
   const navigate = useNavigate()
-  const [platforms, setPlatforms] = useState<PlatformRow[]>([])
   const [scraper, setScraper] = useState<ScraperStatus | null>(null)
   const [loadingMeta, setLoadingMeta] = useState(true)
 
-  const [platform, setPlatform] = useState('')
   const [keyword, setKeyword] = useState('')
   const [country, setCountry] = useState('')
   const [industry, setIndustry] = useState('')
@@ -90,17 +87,13 @@ export function SearchLeadsPage() {
     setLoadingMeta(true)
     setMetaLoadErr(null)
     try {
-      const [plats, st] = await Promise.all([listPlatforms(), fetchScraperStatus()])
-      const active = plats.filter((p) => p.active)
-      setPlatforms(active)
+      const st = await fetchScraperStatus()
       setScraper(st)
       setLeadLimit(st.max_leads_default)
       setDelayMin(st.delay_seconds_range[0])
       setDelayMax(st.delay_seconds_range[1])
-      setPlatform((prev) => (prev && active.some((p) => p.slug === prev) ? prev : active[0]?.slug ?? ''))
     } catch {
-      setMetaLoadErr('Could not load platforms or scraper defaults. Ensure the API is running, then retry.')
-      setPlatforms([])
+      setMetaLoadErr('Could not load scraper defaults. Ensure the API is running, then retry.')
       setScraper(null)
     } finally {
       setLoadingMeta(false)
@@ -113,18 +106,10 @@ export function SearchLeadsPage() {
 
   useEffect(() => {
     const st = location.state as { platform?: string } | null
-    const slug = st?.platform?.trim()
-    if (!slug) return
-    if (!platforms.some((x) => x.slug === slug)) return
-    setPlatform(slug)
-    navigate(location.pathname, { replace: true, state: {} })
-  }, [location.pathname, location.state, platforms, navigate])
-
-  useEffect(() => {
-    const onCh = () => void loadMeta()
-    window.addEventListener('leadpilot-platforms-changed', onCh)
-    return () => window.removeEventListener('leadpilot-platforms-changed', onCh)
-  }, [loadMeta])
+    if (st?.platform) {
+      navigate(location.pathname, { replace: true, state: {} })
+    }
+  }, [location.pathname, location.state, navigate])
 
   useEffect(() => {
     if (!jobId) return
@@ -148,15 +133,16 @@ export function SearchLeadsPage() {
 
   const progressPct = useMemo(() => jobProgressPercent(job), [job])
 
-  const platformLabel = useMemo(() => {
-    const p = platforms.find((x) => x.slug === (job?.platform || platform))
-    return p?.label ?? job?.platform ?? platform ?? '—'
-  }, [platforms, job, platform])
+  const sourceLabel = useMemo(() => {
+    const j = job?.platform?.trim()
+    if (j) return j === 'linkedin' ? 'LinkedIn' : j
+    return 'LinkedIn'
+  }, [job?.platform])
 
   async function onSearchLeads() {
     setFormError(null)
-    if (!platform.trim() || !keyword.trim()) {
-      setFormError('Select a lead source and enter a search keyword.')
+    if (!keyword.trim()) {
+      setFormError('Enter a search keyword (LinkedIn people search).')
       return
     }
     setStarting(true)
@@ -164,7 +150,7 @@ export function SearchLeadsPage() {
     setJobId(null)
     try {
       const accepted = await startScraperJob({
-        platform: platform.trim(),
+        platform: LINKEDIN_SLUG,
         keyword: keyword.trim(),
         country: country.trim(),
         industry: industry.trim(),
@@ -179,7 +165,7 @@ export function SearchLeadsPage() {
       setJobId(accepted.job_id)
       toast.success('Lead search job started')
     } catch (e: unknown) {
-      setFormError(e instanceof Error ? e.message : 'Unable to start lead search. Try again or verify platform access.')
+      setFormError(e instanceof Error ? e.message : 'Unable to start lead search. Connect a LinkedIn session in Settings or run manual login, then retry.')
     } finally {
       setStarting(false)
     }
@@ -218,31 +204,14 @@ export function SearchLeadsPage() {
     <div className="mx-auto max-w-[1400px] space-y-8">
       <div className="grid gap-8 lg:grid-cols-[minmax(0,380px)_1fr]">
         <div className="space-y-5 rounded-2xl border border-surface-border bg-premium-card-light p-6 shadow-card dark:bg-premium-card-dark">
-          <h2 className="type-panel-title mb-1">Search configuration</h2>
+          <h2 className="type-panel-title mb-1">LinkedIn search</h2>
           <p className="mb-4 text-xs text-ink-muted">
-            Search uses your <span className="text-ink">keyword</span>, <span className="text-ink">location</span>,{' '}
-            <span className="text-ink">industry</span>, and <span className="text-ink">company size</span> together in
-            the people search (same as typing them into LinkedIn&apos;s search box). Result cards usually show name,
-            title, company, and profile URL only — email is rarely public unless you enable optional profile visits
-            below.
+            Server-side Playwright job: keyword and filters map to LinkedIn people search. You need an active LinkedIn
+            browser session on the server. Completed rows show in <span className="text-ink">Leads</span> when
+            ingested. Optional desktop Selenium run: open <span className="text-ink">Settings</span>.
           </p>
 
           <div className="space-y-4 text-sm">
-            <div>
-              <label htmlFor="search-lead-source" className="text-xs font-semibold uppercase tracking-wider text-ink-muted">
-                Lead source
-              </label>
-              <FilterSelect
-                id="search-lead-source"
-                className="mt-1"
-                options={platforms.map((p) => ({ value: p.slug, label: p.label }))}
-                value={platform}
-                onChange={setPlatform}
-                placeholder="Choose lead source"
-                disabled={platforms.length === 0}
-                aria-label="Lead source"
-              />
-            </div>
             <div>
               <label className="text-xs font-semibold uppercase tracking-wider text-ink-muted">Search keyword</label>
               <input
@@ -381,8 +350,7 @@ export function SearchLeadsPage() {
             )}
           </button>
           <p className="text-xs text-ink-subtle">
-            Uses your saved platform session for the selected lead source. Maximum {cap} leads per run. Engine{' '}
-            {scraper.engine}.
+            Uses your saved LinkedIn session. Maximum {cap} leads per run. Engine {scraper.engine}.
           </p>
         </div>
 
@@ -415,8 +383,8 @@ export function SearchLeadsPage() {
                 {job?.message ? <dd className="mt-1 text-xs text-ink-subtle">{job.message}</dd> : null}
               </div>
               <div>
-                <dt className="text-xs uppercase tracking-wider text-ink-muted">Active lead source</dt>
-                <dd className="mt-0.5 text-ink-muted">{platformLabel}</dd>
+                <dt className="text-xs uppercase tracking-wider text-ink-muted">Source</dt>
+                <dd className="mt-0.5 text-ink-muted">{sourceLabel}</dd>
               </div>
               <div>
                 <dt className="text-xs uppercase tracking-wider text-ink-muted">Pagination position</dt>
@@ -519,7 +487,6 @@ export function SearchLeadsPage() {
         </div>
       </div>
 
-      <SeleniumLeadpilotPanel />
     </div>
   )
 }

@@ -15,7 +15,7 @@ export function AdminLayout() {
   const logout = useAdminStore((s) => s.logout)
 
   if (!token) {
-    return <Navigate to="/admin/login" replace />
+    return <Navigate to="/login?next=%2Fadmin" replace />
   }
 
   return (

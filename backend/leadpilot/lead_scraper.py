@@ -71,8 +71,7 @@ SCROLL_ROUNDS_PER_PAGE = int(os.environ.get("SCROLL_ROUNDS_PER_PAGE", "4"))
 MAX_SEARCH_PAGES = int(os.environ.get("MAX_SEARCH_PAGES", "8"))
 MAX_EXTRA_TABS = int(os.environ.get("MAX_EXTRA_TABS", "1"))
 
-# Same semantics as scraper_core.env_attach_existing_chrome / env_remote_debug_port (kept for local uses)
-ATTACH_EXISTING_CHROME = env_attach_existing_chrome()
+# Port is stable; attach mode must be read at runtime (CLI e.g. --launch-chrome sets env after import).
 REMOTE_DEBUG_PORT = env_remote_debug_port()
 
 
@@ -102,7 +101,7 @@ def human_delay() -> None:
 
 
 def cdp_anti_det(driver: object) -> None:
-    if not ATTACH_EXISTING_CHROME:
+    if not env_attach_existing_chrome():
         try:
             driver.execute_cdp_cmd(
                 "Page.addScriptToEvaluateOnNewDocument",
@@ -294,21 +293,43 @@ def collect_linkedin_leads(
     Open browser (or attach), wait for user on People search, optionally prompt for N, then collect rows.
     Does not write files. Used by LeadPilot and by run().
     """
+    attach = env_attach_existing_chrome()
     driver = connect_selenium_chrome()
-    if not env_attach_existing_chrome():
+    if not attach:
         driver.get(START_URL)
     cdp_anti_det(driver)
 
     search_handle = driver.current_window_handle
+    delay_s = float((_env_str("LEADPILOT_READY_DELAY_SECONDS", "12") or "12").strip() or "12")
+    delay_s = max(2.0, min(delay_s, 120.0))
+    skip_prompt = _env_bool("LEADPILOT_SKIP_READY_PROMPT", False) or not sys.stdin.isatty()
     print(
         "\n"
         "1) In Chrome, log in if needed.\n"
         "2) Open **People** search, set **Keyword, Location, Network (e.g. 2nd)**, then results.\n"
-        "3) Keep that **results** tab in focus / open.\n"
-        "4) Press Enter here (attach mode does not navigate away).\n",
+        "3) Keep that **results** tab in focus / open.\n",
         flush=True,
     )
-    input()
+    if skip_prompt:
+        print(
+            f"4) Auto-continue: no terminal input (LEADPILOT_SKIP_READY_PROMPT or no TTY). "
+            f"Switch to Chrome now — scraping starts in {int(delay_s)}s.\n",
+            flush=True,
+        )
+        time.sleep(delay_s)
+    else:
+        print(
+            "4) When the results page is ready, press **Enter** here to start scraping (attach mode does not navigate away).\n",
+            flush=True,
+        )
+        try:
+            input()
+        except EOFError:
+            print(
+                f"  (stdin closed — waiting {int(delay_s)}s so you can focus Chrome, then continuing.)\n",
+                flush=True,
+            )
+            time.sleep(delay_s)
 
     cur_url = (driver.current_url or "").lower()
     if "linkedin.com" in cur_url and "search/results" not in cur_url and "search/people" not in cur_url:
@@ -329,7 +350,7 @@ def collect_linkedin_leads(
         flush=True,
     )
 
-    if not ATTACH_EXISTING_CHROME and "/search" not in (driver.current_url or ""):
+    if not attach and "/search" not in (driver.current_url or ""):
         print("Tip: use a People search results URL (or set ATTACH_EXISTING_CHROME=1).", flush=True)
 
     search_handle = driver.current_window_handle
@@ -348,7 +369,7 @@ def collect_linkedin_leads(
                 label = (row.get("Name") or "").strip() or "(name not parsed)"
                 print(f"  OK {label}", flush=True)
     finally:
-        if not ATTACH_EXISTING_CHROME:
+        if not attach:
             try:
                 driver.quit()
             except Exception:
@@ -372,9 +393,10 @@ def run(*, max_leads_override: int | None = None) -> None:
             sys.exit(1)
 
     pxy = pick_proxy_url()
-    if pxy and not ATTACH_EXISTING_CHROME:
+    attach = env_attach_existing_chrome()
+    if pxy and not attach:
         print("Proxy (session):", pxy[:48], "...", flush=True)
-    if ATTACH_EXISTING_CHROME and pxy:
+    if attach and pxy:
         print("Note: proxy is ignored in attach mode (use system/VPN on host).", flush=True)
 
     if max_leads_override is not None:

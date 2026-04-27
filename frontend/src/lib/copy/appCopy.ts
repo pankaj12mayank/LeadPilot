@@ -20,11 +20,11 @@ export const ROUTE_META: Record<
       'CRM dashboard for sales performance, lead tracking, and sales pipeline visibility. Monitor customer acquisition metrics and lead management KPIs.',
   },
   '/search-leads': {
-    title: 'Search Configuration',
+    title: 'LinkedIn people search',
     subtitle:
-      'Run prospecting jobs against connected sources with delay and safety controls. Qualified rows appear in your prospect database for lead scoring and outreach.',
+      'Run LinkedIn-only prospecting with keyword, location, and safety controls. Qualified rows go to your database for scoring and outreach.',
     documentDescription:
-      'Lead generation software workflow for prospect database search, outreach automation preparation, and live scraping activity status.',
+      'LinkedIn people search and lead generation: live job status, prospect preview, and CRM handoff.',
   },
   '/leads': {
     title: 'Contact and Lead Management',
@@ -32,13 +32,6 @@ export const ROUTE_META: Record<
       'Filter your prospect database, update CRM pipeline status, capture notes, and export for sales analytics or sales outreach sequences.',
     documentDescription:
       'Lead tracking software and contact management for sales teams. Lead scoring, status updates, and conversion optimization in one table.',
-  },
-  '/platforms': {
-    title: 'Connected Lead Sources',
-    subtitle:
-      'Session management per channel, platform access for scraping activity, and alignment with delay and safety defaults from workspace settings.',
-    documentDescription:
-      'Platform access and session management for lead sources, scraping activity, and secure prospecting connectors.',
   },
   '/analytics': {
     title: 'Sales Analytics',

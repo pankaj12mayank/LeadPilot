@@ -1,7 +1,6 @@
 import {
   Info,
   LayoutDashboard,
-  Layers,
   LineChart,
   LogOut,
   Search,
@@ -23,9 +22,8 @@ import { useSidebarStore } from '@/store/sidebarStore'
 
 const nav = [
   { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  { to: '/search-leads', label: 'Lead search', icon: Search },
+  { to: '/search-leads', label: 'LinkedIn search', icon: Search },
   { to: '/leads', label: 'Leads', icon: Users },
-  { to: '/platforms', label: 'Platforms', icon: Layers },
   { to: '/analytics', label: 'Analytics', icon: LineChart },
   { to: '/settings', label: 'Settings', icon: Settings },
   { to: '/about', label: 'About', icon: Info },
@@ -111,7 +109,7 @@ export function AppShell() {
           )}
           <div className="min-w-0">
             <div className="type-brand-wordmark truncate">{productName || APP_NAME}</div>
-            <div className="text-xs text-ink-subtle">Leads, platforms, outreach</div>
+            <div className="text-xs text-ink-subtle">Leads, LinkedIn, outreach</div>
           </div>
         </div>
         <nav className="flex flex-1 flex-col gap-1">

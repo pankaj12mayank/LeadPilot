@@ -70,7 +70,7 @@ Run **from the repository root** (same folder as `config.py`). `scraper_core` lo
 
 | Goal | Command |
 |------|--------|
-| **Full run** (LinkedIn → Apollo/Skrapp → score → `.xlsx`) | `python leadpilot_single.py` or `python -m backend.leadpilot` |
+| **Full run** (LinkedIn → Apollo/Skrapp → score → `.xlsx`) | `python leadpilot_single.py` or `python -m backend.leadpilot`. **No Chrome on port 9222?** use `python -m backend.leadpilot --launch-chrome` (starts its own browser; no attach). |
 | **Quick test** (caps leads when `LEADPILOT_TEST=1` / `--test`) | `python leadpilot_single.py --test -n 5` |
 | **Excel-only legacy** (no enrichment step) | `python -m backend.leadpilot.lead_scraper` |
 | **Health checks only** | `python -m backend.leadpilot.lead_scraper --verify-only` |

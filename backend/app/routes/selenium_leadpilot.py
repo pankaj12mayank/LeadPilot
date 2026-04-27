@@ -87,6 +87,9 @@ def selenium_leadpilot_start(
     if body.test:
         extra["LEADPILOT_TEST"] = "1"
         extra.setdefault("DEBUG", "1")
+    # Web UI has no TTY: do not block on "Press Enter" in collect_linkedin_leads — auto-wait for Chrome.
+    extra["LEADPILOT_SKIP_READY_PROMPT"] = "1"
+    extra.setdefault("LEADPILOT_READY_DELAY_SECONDS", "15")
 
     err = start_leadpilot_subprocess(argv=argv, extra_env=extra)
     if err:
