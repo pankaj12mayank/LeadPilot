@@ -54,6 +54,18 @@ def _ensure_lead_columns(engine) -> None:
             cx.execute(text("ALTER TABLE leads ADD COLUMN last_contacted_at VARCHAR(64) DEFAULT ''"))
         if "follow_up_reminder_at" not in cols:
             cx.execute(text("ALTER TABLE leads ADD COLUMN follow_up_reminder_at VARCHAR(64) DEFAULT ''"))
+        if "agency_type" not in cols:
+            cx.execute(text("ALTER TABLE leads ADD COLUMN agency_type VARCHAR(128) DEFAULT ''"))
+        if "problem_seen" not in cols:
+            cx.execute(text("ALTER TABLE leads ADD COLUMN problem_seen TEXT DEFAULT ''"))
+        if "last_active_display" not in cols:
+            cx.execute(text("ALTER TABLE leads ADD COLUMN last_active_display VARCHAR(255) DEFAULT ''"))
+        if "connection_sent" not in cols:
+            cx.execute(text("ALTER TABLE leads ADD COLUMN connection_sent VARCHAR(128) DEFAULT ''"))
+        if "replied_yn" not in cols:
+            cx.execute(text("ALTER TABLE leads ADD COLUMN replied_yn VARCHAR(8) DEFAULT 'N'"))
+        if "solution_text" not in cols:
+            cx.execute(text("ALTER TABLE leads ADD COLUMN solution_text TEXT DEFAULT ''"))
 
 
 def _ensure_user_columns(engine) -> None:

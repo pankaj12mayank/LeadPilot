@@ -24,6 +24,14 @@ from backend.services import email_history_service, history_service, status_hist
 
 CONTACT_STATUSES = frozenset(
     {
+        "request_sent",
+        "message_sent",
+        "replied_got",
+        "on_discussion",
+        "interested",
+        "deal",
+        "close",
+        "not_interested",
         "contacted",
         "replied",
         "follow_up_sent",
@@ -36,8 +44,10 @@ CONTACT_STATUSES = frozenset(
         "won",
     }
 )
-CLOSED_STATUSES = frozenset({"closed", "converted", "closed_won", "won"})
-MEETING_STATUSES = frozenset({"meeting_scheduled", "meeting_booked", "meeting", "booked"})
+CLOSED_STATUSES = frozenset({"close", "closed", "converted", "closed_won", "won"})
+MEETING_STATUSES = frozenset(
+    {"on_discussion", "meeting_scheduled", "meeting_booked", "meeting", "booked"}
+)
 
 
 def _now() -> datetime:

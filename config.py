@@ -66,6 +66,8 @@ ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD", "").strip()
 EXPORTS_DIR = os.getenv("EXPORTS_DIR", "exports").strip() or "exports"
 SESSIONS_DIR = os.getenv("SESSIONS_DIR", "sessions").strip() or "sessions"
 LOGS_DIR = os.getenv("LOGS_DIR", "logs").strip() or "logs"
+# LinkedIn (Selenium): `sessions/linkedin_session_cache.json` last-updated time; warn after N days (default 7 ≈ weekly re-check)
+LEADPILOT_LINKEDIN_SESSION_DAYS = int(os.getenv("LEADPILOT_LINKEDIN_SESSION_DAYS", "7") or 7)
 
 # Uploaded logo / favicon (served at ``/branding/*``)
 BRANDING_UPLOAD_DIR = os.getenv("BRANDING_UPLOAD_DIR", str(_REPO_ROOT / "storage" / "branding")).strip() or str(

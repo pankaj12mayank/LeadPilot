@@ -9,6 +9,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
 
 from backend.app.api.deps import get_current_user
+from backend.leadpilot.linkedin_session_cache import session_info_dict
 from backend.services.selenium_leadpilot_process import (
     get_status,
     is_available,
@@ -52,7 +53,12 @@ def selenium_leadpilot_status(
     _user: dict = Depends(get_current_user),
 ) -> dict[str, Any]:
     st = get_status()
-    return {**asdict(st), "available": st.available and is_available()}
+    out: dict[str, Any] = {**asdict(st), "available": st.available and is_available()}
+    try:
+        out["linkedin_session"] = session_info_dict()
+    except Exception:  # noqa: BLE001
+        out["linkedin_session"] = {"message": "Session info unavailable", "has_cache": False}
+    return out
 
 
 @router.post("/start")
@@ -87,9 +93,16 @@ def selenium_leadpilot_start(
     if body.test:
         extra["LEADPILOT_TEST"] = "1"
         extra.setdefault("DEBUG", "1")
-    # Web UI has no TTY: do not block on "Press Enter" in collect_linkedin_leads — auto-wait for Chrome.
+    # Web UI has no TTY: timed waits instead of "Press Enter".
     extra["LEADPILOT_SKIP_READY_PROMPT"] = "1"
-    extra.setdefault("LEADPILOT_READY_DELAY_SECONDS", "15")
+    # Give time to open Chrome and log in before the *second* wait (search + start capture).
+    extra.setdefault("LEADPILOT_READY_DELAY_SECONDS", "60")
+    # After login, user must run People search; then this delay before we read /in/ links (no TTY to press Enter).
+    extra.setdefault("LEADPILOT_START_CAPTURE_DELAY_SECONDS", "120")
+    extra["LEADPILOT_SKIP_START_CAPTURE_PROMPT"] = "1"
+    # Do not auto-open a default search page; start on feed, user searches manually, then capture starts.
+    extra.setdefault("LEADPILOT_OPEN_PEOPLE_ON_LAUNCH", "0")
+    extra.setdefault("LEADPILOT_AUTO_OPEN_PEOPLE_SEARCH", "0")
 
     err = start_leadpilot_subprocess(argv=argv, extra_env=extra)
     if err:

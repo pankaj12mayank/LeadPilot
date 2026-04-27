@@ -41,12 +41,29 @@ def _compute_metrics(db: Session) -> Dict[str, Any]:
     warm = int(tier_c.get("warm", 0))
     cold = int(tier_c.get("cold", 0))
 
+    _outreach = (
+        "message_sent",
+        "request_sent",
+        "replied_got",
+        "on_discussion",
+        "interested",
+        "deal",
+        "close",
+        "not_interested",
+        "contacted",
+        "replied",
+        "follow_up_sent",
+        "meeting_scheduled",
+        "deal_discussion",
+    )
     contacted = int(
-        db.scalar(select(func.count(Lead.id)).where(func.lower(Lead.status) == "contacted")) or 0
+        db.scalar(select(func.count(Lead.id)).where(func.lower(Lead.status).in_(_outreach))) or 0
     )
     converted = int(
         db.scalar(
-            select(func.count(Lead.id)).where(func.lower(Lead.status).in_(("converted", "closed")))
+            select(func.count(Lead.id)).where(
+                func.lower(Lead.status).in_(("close", "converted", "closed"))
+            )
         )
         or 0
     )

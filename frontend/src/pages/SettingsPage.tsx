@@ -2,15 +2,18 @@ import { useEffect, useState } from 'react'
 import { toast } from 'sonner'
 
 import { ApiLoadError } from '@/components/ui/ApiLoadError'
-import { SeleniumLeadpilotPanel } from '@/components/scraper/SeleniumLeadpilotPanel'
 import { FilterSelect } from '@/components/ui/FilterSelect'
 import { getSettings, patchSettings, testExternalApiConnection, testOllamaConnection } from '@/lib/api/settings'
 import type { AppSettings } from '@/types/models'
 
 const MODEL_PRESETS = [
+  { value: 'qwen2.5:7b', label: 'Qwen 2.5 7B (recommended)' },
+  { value: 'llama3.1:8b', label: 'Llama 3.1 8B' },
   { value: 'llama3', label: 'Llama 3' },
   { value: 'mistral', label: 'Mistral' },
-  { value: 'deepseek-r1', label: 'DeepSeek R1' },
+  { value: 'phi3', label: 'Phi-3' },
+  { value: 'gemma2:9b', label: 'Gemma 2 9B' },
+  { value: 'deepseek-r1:8b', label: 'DeepSeek R1 8B' },
   { value: 'custom', label: 'Custom…' },
 ]
 
@@ -441,17 +444,6 @@ export function SettingsPage() {
           {busy ? 'Saving' : 'Save Changes'}
         </button>
       </form>
-
-      <div className="mt-10 space-y-3">
-        <h2 className="type-section-heading">Desktop LinkedIn (Selenium)</h2>
-        <p className="text-xs text-ink-muted">
-          Optional: run the same flow as <span className="font-mono">python -m backend.leadpilot</span> on this
-          machine. No &quot;Press Enter&quot; in the terminal when started from here — the run waits a few seconds so you
-          can focus Chrome on People search. New leads are written to the <span className="text-ink">Leads</span> list
-          and to Excel.
-        </p>
-        <SeleniumLeadpilotPanel />
-      </div>
     </div>
   )
 }

@@ -57,15 +57,24 @@ export const ROUTE_META: Record<
 /** API status value to professional label (values unchanged for API compatibility) */
 export const LEAD_STATUS_LABELS: Record<string, string> = {
   new: 'New',
-  contacted: 'Contacted',
-  replied: 'Replied',
-  follow_up_sent: 'Follow-up sent',
-  meeting_scheduled: 'Meeting scheduled',
-  deal_discussion: 'Deal discussion',
-  closed: 'Closed',
-  rejected: 'Rejected',
-  ready: 'Ready',
-  converted: 'Converted',
+  request_sent: 'Request Sent',
+  message_sent: 'Message Sent',
+  replied_got: 'Replied got',
+  on_discussion: 'On Discussion',
+  interested: 'Interested',
+  deal: 'Deal',
+  close: 'Close',
+  not_interested: 'Not interested',
+  // legacy (API may still return until edited)
+  contacted: 'Message Sent',
+  replied: 'Replied got',
+  follow_up_sent: 'Message Sent',
+  meeting_scheduled: 'On Discussion',
+  deal_discussion: 'Deal',
+  closed: 'Close',
+  rejected: 'Not interested',
+  ready: 'Message Sent',
+  converted: 'Close',
 }
 
 export function leadStatusLabel(status: string): string {

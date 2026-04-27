@@ -72,6 +72,25 @@ export async function exportLeadsCsv(body: LeadExportBody, filename = 'leads-exp
   window.URL.revokeObjectURL(url)
 }
 
+export async function downloadLeadsCsvTemplate(filename = 'leads_import_template.csv') {
+  const res = await api.get<Blob>('/leads/csv-template', { responseType: 'blob' })
+  const url = window.URL.createObjectURL(res.data)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = filename
+  a.click()
+  window.URL.revokeObjectURL(url)
+}
+
+export type BulkImportResult = { created: number; errors: string[] }
+
+export async function importLeadsCsv(file: File) {
+  const body = new FormData()
+  body.append('file', file)
+  const { data } = await api.post<BulkImportResult>('/leads/bulk-import', body)
+  return data
+}
+
 export async function getLead(leadId: string) {
   const { data } = await api.get<Lead>(`/leads/${encodeURIComponent(leadId)}`)
   return data

@@ -6,11 +6,17 @@ import {
   fetchSeleniumLeadpilotStatus,
   startSeleniumLeadpilot,
   stopSeleniumLeadpilot,
+  type LinkedinSessionCacheInfo,
   type SeleniumLeadpilotStatus,
 } from '@/lib/api/seleniumLeadpilot'
 import { cn } from '@/lib/utils/cn'
 
-export function SeleniumLeadpilotPanel() {
+export function SeleniumLeadpilotPanel({
+  onRunningChange,
+}: {
+  /** Fires when pipeline state is running (poll parent tables, etc.). */
+  onRunningChange?: (running: boolean) => void
+} = {}) {
   const [st, setSt] = useState<SeleniumLeadpilotStatus | null>(null)
   const [loading, setLoading] = useState(true)
   const [maxLeads, setMaxLeads] = useState(10)
@@ -41,6 +47,10 @@ export function SeleniumLeadpilotPanel() {
     const t = window.setInterval(() => void load(), 2000)
     return () => window.clearInterval(t)
   }, [st, load])
+
+  useEffect(() => {
+    onRunningChange?.(Boolean(st && st.state === 'running'))
+  }, [st, onRunningChange])
 
   const onStart = async () => {
     setStarting(true)
@@ -115,8 +125,11 @@ export function SeleniumLeadpilotPanel() {
           <p className="mt-1 max-w-[720px] text-xs text-ink-muted">
             Runs <span className="font-mono">python -m backend.leadpilot</span> on the server. After start, you get a
             short countdown — switch to Chrome on <strong>People</strong> search results (no need to press Enter in the
-            log). Uses launch or attach from <span className="font-mono">scraper.env</span>. Leads are saved to Excel
-            and to the app <strong>Leads</strong> list when ingest is enabled.
+            log).             Uses launch or attach from <span className="font-mono">scraper.env</span>. Set{' '}
+            <span className="font-mono">CHROME_USER_DATA_DIR</span> to keep the same LinkedIn login between runs;
+            we also record last successful capture in <span className="font-mono">sessions/linkedin_session_cache.json</span>{' '}
+            (default: remind after ~7 days — <span className="font-mono">LEADPILOT_LINKEDIN_SESSION_DAYS</span>).
+            Leads go to Excel and the <strong>Leads</strong> list when ingest is enabled.
           </p>
         </div>
         <span
@@ -189,6 +202,29 @@ export function SeleniumLeadpilotPanel() {
         </div>
       </div>
 
+      {(() => {
+        const ls = st.linkedin_session as LinkedinSessionCacheInfo | { message?: string; has_cache?: boolean } | undefined
+        if (!ls || !('message' in ls) || !ls.message) return null
+        const full = ls as LinkedinSessionCacheInfo
+        const stale = full.has_cache && full.within_policy === false
+        return (
+          <p
+            className={`mb-3 rounded-xl border px-3 py-2 text-xs ${
+              stale
+                ? 'border-amber-500/30 bg-amber-50/80 text-amber-950 dark:bg-amber-950/25 dark:text-amber-100'
+                : 'border-surface-border bg-field/50 text-ink-muted dark:bg-zinc-900/40'
+            }`}
+          >
+            <span className="font-semibold text-ink">LinkedIn session cache: </span>
+            {ls.message}
+            {typeof full.age_days === 'number' && full.last_verified_at ? (
+              <span className="mt-1 block font-mono text-[10px] opacity-80">
+                Last capture: {full.last_verified_at} · age {full.age_days}d · policy {full.policy_days}d
+              </span>
+            ) : null}
+          </p>
+        )
+      })()}
       <p className="mb-3 text-xs text-ink-subtle">
         {st.message} {st.pid != null && running ? `· pid ${st.pid}` : null}
         {st.command ? (

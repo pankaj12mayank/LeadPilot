@@ -6,9 +6,8 @@ from backend.scraper.base import BaseScraper
 from backend.scraper.platforms.linkedin import LinkedInScraper
 
 # ---------------------------------------------------------------------------
-# LinkedIn-only execution path (see ``main.py`` / ``backend.pipeline``).
-# Other platform scrapers remain on disk for future use but are not registered
-# and must not be imported here (keeps runtime free of multi-source routing).
+# LinkedIn-only execution path (see root ``main.py`` / ``backend.pipeline``).
+# Add platform modules under ``platforms/`` and register here to enable more sources.
 # ---------------------------------------------------------------------------
 
 PLATFORMS: Dict[str, Type[BaseScraper]] = {

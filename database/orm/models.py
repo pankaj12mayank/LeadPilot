@@ -44,6 +44,13 @@ class Lead(Base):
     follow_up_reminder_at: Mapped[str] = mapped_column(String(64), default="")
     created_at: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
     updated_at: Mapped[str] = mapped_column(String(64), nullable=False)
+    # LinkedIn capture (Selenium) — extra columns for agency workflow
+    agency_type: Mapped[str] = mapped_column(String(128), default="")
+    problem_seen: Mapped[str] = mapped_column(Text, default="")
+    last_active_display: Mapped[str] = mapped_column(String(255), default="")
+    connection_sent: Mapped[str] = mapped_column(String(128), default="")
+    replied_yn: Mapped[str] = mapped_column(String(8), default="N")
+    solution_text: Mapped[str] = mapped_column(Text, default="")
 
 
 class OutreachHistory(Base):

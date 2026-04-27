@@ -11,8 +11,7 @@ LeadPilot/
 ├── frontend/                 # React + Vite + Tailwind + React Router + Axios + Zustand + TanStack Table + Recharts
 ├── backend/
 │   ├── app/                  # FastAPI app, routers, schemas, middleware
-│   ├── modules/              # Domain packages (scraper, scorer, exporter, …)
-│   └── subscriptions/      # Placeholder for Stripe / plans (future)
+│   └── modules/              # Domain packages (scraper, scorer, exporter, …) — add a billing package here when needed
 ├── database/
 │   ├── orm/                  # SQLAlchemy models + engine bootstrap
 │   ├── meta_db.py            # SQLite helpers (users, legacy history tables)
@@ -154,7 +153,7 @@ Copy **`.env.example`** → **`.env`** at repo root for Python; **`frontend/.env
 
 ### Phase 3 — Product & billing
 
-- `backend/subscriptions/`: Stripe customer portal, webhooks, plan entitlements.
+- New package (e.g. `backend/billing/`): Stripe customer portal, webhooks, plan entitlements.
 - Middleware: `require_plan("pro")` on scrape + AI routes.
 - Tenant id on `users` / `organizations` for multi-tenant SaaS.
 
@@ -168,7 +167,7 @@ Copy **`.env.example`** → **`.env`** at repo root for Python; **`frontend/.env
 
 ## 8. Subscription-ready structure (summary)
 
-- **Isolation** — put billing-only code in `backend/subscriptions/`; never mix with `lead_service` imports from routers directly.
+- **Isolation** — keep billing-only code in its own package; never mix with `lead_service` imports from routers directly.
 - **Feature flags** — `SUBSCRIPTIONS_ENABLED` + env `STRIPE_SECRET_KEY` gated imports.
 - **Entitlements** — small `entitlements.py` resolving `user_id` → `{ max_leads, scrape_per_day, seats }` from DB, cached in memory or Redis later.
 - **Metering** — increment counters in `usage_counters` on scrape/export/AI calls.

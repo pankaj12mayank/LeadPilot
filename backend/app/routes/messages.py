@@ -79,8 +79,8 @@ def send_message(
         raise HTTPException(status_code=404, detail="Lead not found")
     prev = str(row.status or "")
     final_row = row
-    if ok and prev != "contacted":
-        row.status = "contacted"
+    if ok and prev not in ("message_sent", "contacted"):
+        row.status = "message_sent"
         row.last_contacted_at = utc_now_iso()
         row.updated_at = utc_now_iso()
     db.commit()
@@ -91,11 +91,11 @@ def send_message(
             {"to": to_addr, "success": ok},
             user["id"],
         )
-        if ok and prev != "contacted":
-            status_history_service.record_change(lead_id, prev or "new", "contacted")
+        if ok and prev not in ("message_sent", "contacted"):
+            status_history_service.record_change(lead_id, prev or "new", "message_sent")
     except Exception:
         logger.exception("message.send: meta history write failed (lead row already committed)")
-    if ok and prev != "contacted":
+    if ok and prev not in ("message_sent", "contacted"):
         final_row = lead_orm_service.get_lead(db, lead_id) or row
     return MessageResponse(
         lead_id=lead_id,

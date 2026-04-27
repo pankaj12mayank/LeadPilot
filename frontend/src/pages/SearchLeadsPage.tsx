@@ -1,492 +1,143 @@
-import { Loader2, Search } from 'lucide-react'
-import { useCallback, useEffect, useMemo, useState } from 'react'
-import { toast } from 'sonner'
-import { useLocation, useNavigate } from 'react-router-dom'
+import { Loader2, RefreshCw } from 'lucide-react'
+import { useCallback, useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
 
-import { ApiLoadError } from '@/components/ui/ApiLoadError'
-import { fetchScraperStatus, fetchScraperJob, startScraperJob, type ScraperJobStatus, type ScraperStatus } from '@/lib/api/scraper'
-import { cn } from '@/lib/utils/cn'
+import { SeleniumLeadpilotPanel } from '@/components/scraper/SeleniumLeadpilotPanel'
+import { StatusBadge } from '@/components/ui/Badge'
+import { fetchLeads } from '@/lib/api/leads'
+import type { Lead } from '@/types/models'
 
-/** Product scope: LinkedIn people search only (Playwright job API). */
-const LINKEDIN_SLUG = 'linkedin' as const
-
-function phaseLabel(phase: string, message: string): string {
-  const m = message.toLowerCase()
-  if (phase === 'extracting_data' && m.includes('profile')) return 'Opening prospect profile'
-  switch (phase) {
-    case 'queued':
-      return 'Queued for execution'
-    case 'searching':
-      return 'Searching LinkedIn'
-    case 'extracting_data':
-      return 'Extracting prospect data'
-    case 'saving_lead':
-      return 'Saving to prospect database'
-    case 'completed':
-      return 'Completed successfully'
-    case 'failed':
-      return 'Stopped with errors'
-    default:
-      return phase.replace(/_/g, ' ')
-  }
-}
-
-function formatEta(sec: number | null | undefined): string {
-  if (sec == null || !Number.isFinite(sec)) return '—'
-  if (sec < 60) return `About ${Math.round(sec)} seconds`
-  const m = Math.floor(sec / 60)
-  const s = Math.round(sec % 60)
-  return `About ${m} minutes ${s} seconds`
-}
-
-function jobProgressPercent(job: ScraperJobStatus | null): number {
-  if (!job) return 0
-  if (job.completed && job.phase !== 'failed') return 100
-  if (job.completed && job.phase === 'failed') return 100
-  const target = Math.max(1, job.leads_target)
-  const ratio = Math.min(1, job.leads_found / target)
-  if (job.leads_found === 0 && (job.phase === 'searching' || job.phase === 'queued')) {
-    return 12
-  }
-  return Math.max(4, Math.min(96, Math.round(ratio * 96)))
-}
-
-function cell(row: Record<string, unknown>, ...keys: string[]): string {
-  for (const k of keys) {
-    const v = row[k]
-    if (v != null && String(v).trim() !== '') return String(v)
-  }
-  return '—'
+function clip(s: string, n: number) {
+  const t = (s || '').trim()
+  if (!t) return '—'
+  return t.length > n ? `${t.slice(0, n)}…` : t
 }
 
 export function SearchLeadsPage() {
-  const location = useLocation()
-  const navigate = useNavigate()
-  const [scraper, setScraper] = useState<ScraperStatus | null>(null)
-  const [loadingMeta, setLoadingMeta] = useState(true)
+  const [recent, setRecent] = useState<Lead[]>([])
+  const [loading, setLoading] = useState(true)
+  const [pollRunning, setPollRunning] = useState(false)
 
-  const [keyword, setKeyword] = useState('')
-  const [country, setCountry] = useState('')
-  const [industry, setIndustry] = useState('')
-  const [companySize, setCompanySize] = useState('')
-  const [leadLimit, setLeadLimit] = useState(20)
-
-  const [headless, setHeadless] = useState(true)
-  const [profileContactEnrich, setProfileContactEnrich] = useState(false)
-  const [delayMin, setDelayMin] = useState(3)
-  const [delayMax, setDelayMax] = useState(5)
-  const [maxScrollRounds, setMaxScrollRounds] = useState(12)
-
-  const [jobId, setJobId] = useState<string | null>(null)
-  const [job, setJob] = useState<ScraperJobStatus | null>(null)
-  const [formError, setFormError] = useState<string | null>(null)
-  const [starting, setStarting] = useState(false)
-  const [metaLoadErr, setMetaLoadErr] = useState<string | null>(null)
-
-  const loadMeta = useCallback(async () => {
-    setLoadingMeta(true)
-    setMetaLoadErr(null)
+  const loadRecent = useCallback(async () => {
     try {
-      const st = await fetchScraperStatus()
-      setScraper(st)
-      setLeadLimit(st.max_leads_default)
-      setDelayMin(st.delay_seconds_range[0])
-      setDelayMax(st.delay_seconds_range[1])
+      const r = await fetchLeads({ page: 1, page_size: 15, sort: 'created_at_desc' })
+      setRecent(r.items)
     } catch {
-      setMetaLoadErr('Could not load scraper defaults. Ensure the API is running, then retry.')
-      setScraper(null)
+      setRecent([])
     } finally {
-      setLoadingMeta(false)
+      setLoading(false)
     }
   }, [])
 
   useEffect(() => {
-    void loadMeta()
-  }, [loadMeta])
+    void loadRecent()
+  }, [loadRecent])
 
   useEffect(() => {
-    const st = location.state as { platform?: string } | null
-    if (st?.platform) {
-      navigate(location.pathname, { replace: true, state: {} })
-    }
-  }, [location.pathname, location.state, navigate])
-
-  useEffect(() => {
-    if (!jobId) return
-    let cancelled = false
-    const tick = async () => {
-      try {
-        const j = await fetchScraperJob(jobId)
-        if (cancelled) return
-        setJob(j)
-      } catch {
-        if (!cancelled) setFormError('Unable to reach job status. Refresh the page and try again.')
-      }
-    }
-    void tick()
-    const id = window.setInterval(() => void tick(), 1000)
-    return () => {
-      cancelled = true
-      window.clearInterval(id)
-    }
-  }, [jobId])
-
-  const progressPct = useMemo(() => jobProgressPercent(job), [job])
-
-  const sourceLabel = useMemo(() => {
-    const j = job?.platform?.trim()
-    if (j) return j === 'linkedin' ? 'LinkedIn' : j
-    return 'LinkedIn'
-  }, [job?.platform])
-
-  async function onSearchLeads() {
-    setFormError(null)
-    if (!keyword.trim()) {
-      setFormError('Enter a search keyword (LinkedIn people search).')
-      return
-    }
-    setStarting(true)
-    setJob(null)
-    setJobId(null)
-    try {
-      const accepted = await startScraperJob({
-        platform: LINKEDIN_SLUG,
-        keyword: keyword.trim(),
-        country: country.trim(),
-        industry: industry.trim(),
-        company_size: companySize.trim(),
-        lead_limit: leadLimit,
-        headless,
-        profile_contact_enrich: profileContactEnrich,
-        delay_min_seconds: delayMin,
-        delay_max_seconds: delayMax,
-        max_scroll_rounds: maxScrollRounds,
-      })
-      setJobId(accepted.job_id)
-      toast.success('Lead search job started')
-    } catch (e: unknown) {
-      setFormError(e instanceof Error ? e.message : 'Unable to start lead search. Connect a LinkedIn session in Settings or run manual login, then retry.')
-    } finally {
-      setStarting(false)
-    }
-  }
-
-  if (loadingMeta) {
-    return (
-      <div className="flex min-h-[40vh] items-center justify-center gap-2 text-sm text-ink-muted">
-        <Loader2 className="h-4 w-4 animate-spin" />
-        Loading search configuration
-      </div>
-    )
-  }
-
-  if (metaLoadErr || !scraper) {
-    return (
-      <div className="mx-auto max-w-[1400px]">
-        <ApiLoadError
-          title="Lead search unavailable"
-          message={metaLoadErr ?? 'Scraper configuration was not returned from the API.'}
-          onRetry={() => void loadMeta()}
-        />
-      </div>
-    )
-  }
-
-  const cap = scraper.max_leads_cap
-  const liveRows = job?.preview ?? []
-  const statusLine = job
-    ? phaseLabel(job.phase, job.message)
-    : starting
-      ? 'Starting job'
-      : 'Idle'
+    if (!pollRunning) return
+    const id = window.setInterval(() => void loadRecent(), 4000)
+    return () => window.clearInterval(id)
+  }, [pollRunning, loadRecent])
 
   return (
-    <div className="mx-auto max-w-[1400px] space-y-8">
-      <div className="grid gap-8 lg:grid-cols-[minmax(0,380px)_1fr]">
-        <div className="space-y-5 rounded-2xl border border-surface-border bg-premium-card-light p-6 shadow-card dark:bg-premium-card-dark">
-          <h2 className="type-panel-title mb-1">LinkedIn search</h2>
-          <p className="mb-4 text-xs text-ink-muted">
-            Server-side Playwright job: keyword and filters map to LinkedIn people search. You need an active LinkedIn
-            browser session on the server. Completed rows show in <span className="text-ink">Leads</span> when
-            ingested. Optional desktop Selenium run: open <span className="text-ink">Settings</span>.
-          </p>
-
-          <div className="space-y-4 text-sm">
-            <div>
-              <label className="text-xs font-semibold uppercase tracking-wider text-ink-muted">Search keyword</label>
-              <input
-                value={keyword}
-                onChange={(e) => setKeyword(e.target.value)}
-                className="field-input mt-1"
-                placeholder="Example: enterprise software sales leaders"
-              />
-            </div>
-            <div>
-              <label className="text-xs font-semibold uppercase tracking-wider text-ink-muted">
-                Location / region
-              </label>
-              <input
-                value={country}
-                onChange={(e) => setCountry(e.target.value)}
-                className="field-input mt-1"
-                placeholder="Example: United States, London, Maharashtra…"
-              />
-            </div>
-            <div>
-              <label className="text-xs font-semibold uppercase tracking-wider text-ink-muted">Industry</label>
-              <input
-                value={industry}
-                onChange={(e) => setIndustry(e.target.value)}
-                className="field-input mt-1"
-                placeholder="Example: information technology"
-              />
-            </div>
-            <div>
-              <label className="text-xs font-semibold uppercase tracking-wider text-ink-muted">Company size</label>
-              <input
-                value={companySize}
-                onChange={(e) => setCompanySize(e.target.value)}
-                className="field-input mt-1"
-                placeholder="Example: 50 to 500 employees"
-              />
-            </div>
-            <div>
-              <label className="text-xs font-semibold uppercase tracking-wider text-ink-muted">Lead limit</label>
-              <input
-                type="number"
-                min={1}
-                max={cap}
-                value={leadLimit}
-                onChange={(e) => setLeadLimit(Number(e.target.value))}
-                className="field-input mt-1"
-              />
-            </div>
-
-            <label className="flex cursor-pointer items-start gap-2.5 rounded-xl border border-surface-border bg-field/50 px-3 py-2.5 dark:bg-zinc-900/40">
-              <input
-                type="checkbox"
-                checked={profileContactEnrich}
-                onChange={(e) => setProfileContactEnrich(e.target.checked)}
-                className="mt-0.5 h-4 w-4 rounded border-surface-border text-amber-700 accent-amber-600"
-              />
-              <span className="text-xs leading-snug text-ink-muted">
-                <span className="font-semibold text-ink">Fetch public email &amp; phone</span> (LinkedIn only): open
-                each collected profile and read visible <span className="font-mono text-[11px]">mailto:</span> /{' '}
-                <span className="font-mono text-[11px]">tel:</span> links. Slower; many profiles have no public email;
-                server caps how many profiles are opened per run.
-              </span>
-            </label>
-
-            <details className="rounded-xl border border-surface-border bg-field/50 px-3 py-2 dark:bg-zinc-900/40">
-              <summary className="cursor-pointer text-xs font-semibold uppercase tracking-wider text-ink-muted">
-                Delay and safety
-              </summary>
-              <div className="mt-3 space-y-3">
-                <label className="flex items-center gap-2 text-xs text-ink-muted">
-                  <input type="checkbox" checked={headless} onChange={(e) => setHeadless(e.target.checked)} />
-                  Run browser headless
-                </label>
-                <div className="grid grid-cols-2 gap-2">
-                  <div>
-                    <span className="text-[10px] uppercase text-ink-subtle">Delay min (s)</span>
-                    <input
-                      type="number"
-                      step={0.5}
-                      min={1}
-                      value={delayMin}
-                      onChange={(e) => setDelayMin(Number(e.target.value))}
-                      className="field-input mt-0.5 rounded-lg px-2 py-1.5 text-sm"
-                    />
-                  </div>
-                  <div>
-                    <span className="text-[10px] uppercase text-ink-subtle">Delay max (s)</span>
-                    <input
-                      type="number"
-                      step={0.5}
-                      min={1}
-                      value={delayMax}
-                      onChange={(e) => setDelayMax(Number(e.target.value))}
-                      className="field-input mt-0.5 rounded-lg px-2 py-1.5 text-sm"
-                    />
-                  </div>
-                </div>
-                <div>
-                  <span className="text-[10px] uppercase text-ink-subtle">Max scroll rounds</span>
-                  <input
-                    type="number"
-                    min={1}
-                    max={40}
-                    value={maxScrollRounds}
-                    onChange={(e) => setMaxScrollRounds(Number(e.target.value))}
-                    className="field-input mt-0.5 rounded-lg px-2 py-1.5 text-sm"
-                  />
-                </div>
-              </div>
-            </details>
-          </div>
-
-          {formError ? (
-            <p className="rounded-lg border border-rose-500/30 bg-rose-50 px-3 py-2 text-xs text-rose-800 dark:bg-rose-950/40 dark:text-rose-200">
-              {formError}
-            </p>
-          ) : null}
-
-          <button
-            type="button"
-            disabled={starting || Boolean(jobId && job && !job.completed)}
-            onClick={() => void onSearchLeads()}
-            className="btn-primary flex w-full items-center justify-center gap-2 py-3 text-sm disabled:opacity-50"
-          >
-            {starting || (jobId && job && !job.completed) ? (
-              <>
-                <Loader2 className="h-4 w-4 animate-spin" />
-                Searching
-              </>
-            ) : (
-              <>
-                <Search className="h-4 w-4" />
-                Start Lead Search
-              </>
-            )}
-          </button>
-          <p className="text-xs text-ink-subtle">
-            Uses your saved LinkedIn session. Maximum {cap} leads per run. Engine {scraper.engine}.
-          </p>
-        </div>
-
-        <div className="space-y-6">
-          <div
-            className={cn(
-              'rounded-2xl border border-surface-border bg-premium-card-light p-6 shadow-card dark:bg-premium-card-dark',
-              job?.phase === 'failed' && 'border-rose-500/30',
-            )}
-          >
-            <h2 className="type-panel-title mb-1">Scraping activity</h2>
-            <p className="mb-4 text-xs text-ink-muted">
-              Live job status for this prospecting run. Duplicate rows are removed before lead management ingestion.
-            </p>
-            <div className="mt-4 h-2 overflow-hidden rounded-full bg-stone-200 dark:bg-zinc-800">
-              <div
-                className={cn(
-                  'h-full rounded-full transition-all duration-500',
-                  job?.phase === 'failed'
-                    ? 'bg-red-500'
-                    : 'bg-gradient-to-r from-amber-500 to-emerald-600 dark:from-amber-400 dark:to-emerald-500',
-                )}
-                style={{ width: `${progressPct}%` }}
-              />
-            </div>
-            <dl className="mt-4 grid gap-3 text-sm sm:grid-cols-2">
-              <div>
-                <dt className="text-xs uppercase tracking-wider text-ink-muted">Job status</dt>
-                <dd className="mt-0.5 font-medium text-ink">{statusLine}</dd>
-                {job?.message ? <dd className="mt-1 text-xs text-ink-subtle">{job.message}</dd> : null}
-              </div>
-              <div>
-                <dt className="text-xs uppercase tracking-wider text-ink-muted">Source</dt>
-                <dd className="mt-0.5 text-ink-muted">{sourceLabel}</dd>
-              </div>
-              <div>
-                <dt className="text-xs uppercase tracking-wider text-ink-muted">Pagination position</dt>
-                <dd className="mt-0.5 font-mono text-ink-muted">{job?.page ?? '—'}</dd>
-              </div>
-              <div>
-                <dt className="text-xs uppercase tracking-wider text-ink-muted">Leads collected</dt>
-                <dd className="mt-0.5 font-mono text-ink-muted">
-                  {job ? `${job.leads_found} / ${job.leads_target}` : '—'}
-                  {job && job.duplicates_removed > 0 ? (
-                    <span className="ml-2 text-xs text-ink-subtle">
-                      ({job.duplicates_removed} duplicate records skipped)
-                    </span>
-                  ) : null}
-                </dd>
-              </div>
-              <div>
-                <dt className="text-xs uppercase tracking-wider text-ink-muted">Estimated time remaining</dt>
-                <dd className="mt-0.5 text-ink-muted">{job ? formatEta(job.eta_seconds) : '—'}</dd>
-              </div>
-            </dl>
-            {job?.error ? (
-              <p className="mt-4 rounded-lg border border-rose-500/30 bg-rose-50 px-3 py-2 text-xs text-rose-800 dark:bg-rose-950/40 dark:text-rose-200">
-                {job.error}
-              </p>
-            ) : null}
-            {job?.completed && job.result ? (
-              <p className="mt-4 rounded-lg border border-emerald-500/25 bg-emerald-50 px-3 py-2 text-xs text-emerald-900 dark:bg-emerald-950/35 dark:text-emerald-100">
-                Saved {(job.result.saved as number) ?? job.leads_found} leads · total seen{' '}
-                {(job.result.total_found as number) ?? '—'} · CSV {(job.result.csv_file as string) || '—'}
-              </p>
-            ) : null}
-          </div>
-
-          <div className="overflow-hidden rounded-2xl border border-surface-border bg-premium-card-light shadow-card dark:bg-premium-card-dark">
-            <div className="border-b border-surface-border px-4 py-3">
-              <h2 className="font-display text-lg font-semibold tracking-tight text-ink">Live prospect preview</h2>
-              <p className="text-xs text-ink-subtle">
-                Rows appear as the job discovers contacts. Final qualification still happens in lead management.
-              </p>
-            </div>
-            <div className="overflow-x-auto">
-              <table className="w-full min-w-[640px] text-left text-sm font-sans">
-                <thead className="sticky top-0 z-10 bg-surface-raised/95 backdrop-blur-md dark:bg-zinc-950/90">
-                  <tr className="border-b border-surface-border text-xs uppercase tracking-wider text-ink-muted">
-                    <th className="px-4 py-2 font-medium">Contact name</th>
-                    <th className="px-4 py-2 font-medium">Title</th>
-                    <th className="px-4 py-2 font-medium">Organization</th>
-                    <th className="px-4 py-2 font-medium">Profile URL</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {liveRows.length === 0 ? (
-                    <tr>
-                      <td colSpan={4} className="px-4 py-10 text-center text-ink-muted">
-                        {jobId && job && !job.completed ? (
-                          <span className="inline-flex items-center gap-2">
-                            <Loader2 className="h-4 w-4 animate-spin" />
-                            Waiting for first leads
-                          </span>
-                        ) : (
-                          'Start a lead search to preview new prospects here.'
-                        )}
-                      </td>
-                    </tr>
-                  ) : (
-                    liveRows.map((row, i) => (
-                      <tr
-                        key={i}
-                        className={cn(
-                          'border-b border-surface-border/80 text-ink-muted transition hover:bg-amber-500/[0.05] dark:hover:bg-amber-400/[0.04]',
-                          i % 2 === 1 ? 'bg-field/35 dark:bg-white/[0.02]' : '',
-                          'last:border-0',
-                        )}
-                      >
-                        <td className="max-w-[180px] truncate px-4 py-2.5">{cell(row, 'full_name', 'name')}</td>
-                        <td className="max-w-[200px] truncate px-4 py-2.5">{cell(row, 'title')}</td>
-                        <td className="max-w-[180px] truncate px-4 py-2.5">{cell(row, 'company_name', 'company')}</td>
-                        <td className="max-w-[260px] truncate px-4 py-2.5 font-mono text-xs text-amber-700 dark:text-amber-300">
-                          {cell(row, 'url', 'linkedin_url') !== '—' ? (
-                            <a
-                              href={cell(row, 'url', 'linkedin_url')}
-                              target="_blank"
-                              rel="noreferrer"
-                              className="hover:underline"
-                            >
-                              {cell(row, 'url', 'linkedin_url')}
-                            </a>
-                          ) : (
-                            '—'
-                          )}
-                        </td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </div>
+    <div className="mx-auto max-w-[1200px] space-y-8">
+      <div>
+        <h1 className="font-display text-2xl font-bold tracking-tight text-ink sm:text-3xl">LinkedIn search</h1>
+        <p className="mt-2 max-w-2xl text-sm text-ink-muted">
+          Run the desktop LinkedIn capture below from the same browser session you use for People search. Each run
+          writes rows with: Name, Company, Role, Profile link, Agency type, Team size, Problem, Last active, Connection
+          sent, Replied, Status, and an AI <strong>Solution</strong> from the problem (Ollama). New leads appear in{' '}
+          <Link to="/leads" className="font-medium text-amber-800 underline-offset-2 hover:underline dark:text-amber-300">
+            Leads
+          </Link>{' '}
+          when ingest is enabled.
+        </p>
       </div>
 
+      <SeleniumLeadpilotPanel onRunningChange={setPollRunning} />
+
+      <section className="rounded-2xl border border-surface-border bg-premium-card-light p-5 shadow-card dark:bg-premium-card-dark sm:p-6">
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h2 className="type-panel-title">Recently captured</h2>
+            <p className="text-xs text-ink-muted">
+              Refreshes while the desktop pipeline runs. Open a row in <span className="text-ink">Leads</span> to edit
+              status and fields.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => void loadRecent()}
+            className="inline-flex items-center gap-2 rounded-xl border border-surface-border px-3 py-2 text-xs text-ink-muted transition hover:bg-field"
+          >
+            {loading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
+            Refresh
+          </button>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[800px] text-left text-sm">
+            <thead className="text-[10px] font-semibold uppercase tracking-wider text-ink-muted">
+              <tr className="border-b border-surface-border">
+                <th className="px-2 py-2">Name</th>
+                <th className="px-2 py-2">Company</th>
+                <th className="px-2 py-2">Role</th>
+                <th className="px-2 py-2">Agency</th>
+                <th className="px-2 py-2">Status</th>
+                <th className="px-2 py-2">Problem</th>
+                <th className="px-2 py-2">Solution</th>
+                <th className="px-2 py-2">Conn.</th>
+                <th className="px-2 py-2">Replied</th>
+              </tr>
+            </thead>
+            <tbody>
+              {loading && recent.length === 0 ? (
+                <tr>
+                  <td colSpan={9} className="px-2 py-10 text-center text-ink-muted">
+                    <Loader2 className="mx-auto h-5 w-5 animate-spin" />
+                  </td>
+                </tr>
+              ) : recent.length === 0 ? (
+                <tr>
+                  <td colSpan={9} className="px-2 py-8 text-center text-sm text-ink-muted">
+                    No leads yet. Start the desktop pipeline above, then run a People search in Chrome.
+                  </td>
+                </tr>
+              ) : (
+                recent.map((row) => (
+                  <tr
+                    key={row.id}
+                    className="border-b border-surface-border/80 text-ink-muted last:border-0 hover:bg-amber-500/[0.04] dark:hover:bg-amber-400/[0.03]"
+                  >
+                    <td className="max-w-[7rem] truncate px-2 py-2.5 text-ink" title={row.full_name}>
+                      {clip(row.full_name, 32)}
+                    </td>
+                    <td className="max-w-[7rem] truncate px-2 py-2.5" title={row.company_name}>
+                      {clip(row.company_name, 28)}
+                    </td>
+                    <td className="max-w-[7rem] truncate px-2 py-2.5" title={row.title}>
+                      {clip(row.title, 28)}
+                    </td>
+                    <td className="max-w-[4rem] truncate px-2 py-2.5" title={row.agency_type}>
+                      {row.agency_type || '—'}
+                    </td>
+                    <td className="px-2 py-2.5">
+                      <StatusBadge status={row.status || 'new'} />
+                    </td>
+                    <td className="max-w-[9rem] truncate px-2 py-2.5" title={row.problem_seen}>
+                      {clip(row.problem_seen || '', 80)}
+                    </td>
+                    <td className="max-w-[10rem] truncate px-2 py-2.5" title={row.solution_text}>
+                      {clip(row.solution_text || row.personalized_message || '', 100)}
+                    </td>
+                    <td className="whitespace-nowrap px-2 py-2.5 text-xs">{row.connection_sent || '—'}</td>
+                    <td className="px-2 py-2.5 font-mono text-xs">{row.replied_yn || 'N'}</td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+      </section>
     </div>
   )
 }

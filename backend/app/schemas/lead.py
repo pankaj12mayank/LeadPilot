@@ -28,6 +28,15 @@ class LeadCreate(BaseModel):
     followup_message: str = ""
     last_contacted_at: str = ""
     follow_up_reminder_at: str = ""
+    agency_type: str = ""
+    problem_seen: str = ""
+    last_active_display: str = ""
+    connection_sent: str = ""
+    replied_yn: str = "N"
+    solution_text: str = ""
+    # Set on CSV re-import to preserve values; if omitted, ``create_lead`` computes from scoring engine.
+    score: Optional[float] = None
+    tier: Optional[str] = None
 
     @model_validator(mode="after")
     def require_contact_vector(self) -> "LeadCreate":
@@ -67,6 +76,12 @@ class LeadUpdate(BaseModel):
     followup_message: Optional[str] = None
     last_contacted_at: Optional[str] = None
     follow_up_reminder_at: Optional[str] = None
+    agency_type: Optional[str] = None
+    problem_seen: Optional[str] = None
+    last_active_display: Optional[str] = None
+    connection_sent: Optional[str] = None
+    replied_yn: Optional[str] = None
+    solution_text: Optional[str] = None
 
     @field_validator("status")
     @classmethod
@@ -110,6 +125,12 @@ class LeadResponse(BaseModel):
     follow_up_reminder_at: str = ""
     created_at: str = ""
     updated_at: str = ""
+    agency_type: str = ""
+    problem_seen: str = ""
+    last_active_display: str = ""
+    connection_sent: str = ""
+    replied_yn: str = "N"
+    solution_text: str = ""
 
     @classmethod
     def from_orm_lead(cls, lead: LeadORM) -> "LeadResponse":
@@ -136,6 +157,12 @@ class LeadResponse(BaseModel):
             follow_up_reminder_at=getattr(lead, "follow_up_reminder_at", "") or "",
             created_at=lead.created_at or "",
             updated_at=lead.updated_at or "",
+            agency_type=getattr(lead, "agency_type", "") or "",
+            problem_seen=getattr(lead, "problem_seen", "") or "",
+            last_active_display=getattr(lead, "last_active_display", "") or "",
+            connection_sent=getattr(lead, "connection_sent", "") or "",
+            replied_yn=getattr(lead, "replied_yn", "") or "N",
+            solution_text=getattr(lead, "solution_text", "") or "",
         )
 
 

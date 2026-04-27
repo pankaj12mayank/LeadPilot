@@ -48,7 +48,7 @@ UNLOCKED_MESSAGE = (
 
 # One output file — canonical column keys (header row = user-facing names in save function)
 # AI_BACKEND: ollama (default) | api | none
-# Ollama: http://127.0.0.1:11434 — use a strong general model, e.g. qwen2.5:7b, llama3.1:8b
+# Ollama: http://127.0.0.1:11434 — OLLAMA_MODEL or first available from ollama_model_presets
 DEFAULT_OLLAMA_MODEL = "qwen2.5:7b"
 DEFAULT_OPENAI_MODEL = "gpt-4o-mini"
 
@@ -501,13 +501,69 @@ def get_ai_backend() -> str:
     return "none"
 
 
+def _list_ollama_tag_names() -> set[str]:
+    try:
+        import httpx
+    except Exception:
+        return set()
+    base = (_env_str("OLLAMA_BASE_URL", "http://127.0.0.1:11434") or "").rstrip("/")
+    try:
+        with httpx.Client(timeout=8.0) as c:
+            r = c.get(f"{base}/api/tags")
+        if not r.is_success:
+            return set()
+        data = r.json() or {}
+        return {
+            str(m["name"])
+            for m in (data.get("models") or [])
+            if isinstance(m, dict) and m.get("name")
+        }
+    except Exception:
+        return set()
+
+
+def _tag_matches_available(names: set[str], model: str) -> bool:
+    if not model:
+        return False
+    if model in names:
+        return True
+    return any(model in n or n.startswith(model) for n in names)
+
+
+def resolve_effective_ollama_model() -> str:
+    """OLLAMA_MODEL, or first recommended model present in ``/api/tags``, else default."""
+    try:
+        from backend.ollama_model_presets import OLLAMA_RECOMMENDED_CHAT_MODELS
+    except Exception:
+        OLLAMA_RECOMMENDED_CHAT_MODELS = (DEFAULT_OLLAMA_MODEL, "llama3", "mistral")
+    override = _env_str("OLLAMA_MODEL", None)
+    extra = _env_str("OLLAMA_MODEL_CANDIDATES", None)
+    cands: list[str] = []
+    if override:
+        cands.append(override)
+    if extra:
+        cands.extend([x.strip() for x in extra.split(",") if x.strip()])
+    cands.extend(OLLAMA_RECOMMENDED_CHAT_MODELS)
+    names = _list_ollama_tag_names()
+    if not names:
+        return override or DEFAULT_OLLAMA_MODEL
+    seen: set[str] = set()
+    for m in cands:
+        if m in seen:
+            continue
+        seen.add(m)
+        if _tag_matches_available(names, m):
+            return m
+    return override or DEFAULT_OLLAMA_MODEL
+
+
 def ollama_chat(user_prompt: str, system_prompt: str | None = None) -> str | None:
     try:
         import httpx
     except Exception:
         return None
     base = (_env_str("OLLAMA_BASE_URL", "http://127.0.0.1:11434") or "").rstrip("/")
-    model = _env_str("OLLAMA_MODEL", DEFAULT_OLLAMA_MODEL) or DEFAULT_OLLAMA_MODEL
+    model = resolve_effective_ollama_model()
     messages: list[dict] = []
     if system_prompt:
         messages.append({"role": "system", "content": system_prompt})
@@ -670,13 +726,25 @@ def push_lead_to_backend(
         return False, str(e)
 
 
-# Public export header (single file). Solution column explains Ollama vs API switch.
-SOLUTION_HEADER = (
-    "Solution (AI: Ollama by default; switch to OpenAI: AI_BACKEND=api in .env)"
+# Excel column order for desktop LinkedIn capture (keep in sync with leadpilot export + CRM ingest)
+LI_CAPTURE_HEADERS: tuple[str, ...] = (
+    "Name",
+    "Company",
+    "Role",
+    "Profile Link",
+    "Agency Type (SEO / Ads / Creative)",
+    "Team Size (estimate)",
+    "Problem Seen",
+    "Last Active",
+    "Connection Sent (Date)",
+    "Replied (Y/N)",
+    "Status",
+    "Solution",
 )
 
 
 def _row_to_export(r: dict) -> dict:
+    st = (r.get("Status") or r.get("status") or "new").strip() or "new"
     return {
         "Name": (r.get("Name") or "").strip(),
         "Company": (r.get("Company") or "").strip(),
@@ -686,7 +754,10 @@ def _row_to_export(r: dict) -> dict:
         "Team Size (estimate)": (r.get("Team Size") or "").strip(),
         "Problem Seen": (r.get("Problem Seen") or "").strip(),
         "Last Active": (r.get("Last Active") or "N/A").strip(),
-        SOLUTION_HEADER: (r.get("Solution") or "").strip(),
+        "Connection Sent (Date)": (r.get("Connection Sent (Date)") or "").strip(),
+        "Replied (Y/N)": (r.get("Replied (Y/N)") or "N").strip() or "N",
+        "Status": st,
+        "Solution": (r.get("Solution") or "").strip(),
     }
 
 

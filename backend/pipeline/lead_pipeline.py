@@ -5,6 +5,7 @@ Does not use ``run_scrape_sync`` / platform registry; calls ``LinkedInScraper`` 
 
 from __future__ import annotations
 
+import json
 import os
 import uuid
 from dataclasses import dataclass, field
@@ -14,11 +15,13 @@ import pandas as pd
 
 import config as app_config
 from backend.lead_cleaning.engine import run_cleaning_pipeline, STANDARD_COLUMNS
-from backend.lead_scoring.engine import score_lead
+from backend.enrichment import WebsiteEnrichmentResult
+from backend.lead_scoring.enrichment_scoring import score_lead_enriched
 from backend.lead_scoring.tiers import tier_label
 from backend.modules.ai_generator.service import lead_dict_to_message_input
 from backend.ollama_messaging.generator import generate_lead_messages
 from backend.ollama_messaging.types import LeadMessageInput, LeadMessageOutput
+from backend.pipeline.lead_enrichment_bridge import enrich_lead_for_pipeline
 from backend.scraper.config import ScraperRunConfig, ScraperRunResult
 from backend.scraper.exceptions import SessionMissingError
 from backend.scraper.platforms.linkedin import LinkedInScraper
@@ -39,6 +42,8 @@ _ENRICHED_CSV_COLS: List[str] = [
     "location",
     "linkedin_url",
     "website",
+    "signals_json",
+    "suggested_emails",
     "score",
     "category",
     "company_summary",
@@ -56,6 +61,8 @@ _QUEUE_CSV_COLS: List[str] = [
     "company",
     "location",
     "linkedin_url",
+    "suggested_emails",
+    "signals_json",
     "message",
     "email_message",
     "followup_message",
@@ -132,7 +139,7 @@ def _enrich_lead_ollama_pack(lead: Dict[str, Any], model_family: str) -> LeadMes
     if not str(inp.get("opportunity_summary") or "").strip():
         inp = dict(inp)
         inp["opportunity_summary"] = str(lead.get("opportunity_insight") or lead.get("notes") or "")[:2000]
-    return generate_lead_messages(inp, model_family=model_family)
+    return generate_lead_messages(dict(inp), model_family=model_family)
 
 
 def run_linkedin_lead_pipeline(
@@ -238,13 +245,43 @@ def run_linkedin_lead_pipeline(
             continue
         if not _cell(lead.get("location")):
             lead["location"] = _cell(lead.get("filter_country") or lead.get("country"))
+        if not str(lead.get("source_platform") or "").strip():
+            lead["source_platform"] = "linkedin"
 
-        sig = score_lead(lead, benchmark_industry=industry or app_config.SCORING_BENCHMARK_INDUSTRY or None)
+        try:
+            _ws, signals, cands, op_sum, web_ok = enrich_lead_for_pipeline(lead)
+        except Exception:  # noqa: BLE001
+            logger.exception("enrich_lead_for_pipeline failed; using text-only fallbacks")
+            _ws, signals, cands, op_sum, web_ok = (
+                WebsiteEnrichmentResult(),
+                {
+                    "scaling": False,
+                    "hiring": False,
+                    "content_gap": True,
+                    "ads_gap": True,
+                },
+                [],
+                str(lead.get("notes") or lead.get("industry") or "")[:2000],
+                False,
+            )
+
+        lead["enrichment_opportunity"] = op_sum
+
+        oll = _enrich_lead_ollama_pack(lead, model_family=model_family)
+        pain = str(oll.get("pain_points") or "").strip()
+
+        sig = score_lead_enriched(
+            lead,
+            signals=signals,
+            pain_points=pain,
+            website_fetch_ok=web_ok,
+        )
         tier = str(sig.get("tier") or "cold")
         lead["opportunity_insight"] = str(sig.get("reason") or sig.get("explanation") or "")[:2000]
-        oll = _enrich_lead_ollama_pack(lead, model_family=model_family)
-
         name = str(lead.get("full_name") or "").strip()
+        sig_json = json.dumps(signals, ensure_ascii=False)
+        sug = ", ".join(cands) if cands else ""
+
         rec = {
             "name": name,
             "title": str(lead.get("title") or "").strip(),
@@ -252,6 +289,8 @@ def run_linkedin_lead_pipeline(
             "location": str(lead.get("location") or "").strip(),
             "linkedin_url": str(lead.get("linkedin_url") or "").strip(),
             "website": str(lead.get("company_website") or "").strip(),
+            "signals_json": sig_json,
+            "suggested_emails": sug,
             "score": float(sig.get("score") or 0),
             "category": tier_label(tier),
             "company_summary": str(oll.get("short_summary") or "").strip(),
@@ -270,6 +309,8 @@ def run_linkedin_lead_pipeline(
                 "company": str(lead.get("company_name") or "").strip(),
                 "location": str(lead.get("location") or "").strip(),
                 "linkedin_url": rec["linkedin_url"],
+                "suggested_emails": rec["suggested_emails"],
+                "signals_json": rec["signals_json"],
                 "message": rec["message"],
                 "email_message": rec["email_message"],
                 "followup_message": rec["followup_message"],

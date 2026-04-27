@@ -27,7 +27,12 @@ def lead_dict_to_message_input(lead: Dict[str, Any]) -> LeadMessageInput:
             lead.get("company_website") or lead.get("website") or ""
         ).strip(),
         "pain_points": str(lead.get("pain_points") or lead.get("notes") or "").strip(),
-        "opportunity_summary": str(lead.get("opportunity_summary") or "").strip(),
+        "opportunity_summary": str(
+            lead.get("enrichment_opportunity")
+            or lead.get("opportunity_summary")
+            or lead.get("opportunity_insight")
+            or ""
+        ).strip(),
     }
 
 

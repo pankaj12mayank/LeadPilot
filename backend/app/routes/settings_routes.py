@@ -12,6 +12,7 @@ import config
 from backend.app.api.deps import get_current_user
 from backend.app.schemas.settings import SettingsResponse, SettingsUpdate
 from backend.ollama_messaging.ollama_service import OllamaGenerateService
+from backend.ollama_model_presets import OLLAMA_RECOMMENDED_CHAT_MODELS
 from backend.services import external_llm_service, ollama_bootstrap, runtime_settings, settings_service
 
 router = APIRouter(prefix="/settings", tags=["settings"])
@@ -164,10 +165,11 @@ def test_ollama(
             "auto_started": auto_started,
         }
     names = _collect_model_names(data)
+    pull_log = ""
     if not _model_present(names, model):
-        ok_pull, pull_log = ollama_bootstrap.run_ollama_pull(model)
-        if ok_pull:
-            hints.append(f"Pulled model `{model}` successfully.")
+
+        def _refresh_names() -> None:
+            nonlocal data, names
             try:
                 with httpx.Client(timeout=httpx.Timeout(15.0)) as client:
                     r2 = client.get(tags_url)
@@ -177,19 +179,40 @@ def test_ollama(
                         data = raw2
                         names = _collect_model_names(data)
             except Exception as e:  # noqa: BLE001
+                raise RuntimeError(str(e)) from e
+
+        ok_pull, pull_log = ollama_bootstrap.run_ollama_pull(model)
+        if ok_pull:
+            hints.append(f"Pulled model `{model}` successfully.")
+            try:
+                _refresh_names()
+            except RuntimeError as e:
                 return {
                     "ok": False,
                     "detail": f"Pull reported success but could not re-read /api/tags: {e}",
                     "hints": hints,
                     "auto_started": auto_started,
                 }
-        else:
-            ph = [f"Run manually in a terminal: ollama pull {model}"]
-            if "not found" in pull_log.lower():
+        if not _model_present(names, model):
+            for alt in OLLAMA_RECOMMENDED_CHAT_MODELS:
+                if alt == model:
+                    continue
+                ok_a, _ = ollama_bootstrap.run_ollama_pull(alt)
+                if ok_a:
+                    model = alt
+                    hints.append(f"Using recommended model `{alt}` (pulled; primary was missing).")
+                    try:
+                        _refresh_names()
+                    except RuntimeError:
+                        pass
+                    break
+        if not _model_present(names, model):
+            ph = [f"Run: ollama pull {model}", f"Or: ollama pull {OLLAMA_RECOMMENDED_CHAT_MODELS[0]}"]
+            if "not found" in (pull_log or "").lower():
                 ph.extend(ollama_bootstrap.install_and_run_hints())
             return {
                 "ok": False,
-                "detail": f"Model '{model}' not listed by Ollama. Auto-pull failed: {pull_log}",
+                "detail": f"Model not available after auto-pull. Last: {pull_log or 'n/a'}",
                 "available_sample": sorted(names)[:12],
                 "hints": ph,
                 "auto_started": auto_started,

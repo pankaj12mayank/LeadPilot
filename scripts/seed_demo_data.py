@@ -72,7 +72,7 @@ def main() -> None:
                 "source_platform": "upwork",
                 "industry": "Consulting",
                 "location": "Remote",
-                "status": "contacted",
+                "status": "message_sent",
             },
         ]
         for row in samples:

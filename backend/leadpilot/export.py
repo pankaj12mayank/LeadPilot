@@ -13,24 +13,30 @@ log = get_logger("leadpilot.export")
 def _flatten(row: dict[str, Any]) -> dict[str, Any]:
     return {
         "Name": row.get("Name", ""),
-        "Role": row.get("Role", ""),
         "Company": row.get("Company", ""),
-        "LinkedIn URL": row.get("Profile Link", "") or row.get("linkedin_url", ""),
+        "Role": row.get("Role", ""),
+        "Profile Link": row.get("Profile Link", "") or row.get("linkedin_url", ""),
+        "Agency Type (SEO / Ads / Creative)": row.get("Agency Type", "")
+        or row.get("agency_type", ""),
+        "Team Size (estimate)": row.get("Team Size", "")
+        or row.get("team_size", ""),
+        "Problem Seen": row.get("problems_refined") or row.get("Problem Seen", ""),
+        "Last Active": row.get("Last Active", "N/A"),
+        "Connection Sent (Date)": row.get("Connection Sent (Date)", "")
+        or row.get("connection_sent", ""),
+        "Replied (Y/N)": row.get("Replied (Y/N)", "") or row.get("replied_yn", "N"),
+        "Status": row.get("Status", "") or row.get("status", "new"),
+        "Solution": row.get("Solution", "") or row.get("solution_text", ""),
         "Work Email": row.get("work_email", ""),
         "Company Domain": row.get("company_domain", ""),
         "Industry": row.get("industry", ""),
-        "Team Size (LinkedIn)": row.get("Team Size", ""),
         "Employee Count (validated)": row.get("employee_count", ""),
         "Revenue": row.get("revenue", ""),
-        "Problems (AI refined)": row.get("problems_refined")
-        or row.get("Problem Seen", ""),
         "Lead Score": row.get("lead_score", ""),
         "Priority": row.get("priority", ""),
         "Enrichment Status": row.get("enrichment_status", ""),
         "Enrichment Source": row.get("enrichment_source", ""),
         "Scoring Notes": row.get("scoring_reasoning", ""),
-        "Solution (original)": row.get("Solution", ""),
-        "Last Active": row.get("Last Active", "N/A"),
     }
 
 

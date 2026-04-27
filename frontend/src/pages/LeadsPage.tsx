@@ -6,8 +6,18 @@ import {
   type PaginationState,
   type RowSelectionState,
 } from '@tanstack/react-table'
-import { ChevronLeft, ChevronRight, Download, Loader2, Search, Sparkles, Trash2 } from 'lucide-react'
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import {
+  ChevronLeft,
+  ChevronRight,
+  Download,
+  FileDown,
+  Loader2,
+  Search,
+  Sparkles,
+  Trash2,
+  Upload,
+} from 'lucide-react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { toast } from 'sonner'
 import { useShallow } from 'zustand/react/shallow'
 
@@ -16,8 +26,10 @@ import { FilterSelect } from '@/components/ui/FilterSelect'
 import { Modal } from '@/components/ui/Modal'
 import {
   bulkDeleteLeads,
+  downloadLeadsCsvTemplate,
   exportLeadsCsv,
   fetchLeads,
+  importLeadsCsv,
   getLead,
   getLeadEmailHistory,
   getLeadHistory,
@@ -38,15 +50,14 @@ import type { Lead } from '@/types/models'
 
 const LEAD_STATUSES = [
   'new',
-  'contacted',
-  'replied',
-  'follow_up_sent',
-  'meeting_scheduled',
-  'deal_discussion',
-  'closed',
-  'rejected',
-  'ready',
-  'converted',
+  'request_sent',
+  'message_sent',
+  'replied_got',
+  'on_discussion',
+  'interested',
+  'deal',
+  'close',
+  'not_interested',
 ] as const
 
 const PIPELINE_STATUS_SELECT_OPTIONS = LEAD_STATUSES.map((s) => ({
@@ -205,6 +216,8 @@ export function LeadsPage() {
   const [pages, setPages] = useState(0)
   const [loading, setLoading] = useState(true)
   const [exportBusy, setExportBusy] = useState(false)
+  const [importBusy, setImportBusy] = useState(false)
+  const importFileRef = useRef<HTMLInputElement>(null)
   const [modalLead, setModalLead] = useState<Lead | null>(null)
   const [timeline, setTimeline] = useState<TimelineRow[]>([])
   const [notesDraft, setNotesDraft] = useState('')
@@ -398,6 +411,52 @@ export function LeadsPage() {
           />
         ),
       }),
+      columnHelper.accessor('title', {
+        header: 'Role',
+        cell: (i) => (
+          <span className="max-w-[10rem] truncate text-sm text-ink-muted" title={String(i.getValue() || '')}>
+            {(i.getValue() as string) || '—'}
+          </span>
+        ),
+      }),
+      columnHelper.accessor('agency_type', {
+        header: 'Agency',
+        cell: (i) => (
+          <span className="max-w-[5rem] truncate text-xs text-ink-muted" title={String(i.getValue() || '')}>
+            {(i.getValue() as string) || '—'}
+          </span>
+        ),
+      }),
+      columnHelper.accessor('problem_seen', {
+        header: 'Problem',
+        cell: (i) => {
+          const t = String(i.getValue() || '')
+          return (
+            <span className="max-w-[8rem] truncate text-xs text-ink-subtle" title={t}>
+              {t || '—'}
+            </span>
+          )
+        },
+      }),
+      columnHelper.accessor('solution_text', {
+        header: 'Solution',
+        cell: (i) => {
+          const t = String(i.getValue() || '')
+          return (
+            <span className="max-w-[9rem] truncate text-xs text-ink-subtle" title={t}>
+              {t || '—'}
+            </span>
+          )
+        },
+      }),
+      columnHelper.accessor('connection_sent', {
+        header: 'Conn. sent',
+        cell: (i) => <span className="text-xs text-ink-subtle">{String(i.getValue() || '') || '—'}</span>,
+      }),
+      columnHelper.accessor('replied_yn', {
+        header: 'Replied',
+        cell: (i) => <span className="tabular-nums text-xs font-medium text-ink">{String(i.getValue() || 'N')}</span>,
+      }),
       columnHelper.accessor('source_platform', {
         header: 'Lead source',
         cell: (i) => (
@@ -427,7 +486,7 @@ export function LeadsPage() {
           return (
             <FilterSelect
               size="sm"
-              className="w-full min-w-[140px] max-w-[220px]"
+              className="w-full min-w-[10rem] max-w-[14rem]"
               buttonClassName={cn(
                 'rounded-full border font-medium shadow-none ring-0 hover:ring-1 hover:ring-amber-500/20',
                 statusBadgeClass(st),
@@ -558,6 +617,49 @@ export function LeadsPage() {
       toast.error('Export failed')
     } finally {
       setExportBusy(false)
+    }
+  }
+
+  async function onDownloadTemplate() {
+    setImportBusy(true)
+    try {
+      await downloadLeadsCsvTemplate()
+      toast.success('Sample CSV template downloaded (same headers as export)')
+    } catch {
+      toast.error('Could not download template')
+    } finally {
+      setImportBusy(false)
+    }
+  }
+
+  function onOpenImport() {
+    importFileRef.current?.click()
+  }
+
+  async function onImportFilePicked(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    e.target.value = ''
+    if (!file) return
+    setImportBusy(true)
+    try {
+      const r = await importLeadsCsv(file)
+      if (r.errors?.length) {
+        const msg =
+          r.errors.length <= 4 ? r.errors.join(' · ') : `${r.errors.length} notes (first: ${r.errors[0]})`
+        if (r.created) toast.message(msg, { description: 'Some rows were skipped' })
+        else toast.warning(msg)
+      }
+      if (r.created) {
+        toast.success(`Imported ${r.created} lead(s)`)
+        await load()
+        setRowSelection({})
+      } else if (!r.errors?.length) {
+        toast.message('No rows imported (file was empty or no valid rows)')
+      }
+    } catch (err) {
+      toast.error(getApiErrorMessage(err, 'Import failed'))
+    } finally {
+      setImportBusy(false)
     }
   }
 
@@ -701,6 +803,36 @@ export function LeadsPage() {
         </div>
 
         <div className="mt-4 flex flex-wrap gap-2 border-t border-surface-border pt-4">
+          <input
+            ref={importFileRef}
+            type="file"
+            accept=".csv,text/csv"
+            className="hidden"
+            onChange={(e) => void onImportFilePicked(e)}
+            aria-label="Import leads from CSV"
+          />
+          <button
+            type="button"
+            onClick={() => void onDownloadTemplate()}
+            disabled={importBusy}
+            className="inline-flex items-center gap-2 rounded-xl border border-surface-border bg-field/50 px-4 py-2.5 text-sm font-medium text-ink-muted transition hover:border-amber-500/20 hover:text-ink disabled:opacity-50"
+          >
+            <FileDown className="h-4 w-4" aria-hidden />
+            CSV sample
+          </button>
+          <button
+            type="button"
+            onClick={onOpenImport}
+            disabled={importBusy}
+            className="inline-flex items-center gap-2 rounded-xl border border-surface-border px-4 py-2.5 text-sm font-medium text-ink-muted transition hover:border-emerald-500/30 hover:text-ink disabled:opacity-50"
+          >
+            {importBusy ? (
+              <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+            ) : (
+              <Upload className="h-4 w-4" aria-hidden />
+            )}
+            Import CSV
+          </button>
           <button
             type="button"
             onClick={() => void onExportFiltered()}

@@ -1,1 +1,1 @@
-"""One module per supported platform (extends ``BaseScraper``)."""
+"""Platform scraper implementations (``BaseScraper`` subclasses), registered in ``registry``."""

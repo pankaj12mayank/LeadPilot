@@ -15,7 +15,7 @@ from pathlib import Path
 
 from .scraper_core import (
     DEFAULT_OLLAMA_MODEL,
-    SOLUTION_HEADER,
+    LI_CAPTURE_HEADERS,
     env_attach_existing_chrome,
     env_remote_debug_port,
     get_ai_backend,
@@ -277,6 +277,9 @@ def _check_output_path(script_dir: str, leads_file: str) -> bool:
                 "Team Size": "",
                 "Problem Seen": "—",
                 "Last Active": "N/A",
+                "Connection Sent (Date)": "",
+                "Replied (Y/N)": "N",
+                "Status": "new",
                 "Solution": "—",
             }
         ]
@@ -374,12 +377,23 @@ def run_verification() -> bool:
     if not _check_output_path(repo, leads):
         return False
 
+    print("\n4b) LinkedIn session cache (cookies stay in Chrome profile; this file stores last good run time)", flush=True)
+    try:
+        from .linkedin_session_cache import get_linkedin_session_info
+
+        i = get_linkedin_session_info()
+        if not i.has_cache or i.within_policy:
+            _ok(i.message)
+        else:
+            _warn(i.message)
+    except Exception as e:  # noqa: BLE001
+        _warn(f"session cache: {e!s}")
+
     print("\n5) Optional API push (LNN_*)", flush=True)
     if not _check_remote_api_push():
         return False
 
-    sh = SOLUTION_HEADER[:50] + "..." if len(SOLUTION_HEADER) > 50 else SOLUTION_HEADER
-    _ok(f"export column for Solution: {sh}")
+    _ok(f"Excel columns ({len(LI_CAPTURE_HEADERS)}): " + ", ".join(LI_CAPTURE_HEADERS[:4]) + ", …")
     print("\n========== PREFLIGHT OK ==========\n", flush=True)
     return True
 

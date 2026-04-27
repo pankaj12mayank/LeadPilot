@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import math
 import uuid
 from typing import Any, Dict, List, Optional
 
@@ -9,7 +10,9 @@ from sqlalchemy import String, Text, delete, func, or_, select
 from sqlalchemy.orm import Session
 
 from database.orm.models import Lead
+from backend.services.lead_statuses import assert_status_writable, normalize_status
 from backend.services.platform_service import normalize_platform
+from backend.lead_scoring.tiers import assign_tier
 from backend.services.scoring_service import score
 from backend.settings.lead_schema import utc_now_iso
 
@@ -63,6 +66,12 @@ def lead_to_response_dict(lead: Lead) -> Dict[str, Any]:
         "follow_up_reminder_at": getattr(lead, "follow_up_reminder_at", "") or "",
         "created_at": lead.created_at,
         "updated_at": lead.updated_at,
+        "agency_type": getattr(lead, "agency_type", "") or "",
+        "problem_seen": getattr(lead, "problem_seen", "") or "",
+        "last_active_display": getattr(lead, "last_active_display", "") or "",
+        "connection_sent": getattr(lead, "connection_sent", "") or "",
+        "replied_yn": getattr(lead, "replied_yn", "") or "N",
+        "solution_text": getattr(lead, "solution_text", "") or "",
     }
 
 
@@ -264,6 +273,10 @@ def ingest_leadpilot_v3_scored_rows(
         if r.get("enrichment_status"):
             parts.append("Enrichment: " + str(r.get("enrichment_status"))[:500])
         notes = "\n\n".join(parts)[:7900]
+        st = normalize_status(str(r.get("Status") or r.get("status") or "new"))
+        rep = (str(r.get("Replied (Y/N)") or r.get("replied_yn") or "N").strip() or "N")[:8].upper()
+        if rep not in ("Y", "N"):
+            rep = "N"
         lead = Lead(
             id=str(uuid.uuid4()),
             full_name=name,
@@ -280,17 +293,46 @@ def ingest_leadpilot_v3_scored_rows(
             notes=notes,
             score=sc,
             tier=tier,
-            status="new",
+            status=st,
             personalized_message="",
             followup_message="",
             last_contacted_at="",
             follow_up_reminder_at="",
             created_at=now,
             updated_at=now,
+            agency_type=(str(r.get("Agency Type") or r.get("agency_type") or ""))[:128],
+            problem_seen=str(r.get("Problem Seen") or r.get("problem_seen") or "")[:12000],
+            last_active_display=(str(r.get("Last Active") or r.get("last_active_display") or ""))[:255],
+            connection_sent=(str(r.get("Connection Sent (Date)") or r.get("connection_sent") or ""))[:128],
+            replied_yn=rep,
+            solution_text=str(r.get("Solution") or r.get("solution_text") or "")[:12000],
         )
         db.add(lead)
         created += 1
     return {"ingested_leads": created, "skipped": skipped}
+
+
+def _score_override_from_row(row: Dict[str, Any]) -> tuple[float, str] | None:
+    """If CSV/API provided numeric score, use it and optional tier; else recompute with ``score()``."""
+    raw = row.get("score")
+    if raw is None or (isinstance(raw, float) and (math.isnan(raw) or math.isinf(raw))):
+        return None
+    s = str(raw).strip()
+    if not s or s.lower() == "nan":
+        return None
+    try:
+        fs = float(raw)
+    except (TypeError, ValueError):
+        return None
+    if fs < 0 or fs > 100:
+        return None
+    t_raw = row.get("tier")
+    tr = str(t_raw or "").strip().lower()
+    if tr in ("hot", "warm", "cold"):
+        tier = tr
+    else:
+        tier = assign_tier(fs)
+    return (fs, tier)
 
 
 def create_lead(db: Session, data: Dict[str, Any]) -> Lead:
@@ -298,7 +340,13 @@ def create_lead(db: Session, data: Dict[str, Any]) -> Lead:
     now = utc_now_iso()
     row = {**data}
     row["source_platform"] = normalize_platform(str(row.get("source_platform") or ""))
-    sc = score(_score_input_from_dict(row))
+    override = _score_override_from_row(row)
+    if override is not None:
+        fs, tr = override
+    else:
+        sc = score(_score_input_from_dict(row))
+        fs = float(sc.get("score") or 0)
+        tr = str(sc.get("tier") or "")
     lead = Lead(
         id=lid,
         full_name=str(row.get("full_name") or "").strip(),
@@ -313,15 +361,21 @@ def create_lead(db: Session, data: Dict[str, Any]) -> Lead:
         location=str(row.get("location") or ""),
         source_platform=str(row.get("source_platform") or ""),
         notes=str(row.get("notes") or ""),
-        score=float(sc.get("score") or 0),
-        tier=str(sc.get("tier") or ""),
-        status=str(row.get("status") or "new") or "new",
+        score=fs,
+        tier=tr,
+        status=assert_status_writable(str(row.get("status") or "new") or "new"),
         personalized_message=str(row.get("personalized_message") or ""),
         followup_message=str(row.get("followup_message") or ""),
         last_contacted_at=str(row.get("last_contacted_at") or ""),
         follow_up_reminder_at=str(row.get("follow_up_reminder_at") or ""),
         created_at=now,
         updated_at=now,
+        agency_type=str(row.get("agency_type") or "")[:128],
+        problem_seen=str(row.get("problem_seen") or "")[:12000],
+        last_active_display=str(row.get("last_active_display") or "")[:255],
+        connection_sent=str(row.get("connection_sent") or "")[:128],
+        replied_yn="Y" if str(row.get("replied_yn") or "N").strip().upper().startswith("Y") else "N",
+        solution_text=str(row.get("solution_text") or "")[:12000],
     )
     db.add(lead)
     db.flush()

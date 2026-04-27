@@ -697,3 +697,40 @@ sqlite3.OperationalError: database is locked
 2026-04-27 16:47:43,491 | INFO | leadpilot.startup | Lead storage initialized (STORAGE_MODE=csv).
 2026-04-27 16:47:43,491 | INFO | leadpilot.startup | LeadPilot API — ready to accept requests.
 2026-04-27 16:56:07,970 | INFO | leadpilot.startup | LeadPilot API — shutdown.
+2026-04-27 18:00:17,073 | INFO | leadpilot.startup | LeadPilot API — startup beginning.
+2026-04-27 18:00:17,074 | INFO | leadpilot.startup | python-dotenv: loaded .env from repository root (see config.py).
+2026-04-27 18:00:17,075 | INFO | leadpilot.startup | Runtime directories ready (exports, sessions, logs, DB parents, branding).
+2026-04-27 18:00:17,077 | INFO | leadpilot.startup | Meta SQLite schema OK (database/api_meta.db).
+2026-04-27 18:00:17,093 | INFO | leadpilot.startup | SQLAlchemy tables OK (ORM / leads schema).
+2026-04-27 18:00:17,093 | INFO | leadpilot.startup | Lead storage initialized (STORAGE_MODE=csv).
+2026-04-27 18:00:17,093 | INFO | leadpilot.startup | LeadPilot API — ready to accept requests.
+2026-04-27 18:00:32,095 | WARNING | backend.app.middleware.error_handlers | POST /api/admin/login -> HTTP 401: Invalid admin email or password
+2026-04-27 18:01:21,664 | WARNING | backend.app.middleware.error_handlers | POST /api/auth/login -> HTTP 401: Incorrect email or password
+2026-04-27 18:01:21,673 | WARNING | backend.app.middleware.error_handlers | POST /api/admin/login -> HTTP 401: Invalid admin email or password
+2026-04-27 18:01:27,466 | WARNING | backend.app.middleware.error_handlers | POST /api/auth/login -> HTTP 401: Incorrect email or password
+2026-04-27 18:01:42,770 | WARNING | backend.app.middleware.error_handlers | POST /api/admin/login -> HTTP 401: Invalid admin email or password
+2026-04-27 18:09:23,488 | INFO | leadpilot.startup | LeadPilot API — shutdown.
+2026-04-27 18:17:04,681 | INFO | leadpilot.startup | LeadPilot API — startup beginning.
+2026-04-27 18:17:04,681 | INFO | leadpilot.startup | python-dotenv: loaded .env from repository root (see config.py).
+2026-04-27 18:17:04,682 | INFO | leadpilot.startup | Runtime directories ready (exports, sessions, logs, DB parents, branding).
+2026-04-27 18:17:04,685 | INFO | leadpilot.startup | Meta SQLite schema OK (database/api_meta.db).
+2026-04-27 18:17:04,702 | INFO | leadpilot.startup | SQLAlchemy tables OK (ORM / leads schema).
+2026-04-27 18:17:04,703 | INFO | leadpilot.startup | Lead storage initialized (STORAGE_MODE=csv).
+2026-04-27 18:17:04,703 | INFO | leadpilot.startup | LeadPilot API — ready to accept requests.
+2026-04-27 18:19:55,898 | INFO | leadpilot.startup | LeadPilot API — shutdown.
+2026-04-27 18:25:41,361 | INFO | leadpilot.startup | LeadPilot API — startup beginning.
+2026-04-27 18:25:41,361 | INFO | leadpilot.startup | python-dotenv: loaded .env from repository root (see config.py).
+2026-04-27 18:25:41,362 | INFO | leadpilot.startup | Runtime directories ready (exports, sessions, logs, DB parents, branding).
+2026-04-27 18:25:41,365 | INFO | leadpilot.startup | Meta SQLite schema OK (database/api_meta.db).
+2026-04-27 18:25:41,380 | INFO | leadpilot.startup | SQLAlchemy tables OK (ORM / leads schema).
+2026-04-27 18:25:41,380 | INFO | leadpilot.startup | Lead storage initialized (STORAGE_MODE=csv).
+2026-04-27 18:25:41,380 | INFO | leadpilot.startup | LeadPilot API — ready to accept requests.
+2026-04-27 18:28:41,405 | INFO | leadpilot.startup | LeadPilot API — shutdown.
+2026-04-27 18:55:12,320 | INFO | leadpilot.startup | LeadPilot API — startup beginning.
+2026-04-27 18:55:12,320 | INFO | leadpilot.startup | python-dotenv: loaded .env from repository root (see config.py).
+2026-04-27 18:55:12,322 | INFO | leadpilot.startup | Runtime directories ready (exports, sessions, logs, DB parents, branding).
+2026-04-27 18:55:12,327 | INFO | leadpilot.startup | Meta SQLite schema OK (database/api_meta.db).
+2026-04-27 18:55:12,351 | INFO | leadpilot.startup | SQLAlchemy tables OK (ORM / leads schema).
+2026-04-27 18:55:12,352 | INFO | leadpilot.startup | Lead storage initialized (STORAGE_MODE=csv).
+2026-04-27 18:55:12,352 | INFO | leadpilot.startup | LeadPilot API — ready to accept requests.
+2026-04-27 18:59:11,687 | INFO | leadpilot.startup | LeadPilot API — shutdown.

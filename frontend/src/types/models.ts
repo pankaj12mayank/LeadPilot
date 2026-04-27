@@ -21,6 +21,12 @@ export type Lead = {
   follow_up_reminder_at: string
   created_at: string
   updated_at: string
+  agency_type?: string
+  problem_seen?: string
+  last_active_display?: string
+  connection_sent?: string
+  replied_yn?: string
+  solution_text?: string
 }
 
 export type User = {
@@ -67,18 +73,6 @@ export type DashboardData = {
   /** Aggregated server-side for charts (avoids loading all leads on the client). */
   leads_by_month?: DashboardMonthPoint[]
   tier_mix_by_platform?: DashboardTierMixRow[]
-}
-
-export type PlatformRow = {
-  platform_id: number | null
-  slug: string
-  label: string
-  active: boolean
-  builtin: boolean
-  created_at: string | null
-  login_url?: string | null
-  session_profile?: boolean
-  session_connected?: boolean
 }
 
 export type AppSettings = Record<string, unknown>
