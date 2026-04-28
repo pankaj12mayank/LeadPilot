@@ -338,3 +338,209 @@ def test_weekly_engine_api(client):
     body = r.json()
     assert body["day"] == "mon"
     assert "result" in body
+    assert "job_log" in body
+    assert body["job_log"]["job_type"] == "weekly_mon"
+    assert "records_processed" in body["job_log"]
+    assert "errors" in body["job_log"]
+    assert "retry_next_scheduled_run" in body["job_log"]
+
+
+def test_daily_auto_job_api(client):
+    from unittest.mock import patch
+
+    token = _token(client)
+    hdr = {"Authorization": f"Bearer {token}"}
+    with patch(
+        "backend.services.company_weekly_engine.company_ingestion_service.collect_companies_from_source_pages",
+        return_value=([], {"pages_ok": 0, "pages_failed": 0, "candidates": 0}),
+    ), patch(
+        "backend.services.company_weekly_engine.company_enrichment_service.enrich_companies_batch",
+        return_value={"selected": 0, "ok": 0, "failed": 0, "skipped": 0},
+    ):
+        r = client.post(
+            _api("/companies/daily-auto/run"),
+            headers=hdr,
+            json={"keyword": "software", "location": "", "batch_size": 10, "delay_seconds": 0.2},
+        )
+    assert r.status_code == 200, r.text
+    body = r.json()
+    assert "tasks" in body
+    assert any(x.get("task_name") == "public_ingestion" for x in body["tasks"])
+    assert any(x.get("task_name") == "scoring" for x in body["tasks"])
+    assert "continuous_refresh" in body
+    assert "retry_queue_count" in body["continuous_refresh"]
+    assert "job_log" in body
+    assert body["job_log"]["job_type"] == "daily_auto_job"
+    assert "retry_next_scheduled_run" in body["job_log"]
+
+
+def test_weekly_engine_friday_heavy_job(client):
+    from unittest.mock import patch
+
+    token = _token(client)
+    hdr = {"Authorization": f"Bearer {token}"}
+    with patch(
+        "backend.services.company_weekly_engine.company_enrichment_service.enrich_companies_batch",
+        return_value={"selected": 0, "ok": 0, "failed": 0, "skipped": 0},
+    ):
+        r = client.post(
+            _api("/companies/weekly-engine/run"),
+            headers=hdr,
+            json={"day": "fri", "keyword": "software", "location": ""},
+        )
+    assert r.status_code == 200, r.text
+    body = r.json()
+    assert body["day"] == "fri"
+    result = body["result"]
+    assert result["schedule_label"] == "Weekly Heavy Refresh"
+    assert "normalization" in result
+    assert "dedupe" in result
+    assert "refresh" in result
+
+
+def test_weekly_engine_saturday_linkedin_expansion_creates_leads(client):
+    from unittest.mock import patch
+
+    token = _token(client)
+    hdr = {"Authorization": f"Bearer {token}"}
+    seed = client.post(
+        _api("/companies/ingest"),
+        headers=hdr,
+        json={"source": "manual", "companies": [{"company_name": "SatCo", "website": "https://satco.ai"}]},
+    )
+    assert seed.status_code == 200, seed.text
+    listed = client.get(_api("/companies"), headers=hdr)
+    assert listed.status_code == 200, listed.text
+    row = next((x for x in listed.json() if x.get("domain") == "satco.ai"), None)
+    assert row is not None
+    cid = int(row["id"])
+
+    from backend.enrichment.website import WebsiteEnrichmentResult
+
+    fake = WebsiteEnrichmentResult(
+        url="https://satco.ai",
+        final_url="https://satco.ai/",
+        ok=True,
+        has_blog=False,
+        is_hiring=True,
+        text_sample="SatCo is hiring and scaling rapidly.",
+    )
+    with patch("backend.services.company_enrichment_service.fetch_website_enrichment", return_value=fake):
+        enr = client.post(_api("/companies/enrich"), headers=hdr, json={"limit": 20})
+    assert enr.status_code == 200, enr.text
+
+    with patch(
+        "backend.services.company_weekly_engine.session_info_dict",
+        return_value={"has_cache": True, "within_policy": True, "policy_days": 7},
+    ):
+        r = client.post(
+            _api("/companies/weekly-engine/run"),
+            headers=hdr,
+            json={
+                "day": "sat",
+                "saturday_min_score": 0,
+                "saturday_limit": 25,
+                "saturday_manual_profiles": [
+                    {
+                        "company_id": cid,
+                        "name": "Ravi Kumar",
+                        "role": "Founder",
+                        "profile_link": "https://www.linkedin.com/in/ravi-kumar-satco",
+                    }
+                ],
+            },
+        )
+    assert r.status_code == 200, r.text
+    body = r.json()
+    assert body["day"] == "sat"
+    assert body["result"]["paused"] is False
+    assert body["result"]["conversion"]["created"] >= 1
+
+
+def test_weekly_engine_sunday_report_includes_weekly_insights(client):
+    token = _token(client)
+    hdr = {"Authorization": f"Bearer {token}"}
+    r = client.post(
+        _api("/companies/weekly-engine/run"),
+        headers=hdr,
+        json={"day": "sun"},
+    )
+    assert r.status_code == 200, r.text
+    body = r.json()
+    assert body["day"] == "sun"
+    result = body["result"]
+    assert "total_companies" in result
+    assert "total_leads" in result
+    assert "hot_leads" in result
+    assert "report_file" in result
+
+
+def test_scheduler_entrypoint_runs_by_job_type(client):
+    from unittest.mock import patch
+
+    token = _token(client)
+    hdr = {"Authorization": f"Bearer {token}"}
+    with patch(
+        "backend.services.company_weekly_engine.run_scheduled_job",
+        return_value={"job_type": "daily_auto", "result": {"ok": True}},
+    ) as mocked:
+        r = client.post(
+            _api("/companies/scheduler/run"),
+            headers=hdr,
+            json={"job_type": "daily_auto"},
+        )
+    assert r.status_code == 200, r.text
+    body = r.json()
+    assert body["job_type"] == "daily_auto"
+    assert body["result"]["ok"] is True
+    mocked.assert_called_once()
+
+
+def test_scheduler_entrypoint_pauses_login_required_when_session_expired(client):
+    from unittest.mock import patch
+
+    token = _token(client)
+    hdr = {"Authorization": f"Bearer {token}"}
+    with patch(
+        "backend.services.company_weekly_engine.session_info_dict",
+        return_value={"has_cache": True, "within_policy": False, "policy_days": 7},
+    ), patch(
+        "backend.services.company_weekly_engine.run_weekly_engine",
+    ) as weekly_mock:
+        r = client.post(
+            _api("/companies/scheduler/run"),
+            headers=hdr,
+            json={"job_type": "saturday_linkedin"},
+        )
+    assert r.status_code == 200, r.text
+    body = r.json()
+    assert body["job_type"] == "saturday_linkedin"
+    assert body["session_gate"]["paused"] is True
+    assert body["result"]["paused"] is True
+    assert body["result"]["requires_manual_login"] is True
+    weekly_mock.assert_not_called()
+
+
+def test_scheduler_entrypoint_skips_session_check_for_non_login_job(client):
+    from unittest.mock import patch
+
+    token = _token(client)
+    hdr = {"Authorization": f"Bearer {token}"}
+    with patch(
+        "backend.services.company_weekly_engine.session_info_dict",
+        side_effect=AssertionError("session check should not run for non-login jobs"),
+    ), patch(
+        "backend.services.company_weekly_engine.run_daily_auto_job",
+        return_value={"ok": True},
+    ) as daily_mock:
+        r = client.post(
+            _api("/companies/scheduler/run"),
+            headers=hdr,
+            json={"job_type": "daily_auto"},
+        )
+    assert r.status_code == 200, r.text
+    body = r.json()
+    assert body["job_type"] == "daily_auto"
+    assert body["session_gate"]["checked"] is False
+    assert body["result"]["ok"] is True
+    daily_mock.assert_called_once()

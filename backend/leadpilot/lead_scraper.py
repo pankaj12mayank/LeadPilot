@@ -264,6 +264,42 @@ def _wait_to_start_lead_capture(driver: object) -> None:
         pass
 
 
+def _enforce_session_validity_gate() -> None:
+    """
+    Global LinkedIn session control:
+    - check session_created_at age at run start
+    - if expired/missing, pause execution for manual login
+    - refresh local session timestamp after user confirms
+    """
+    info = get_linkedin_session_info()
+    if info.within_policy:
+        return
+    wait_s = float((_env_str("LEADPILOT_SESSION_REFRESH_WAIT_SECONDS", "90") or "90").strip() or "90")
+    wait_s = max(10.0, min(wait_s, 900.0))
+    print(
+        "\n"
+        "  [session gate] LinkedIn session is expired or missing.\n"
+        "  [session gate] Execution paused. Complete manual login in Chrome, then continue.\n"
+        "  [session gate] Credentials are never stored by this system.\n",
+        flush=True,
+    )
+    if sys.stdin.isatty():
+        print("  [session gate] Press Enter after manual login succeeds.\n", flush=True)
+        try:
+            input()
+        except EOFError:
+            time.sleep(wait_s)
+    else:
+        print(
+            f"  [session gate] Non-interactive run: waiting {int(wait_s)}s for manual login before continue.\n",
+            flush=True,
+        )
+        time.sleep(wait_s)
+    touch_linkedin_session_ok()
+    after = get_linkedin_session_info()
+    print(f"  [session gate] Session timestamp refreshed. {after.message}\n", flush=True)
+
+
 def cdp_anti_det(driver: object) -> None:
     if not env_attach_existing_chrome():
         try:
@@ -470,6 +506,7 @@ def collect_linkedin_leads(
             driver.get(init)
     cdp_anti_det(driver)
     print_session_status_at_start()
+    _enforce_session_validity_gate()
 
     delay_s = float((_env_str("LEADPILOT_READY_DELAY_SECONDS", "12") or "12").strip() or "12")
     delay_s = max(2.0, min(delay_s, 120.0))

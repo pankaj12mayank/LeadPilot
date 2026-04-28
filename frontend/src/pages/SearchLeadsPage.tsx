@@ -1,10 +1,16 @@
-import { Loader2, RefreshCw } from 'lucide-react'
+import { AlertTriangle, Loader2, RefreshCw } from 'lucide-react'
 import { useCallback, useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 
 import { SeleniumLeadpilotPanel } from '@/components/scraper/SeleniumLeadpilotPanel'
 import { StatusBadge } from '@/components/ui/Badge'
-import { explorerSearchCompanies, type ExplorerCompany } from '@/lib/api/companies'
+import {
+  checkLinkedinSession,
+  explorerSearchCompanies,
+  runScheduledJob,
+  type ExplorerCompany,
+  type LinkedinSessionCheckResponse,
+} from '@/lib/api/companies'
 import { getApiErrorMessage } from '@/lib/api/client'
 import { fetchLeads } from '@/lib/api/leads'
 import { useModeStore } from '@/store/modeStore'
@@ -30,9 +36,15 @@ export function SearchLeadsPage() {
   const [explorerErr, setExplorerErr] = useState<string | null>(null)
   const [explorerRows, setExplorerRows] = useState<ExplorerCompany[]>([])
   const [explorerInfo, setExplorerInfo] = useState<string>('')
+  const [sessionBusy, setSessionBusy] = useState(false)
+  const [linkedinRunBusy, setLinkedinRunBusy] = useState(false)
+  const [sessionStatus, setSessionStatus] = useState<LinkedinSessionCheckResponse | null>(null)
+  const [linkedinJobMsg, setLinkedinJobMsg] = useState<string>('')
+  const [linkedinCandidates, setLinkedinCandidates] = useState(0)
   const mode = useModeStore((s) => s.mode)
   const setMode = useModeStore((s) => s.setMode)
   const hydrateMode = useModeStore((s) => s.hydrate)
+  const isSaturday = new Date().getDay() === 6
 
   const loadRecent = useCallback(async () => {
     try {
@@ -52,6 +64,22 @@ export function SearchLeadsPage() {
   useEffect(() => {
     void loadRecent()
   }, [loadRecent])
+
+  useEffect(() => {
+    if (mode !== 'linkedin') return
+    if (!isSaturday) return
+    void (async () => {
+      try {
+        setSessionBusy(true)
+        const s = await checkLinkedinSession()
+        setSessionStatus(s)
+      } catch {
+        setSessionStatus(null)
+      } finally {
+        setSessionBusy(false)
+      }
+    })()
+  }, [isSaturday, mode])
 
   useEffect(() => {
     if (!pollRunning) return
@@ -256,9 +284,98 @@ export function SearchLeadsPage() {
             </div>
           </div>
         ) : (
-          <div className="mt-4 rounded-xl border border-surface-border bg-field/40 px-4 py-3 text-sm text-ink-muted">
-            LinkedIn Mode uses the existing desktop capture flow. Start the panel below and continue manual People
-            search in your Chrome session.
+          <div className="mt-4 space-y-3">
+            <div className="rounded-xl border border-surface-border bg-field/40 px-4 py-3 text-sm text-ink-muted">
+              LinkedIn Mode uses the existing desktop capture flow. Start the panel below and continue manual People
+              search in your Chrome session.
+            </div>
+
+            {isSaturday ? (
+              <div className="rounded-xl border border-amber-500/40 bg-amber-500/10 px-4 py-3">
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div className="space-y-1">
+                    <p className="inline-flex items-center gap-2 text-sm font-semibold text-amber-900 dark:text-amber-200">
+                      <AlertTriangle className="h-4 w-4" />
+                      LinkedIn job ready
+                    </p>
+                    <p className="text-xs text-amber-900/90 dark:text-amber-200/90">
+                      Saturday flow: open system, complete manual LinkedIn login if needed, then run LinkedIn expansion.
+                    </p>
+                    <p className="text-xs text-ink-muted">
+                      Session:{' '}
+                      {sessionBusy
+                        ? 'Checking...'
+                        : sessionStatus
+                          ? sessionStatus.requires_manual_login
+                            ? 'Expired - manual login required'
+                            : 'Valid - ready to run'
+                          : 'Not checked'}
+                    </p>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <button
+                      type="button"
+                      disabled={sessionBusy}
+                      onClick={async () => {
+                        setLinkedinJobMsg('')
+                        setLinkedinCandidates(0)
+                        try {
+                          setSessionBusy(true)
+                          const s = await checkLinkedinSession()
+                          setSessionStatus(s)
+                          setLinkedinJobMsg(
+                            s.requires_manual_login
+                              ? 'Session expired. Please log in to LinkedIn manually, then click Run LinkedIn Expansion.'
+                              : 'Session is valid. You can run LinkedIn Expansion now.',
+                          )
+                        } catch (e) {
+                          setLinkedinJobMsg(getApiErrorMessage(e, 'Failed to check LinkedIn session'))
+                        } finally {
+                          setSessionBusy(false)
+                        }
+                      }}
+                      className="rounded-xl border border-surface-border px-3 py-2 text-xs text-ink-muted hover:bg-field disabled:opacity-50"
+                    >
+                      {sessionBusy ? 'Checking...' : 'Check session'}
+                    </button>
+                    <button
+                      type="button"
+                      disabled={linkedinRunBusy || sessionBusy}
+                      onClick={async () => {
+                        setLinkedinJobMsg('')
+                        setLinkedinCandidates(0)
+                        try {
+                          setLinkedinRunBusy(true)
+                          const run = await runScheduledJob('saturday_linkedin')
+                          const paused = Boolean(run.result?.paused || run.session_gate?.paused)
+                          if (paused) {
+                            setLinkedinJobMsg(
+                              String(
+                                run.result?.instructions ||
+                                  'LinkedIn session expired. Login manually, then run LinkedIn Expansion again.',
+                              ),
+                            )
+                          } else {
+                            const cands = Array.isArray(run.result?.candidates) ? run.result.candidates.length : 0
+                            setLinkedinCandidates(cands)
+                            setLinkedinJobMsg(`LinkedIn expansion ran successfully. Prepared ${cands} company candidates.`)
+                          }
+                        } catch (e) {
+                          setLinkedinJobMsg(getApiErrorMessage(e, 'Failed to run LinkedIn expansion'))
+                        } finally {
+                          setLinkedinRunBusy(false)
+                        }
+                      }}
+                      className="rounded-xl border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs font-semibold text-amber-900 hover:bg-amber-500/20 disabled:opacity-50 dark:text-amber-200"
+                    >
+                      {linkedinRunBusy ? 'Running...' : 'Run LinkedIn Expansion'}
+                    </button>
+                  </div>
+                </div>
+                {linkedinJobMsg ? <p className="mt-2 text-xs text-ink">{linkedinJobMsg}</p> : null}
+                {linkedinCandidates > 0 ? <p className="mt-2 text-xs text-ink">Candidates prepared: {linkedinCandidates}</p> : null}
+              </div>
+            ) : null}
           </div>
         )}
       </section>

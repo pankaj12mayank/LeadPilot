@@ -16,6 +16,19 @@ from database.orm.models import Company, CompanyEnrichment
 router = APIRouter(prefix="/companies", tags=["companies"])
 
 
+@router.get("/task-classification")
+def task_classification(
+    _user: dict = Depends(get_current_user),
+) -> dict[str, Any]:
+    """
+    STEP W2: task tags for login requirements.
+    """
+    rows = []
+    for name in sorted(company_weekly_engine.TASK_CLASSIFICATION.keys()):
+        rows.append(company_weekly_engine.classify_task(name))
+    return {"items": rows}
+
+
 class CompanyIngestItem(BaseModel):
     company_name: str | None = None
     name: str | None = None
@@ -433,7 +446,7 @@ def linkedin_session_check(
     info = session_info_dict()
     return {
         **info,
-        "requires_manual_login": bool(info.get("has_cache")) and not bool(info.get("within_policy")),
+        "requires_manual_login": not bool(info.get("within_policy")),
     }
 
 
@@ -464,7 +477,7 @@ def create_lead_from_company_manual_linkedin(
         raise HTTPException(status_code=400, detail="profile_link must be a LinkedIn profile URL (/in/)")
 
     info = session_info_dict()
-    if body.require_fresh_session and bool(info.get("has_cache")) and not bool(info.get("within_policy")):
+    if body.require_fresh_session and not bool(info.get("within_policy")):
         raise HTTPException(
             status_code=409,
             detail="LinkedIn session policy expired; complete manual LinkedIn login first, then retry.",
@@ -493,7 +506,7 @@ def create_lead_from_company_manual_linkedin(
 
 
 class WeeklyEngineRunRequest(BaseModel):
-    day: str = Field(description="mon|tue|wed|thu|fri|sat|sun")
+    day: str = Field(default="", description="mon|tue|wed|thu|fri|sat|sun (empty => detect current day)")
     keyword: str = "software"
     location: str = ""
     batch_size: int = Field(default=10, ge=10, le=20)
@@ -503,6 +516,75 @@ class WeeklyEngineRunRequest(BaseModel):
     enrich_timeout_seconds: float = Field(default=10.0, ge=2.0, le=30.0)
     saturday_min_score: float = Field(default=70.0, ge=0.0, le=100.0)
     saturday_limit: int = Field(default=30, ge=1, le=200)
+    saturday_require_fresh_session: bool = True
+    saturday_manual_profiles: List[dict[str, Any]] = Field(default_factory=list)
+
+
+class DailyAutoJobRunRequest(BaseModel):
+    keyword: str = "software"
+    location: str = ""
+    batch_size: int = Field(default=10, ge=10, le=20)
+    delay_seconds: float = Field(default=1.0, ge=0.2, le=8.0)
+    max_companies_per_source: int = Field(default=80, ge=1, le=500)
+    enrich_limit: int = Field(default=20, ge=1, le=100)
+    enrich_timeout_seconds: float = Field(default=10.0, ge=2.0, le=30.0)
+
+
+class ScheduledJobRunRequest(BaseModel):
+    job_type: str = Field(description="daily_auto | friday_heavy | saturday_linkedin | sunday_report")
+    keyword: str = "software"
+    location: str = ""
+    batch_size: int = Field(default=10, ge=10, le=20)
+    delay_seconds: float = Field(default=1.0, ge=0.2, le=8.0)
+
+    @field_validator("job_type")
+    @classmethod
+    def v_job_type(cls, v: str) -> str:
+        x = (v or "").strip().lower()
+        if x not in company_weekly_engine.SCHEDULED_JOB_TYPES:
+            allowed = ", ".join(sorted(company_weekly_engine.SCHEDULED_JOB_TYPES))
+            raise ValueError(f"job_type must be one of: {allowed}")
+        return x
+
+
+@router.post("/daily-auto/run")
+def run_daily_auto_job(
+    body: DailyAutoJobRunRequest,
+    db: Session = Depends(get_db),
+    _user: dict = Depends(get_current_user),
+) -> dict[str, Any]:
+    """
+    STEP W4: Daily auto job pipeline (no login required).
+    """
+    return company_weekly_engine.run_daily_auto_job(
+        db,
+        keyword=body.keyword,
+        location=body.location,
+        batch_size=body.batch_size,
+        delay_seconds=body.delay_seconds,
+        max_companies_per_source=body.max_companies_per_source,
+        enrich_limit=body.enrich_limit,
+        enrich_timeout_seconds=body.enrich_timeout_seconds,
+    )
+
+
+@router.post("/scheduler/run")
+def run_scheduled_job(
+    body: ScheduledJobRunRequest,
+    db: Session = Depends(get_db),
+    _user: dict = Depends(get_current_user),
+) -> dict[str, Any]:
+    """
+    STEP W11 scheduler entry point with explicit job_type dispatch.
+    """
+    return company_weekly_engine.run_scheduled_job(
+        db,
+        job_type=body.job_type,
+        keyword=body.keyword,
+        location=body.location,
+        batch_size=body.batch_size,
+        delay_seconds=body.delay_seconds,
+    )
 
 
 @router.post("/weekly-engine/run")
@@ -531,6 +613,8 @@ def run_weekly_engine(
             enrich_timeout_seconds=body.enrich_timeout_seconds,
             saturday_min_score=body.saturday_min_score,
             saturday_limit=body.saturday_limit,
+            saturday_manual_profiles=body.saturday_manual_profiles,
+            saturday_require_fresh_session=body.saturday_require_fresh_session,
         )
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e)) from e

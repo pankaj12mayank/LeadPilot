@@ -55,7 +55,8 @@ def test_weekly_engine_saturday_manual_candidates() -> None:
             out = company_weekly_engine.run_weekly_engine(db, day="sat", saturday_min_score=1, saturday_limit=20)
         assert out["day"] == "sat"
         assert out["result"]["requires_manual_login"] is True
-        assert out["result"]["candidates"]
+        assert out["result"]["paused"] is True
+        assert "instructions" in out["result"]
     finally:
         db.close()
 
@@ -68,7 +69,7 @@ def test_weekly_engine_sunday_cleanup_reporting() -> None:
         out = company_weekly_engine.run_weekly_engine(db, day="sun")
         assert out["day"] == "sun"
         rep = out["result"]
-        assert "companies_total" in rep
+        assert "total_companies" in rep
         assert "enriched_total" in rep
         assert "high_priority_companies" in rep
     finally:

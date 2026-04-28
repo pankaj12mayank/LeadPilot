@@ -26,10 +26,57 @@ export type AdminWorkspaceStats = {
   contacted_leads: number
   converted_leads: number
   conversion_rate_percent: number
+  total_companies?: number
 }
 
 export async function adminGetStats() {
   const { data } = await adminClient.get<AdminWorkspaceStats>('/admin/stats')
+  return data
+}
+
+export type AdminControls = {
+  scoring_weights: {
+    role_relevance: number
+    company_size: number
+    signals: number
+    data_completeness: number
+    base_factor_mix: number
+  }
+  targeting_filters: {
+    allowed_sources: string[]
+    min_company_score: number
+    preferred_locations: string[]
+    preferred_keywords: string[]
+  }
+  schedule_timing: {
+    daily_auto: string
+    friday_heavy: string
+    saturday_linkedin: string
+    sunday_report: string
+  }
+}
+
+export type AdminJobLogRow = {
+  job_type: string
+  run_date: string
+  status: 'success' | 'partial_success' | 'failure' | string
+  records_processed: number
+  errors: string[]
+  retry_next_scheduled_run?: boolean
+}
+
+export async function adminGetControls() {
+  const { data } = await adminClient.get<AdminControls>('/admin/controls')
+  return data
+}
+
+export async function adminPatchControls(patch: Partial<AdminControls>) {
+  const { data } = await adminClient.patch<AdminControls>('/admin/controls', patch)
+  return data
+}
+
+export async function adminGetJobLogs(limit = 50) {
+  const { data } = await adminClient.get<{ count: number; items: AdminJobLogRow[] }>('/admin/job-logs', { params: { limit } })
   return data
 }
 

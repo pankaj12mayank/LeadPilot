@@ -113,6 +113,9 @@ def get_admin_controls() -> dict[str, Any]:
     tf = raw.get("targeting_filters")
     if not isinstance(tf, dict):
         tf = {}
+    st = raw.get("schedule_timing")
+    if not isinstance(st, dict):
+        st = {}
     # Hard safety bounds
     out = {
         "scoring_weights": {
@@ -127,6 +130,12 @@ def get_admin_controls() -> dict[str, Any]:
             "min_company_score": int(tf.get("min_company_score") or 70),
             "preferred_locations": list(tf.get("preferred_locations") or []),
             "preferred_keywords": list(tf.get("preferred_keywords") or []),
+        },
+        "schedule_timing": {
+            "daily_auto": str(st.get("daily_auto") or "0 2 * * *"),
+            "friday_heavy": str(st.get("friday_heavy") or "0 3 * * 5"),
+            "saturday_linkedin": str(st.get("saturday_linkedin") or "0 10 * * 6"),
+            "sunday_report": str(st.get("sunday_report") or "0 18 * * 0"),
         },
     }
     return out

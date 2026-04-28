@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import json
 from typing import Any, Dict, List
+from pathlib import Path
 
 import config
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
@@ -157,6 +159,34 @@ class AdminTargetingFilters(BaseModel):
 class AdminControlPatch(BaseModel):
     scoring_weights: AdminScoringWeights | None = None
     targeting_filters: AdminTargetingFilters | None = None
+    schedule_timing: dict[str, str] | None = None
+
+
+def _job_logs_path() -> Path:
+    root = Path(config.SESSIONS_DIR) / "job_logs"
+    root.mkdir(parents=True, exist_ok=True)
+    return root / "job_runs.jsonl"
+
+
+@router.get("/job-logs")
+def admin_get_job_logs(limit: int = 100, _admin: dict = Depends(get_current_admin)) -> Dict[str, Any]:
+    lim = max(1, min(int(limit or 100), 500))
+    p = _job_logs_path()
+    if not p.exists():
+        return {"count": 0, "items": []}
+    rows: list[dict[str, Any]] = []
+    with open(p, "r", encoding="utf-8") as f:
+        for line in f:
+            s = line.strip()
+            if not s:
+                continue
+            try:
+                rows.append(json.loads(s))
+            except Exception:
+                continue
+    rows = rows[-lim:]
+    rows.reverse()
+    return {"count": len(rows), "items": rows}
 
 
 @router.get("/controls")
@@ -174,6 +204,17 @@ def admin_patch_controls(
         updates["admin_controls"]["scoring_weights"] = body.scoring_weights.model_dump()
     if body.targeting_filters is not None:
         updates["admin_controls"]["targeting_filters"] = body.targeting_filters.model_dump()
+    if body.schedule_timing is not None:
+        cur = updates["admin_controls"].get("schedule_timing") or {}
+        merged = {
+            "daily_auto": str(body.schedule_timing.get("daily_auto") or cur.get("daily_auto") or "0 2 * * *"),
+            "friday_heavy": str(body.schedule_timing.get("friday_heavy") or cur.get("friday_heavy") or "0 3 * * 5"),
+            "saturday_linkedin": str(
+                body.schedule_timing.get("saturday_linkedin") or cur.get("saturday_linkedin") or "0 10 * * 6"
+            ),
+            "sunday_report": str(body.schedule_timing.get("sunday_report") or cur.get("sunday_report") or "0 18 * * 0"),
+        }
+        updates["admin_controls"]["schedule_timing"] = merged
     settings_service.patch_settings(updates)
     return runtime_settings.get_admin_controls()
 

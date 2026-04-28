@@ -1,0 +1,48 @@
+{"job_type": "weekly_mon", "run_date": "2026-04-28T17:51:25", "status": "success", "records_processed": 0, "errors": []}
+{"job_type": "daily_auto_job", "run_date": "2026-04-28T17:51:25", "status": "success", "records_processed": 0, "errors": []}
+{"job_type": "weekly_fri", "run_date": "2026-04-28T17:51:25", "status": "success", "records_processed": 0, "errors": []}
+{"job_type": "weekly_sat", "run_date": "2026-04-28T17:51:29", "status": "success", "records_processed": 1, "errors": []}
+{"job_type": "weekly_sun", "run_date": "2026-04-28T17:51:29", "status": "success", "records_processed": 0, "errors": []}
+{"job_type": "weekly_mon", "run_date": "2026-04-28T17:55:56", "status": "success", "records_processed": 0, "errors": [], "retry_next_scheduled_run": false}
+{"job_type": "daily_auto_job", "run_date": "2026-04-28T17:55:56", "status": "success", "records_processed": 0, "errors": [], "retry_next_scheduled_run": false}
+{"job_type": "weekly_fri", "run_date": "2026-04-28T17:55:56", "status": "success", "records_processed": 0, "errors": [], "retry_next_scheduled_run": false}
+{"job_type": "weekly_sat", "run_date": "2026-04-28T17:56:00", "status": "success", "records_processed": 1, "errors": [], "retry_next_scheduled_run": false}
+{"job_type": "weekly_sun", "run_date": "2026-04-28T17:56:00", "status": "success", "records_processed": 0, "errors": [], "retry_next_scheduled_run": false}
+{"job_type": "weekly_mon", "run_date": "2026-04-28T17:59:47", "status": "success", "records_processed": 0, "errors": [], "retry_next_scheduled_run": false}
+{"job_type": "daily_auto_job", "run_date": "2026-04-28T17:59:47", "status": "success", "records_processed": 0, "errors": [], "retry_next_scheduled_run": false}
+{"job_type": "weekly_fri", "run_date": "2026-04-28T17:59:47", "status": "success", "records_processed": 0, "errors": [], "retry_next_scheduled_run": false}
+{"job_type": "weekly_sat", "run_date": "2026-04-28T17:59:51", "status": "success", "records_processed": 1, "errors": [], "retry_next_scheduled_run": false}
+{"job_type": "weekly_sun", "run_date": "2026-04-28T17:59:51", "status": "success", "records_processed": 0, "errors": [], "retry_next_scheduled_run": false}
+{"job_type": "weekly_mon", "run_date": "2026-04-28T18:06:16", "status": "success", "records_processed": 0, "errors": [], "retry_next_scheduled_run": false}
+{"job_type": "daily_auto_job", "run_date": "2026-04-28T18:06:16", "status": "success", "records_processed": 0, "errors": [], "retry_next_scheduled_run": false}
+{"job_type": "daily_auto_job", "run_date": "2026-04-28T18:28:02", "status": "success", "records_processed": 1, "errors": [], "retry_next_scheduled_run": false}
+{"job_type": "weekly_sat", "run_date": "2026-04-28T18:28:02", "status": "success", "records_processed": 1, "errors": [], "retry_next_scheduled_run": false}
+{"job_type": "daily_auto_job", "run_date": "2026-04-28T18:28:02", "status": "success", "records_processed": 0, "errors": [], "retry_next_scheduled_run": false}
+{"job_type": "weekly_sat", "run_date": "2026-04-28T18:28:03", "status": "success", "records_processed": 1, "errors": [], "retry_next_scheduled_run": false}
+{"job_type": "daily_auto_job", "run_date": "2026-04-28T18:28:24", "status": "success", "records_processed": 1, "errors": [], "retry_next_scheduled_run": false}
+{"job_type": "weekly_sat", "run_date": "2026-04-28T18:28:24", "status": "success", "records_processed": 1, "errors": [], "retry_next_scheduled_run": false}
+{"job_type": "daily_auto_job", "run_date": "2026-04-28T18:28:24", "status": "success", "records_processed": 0, "errors": [], "retry_next_scheduled_run": false}
+{"job_type": "daily_auto_job", "run_date": "2026-04-28T18:28:24", "status": "success", "records_processed": 0, "errors": [], "retry_next_scheduled_run": false}
+{"job_type": "weekly_sat", "run_date": "2026-04-28T18:28:25", "status": "success", "records_processed": 1, "errors": [], "retry_next_scheduled_run": false}
+{"job_type": "weekly_mon", "run_date": "2026-04-28T18:30:05", "status": "success", "records_processed": 0, "errors": [], "retry_next_scheduled_run": false}
+{"job_type": "daily_auto_job", "run_date": "2026-04-28T18:30:05", "status": "success", "records_processed": 0, "errors": [], "retry_next_scheduled_run": false}
+{"job_type": "weekly_fri", "run_date": "2026-04-28T18:30:05", "status": "success", "records_processed": 0, "errors": [], "retry_next_scheduled_run": false}
+{"job_type": "weekly_sat", "run_date": "2026-04-28T18:30:09", "status": "success", "records_processed": 1, "errors": [], "retry_next_scheduled_run": false}
+{"job_type": "weekly_sun", "run_date": "2026-04-28T18:30:09", "status": "success", "records_processed": 0, "errors": [], "retry_next_scheduled_run": false}
+{"job_type": "weekly_mon", "run_date": "2026-04-28T18:30:29", "status": "success", "records_processed": 3, "errors": [], "retry_next_scheduled_run": false}
+{"job_type": "weekly_sat", "run_date": "2026-04-28T18:30:29", "status": "failure", "records_processed": 0, "errors": ["paused_for_manual_login"], "retry_next_scheduled_run": true}
+{"job_type": "weekly_sun", "run_date": "2026-04-28T18:30:30", "status": "success", "records_processed": 0, "errors": [], "retry_next_scheduled_run": false}
+{"job_type": "daily_auto_job", "run_date": "2026-04-28T18:30:30", "status": "success", "records_processed": 1, "errors": [], "retry_next_scheduled_run": false}
+{"job_type": "weekly_sat", "run_date": "2026-04-28T18:30:32", "status": "success", "records_processed": 1, "errors": [], "retry_next_scheduled_run": false}
+{"job_type": "daily_auto_job", "run_date": "2026-04-28T18:30:32", "status": "success", "records_processed": 0, "errors": [], "retry_next_scheduled_run": false}
+{"job_type": "weekly_mon", "run_date": "2026-04-28T18:31:43", "status": "success", "records_processed": 0, "errors": [], "retry_next_scheduled_run": false}
+{"job_type": "daily_auto_job", "run_date": "2026-04-28T18:31:43", "status": "success", "records_processed": 0, "errors": [], "retry_next_scheduled_run": false}
+{"job_type": "weekly_fri", "run_date": "2026-04-28T18:31:43", "status": "success", "records_processed": 0, "errors": [], "retry_next_scheduled_run": false}
+{"job_type": "weekly_sat", "run_date": "2026-04-28T18:31:47", "status": "success", "records_processed": 1, "errors": [], "retry_next_scheduled_run": false}
+{"job_type": "weekly_sun", "run_date": "2026-04-28T18:31:47", "status": "success", "records_processed": 0, "errors": [], "retry_next_scheduled_run": false}
+{"job_type": "weekly_mon", "run_date": "2026-04-28T18:32:07", "status": "success", "records_processed": 3, "errors": [], "retry_next_scheduled_run": false}
+{"job_type": "weekly_sat", "run_date": "2026-04-28T18:32:07", "status": "failure", "records_processed": 0, "errors": ["paused_for_manual_login"], "retry_next_scheduled_run": true}
+{"job_type": "weekly_sun", "run_date": "2026-04-28T18:32:07", "status": "success", "records_processed": 0, "errors": [], "retry_next_scheduled_run": false}
+{"job_type": "daily_auto_job", "run_date": "2026-04-28T18:32:07", "status": "success", "records_processed": 1, "errors": [], "retry_next_scheduled_run": false}
+{"job_type": "weekly_sat", "run_date": "2026-04-28T18:32:08", "status": "success", "records_processed": 1, "errors": [], "retry_next_scheduled_run": false}
+{"job_type": "daily_auto_job", "run_date": "2026-04-28T18:32:08", "status": "success", "records_processed": 0, "errors": [], "retry_next_scheduled_run": false}

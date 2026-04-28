@@ -45,6 +45,12 @@ def _defaults() -> Dict[str, Any]:
                 "preferred_locations": [],
                 "preferred_keywords": [],
             },
+            "schedule_timing": {
+                "daily_auto": "0 2 * * *",
+                "friday_heavy": "0 3 * * 5",
+                "saturday_linkedin": "0 10 * * 6",
+                "sunday_report": "0 18 * * 0",
+            },
         },
     }
 

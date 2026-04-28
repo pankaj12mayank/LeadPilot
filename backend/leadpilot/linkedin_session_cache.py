@@ -1,8 +1,8 @@
 """
-Track last successful LinkedIn capture so operators know when to re-check login.
+Track LinkedIn session validity metadata for global session control.
 
 The real session is Chrome's user profile (``CHROME_USER_DATA_DIR`` or the profile used with
-``--user-data-dir`` on port 9222). This file only stores *metadata* (last successful run time).
+``--user-data-dir`` on port 9222). This file only stores *metadata* (session_created_at), never credentials.
 
 Default policy: **7 days** (``LEADPILOT_LINKEDIN_SESSION_DAYS``) — about once per week, open
 LinkedIn and sign in if the site asks. For a longer window (e.g. ~7 weeks), set e.g. ``49``.
@@ -55,6 +55,7 @@ def _ensure_parent(path: Path) -> None:
 @dataclass
 class LinkedinSessionInfo:
     policy_days: int
+    session_created_at: str | None
     last_verified_at: str | None
     age_days: float | None
     within_policy: bool
@@ -80,21 +81,26 @@ def get_linkedin_session_info() -> LinkedinSessionInfo:
     if not raw:
         return LinkedinSessionInfo(
             policy_days=pol,
+            session_created_at=None,
             last_verified_at=None,
             age_days=None,
-            within_policy=True,
+            within_policy=False,
             has_cache=False,
-            message=f"No run recorded yet. After a successful capture, we remember the date (refresh every ~{pol} days).",
+            message=(
+                f"No session file found. Manual LinkedIn login is required before LinkedIn tasks "
+                f"(session policy: {pol} day(s))."
+            ),
         )
-    at = (raw.get("last_verified_at") or raw.get("verified_at") or "").strip()
+    at = (raw.get("session_created_at") or raw.get("last_verified_at") or raw.get("verified_at") or "").strip()
     if not at:
         return LinkedinSessionInfo(
             policy_days=pol,
+            session_created_at=None,
             last_verified_at=None,
             age_days=None,
-            within_policy=True,
-            has_cache=False,
-            message="Cache file present but no timestamp.",
+            within_policy=False,
+            has_cache=True,
+            message="Session file present but missing session_created_at.",
         )
     try:
         dt = datetime.fromisoformat(at.replace("Z", "+00:00"))
@@ -103,24 +109,26 @@ def get_linkedin_session_info() -> LinkedinSessionInfo:
     except Exception:
         return LinkedinSessionInfo(
             policy_days=pol,
+            session_created_at=at,
             last_verified_at=at,
             age_days=None,
-            within_policy=True,
+            within_policy=False,
             has_cache=True,
-            message="Could not parse last_verified_at.",
+            message="Could not parse session_created_at.",
         )
     now = datetime.now(timezone.utc)
     age = (now - dt).total_seconds() / 86400.0
     ok = age <= float(pol)
     if ok:
-        msg = f"Last successful capture {age:.1f} day(s) ago (policy: re-check about every {pol} day(s) if LinkedIn signs you out)."
+        msg = f"Session valid: created {age:.1f} day(s) ago (policy: {pol} day(s))."
     else:
         msg = (
-            f"Cache is {age:.0f} day(s) old (policy: {pol} day(s)). "
-            "Open LinkedIn in your Chrome profile and sign in if prompted, then run again."
+            f"Session expired: {age:.0f} day(s) old (policy: {pol} day(s)). "
+            "Complete manual LinkedIn login, then continue."
         )
     return LinkedinSessionInfo(
         policy_days=pol,
+        session_created_at=at,
         last_verified_at=at,
         age_days=age,
         within_policy=ok,
@@ -130,10 +138,11 @@ def get_linkedin_session_info() -> LinkedinSessionInfo:
 
 
 def touch_linkedin_session_ok() -> None:
-    """Call after a successful run that returned at least one lead row."""
+    """Update session_created_at after manual login confirmation or successful run."""
     p = _cache_path()
     _ensure_parent(p)
     payload = {
+        "session_created_at": datetime.now(timezone.utc).replace(microsecond=0).isoformat(),
         "last_verified_at": datetime.now(timezone.utc).replace(microsecond=0).isoformat(),
         "version": 1,
     }
@@ -147,13 +156,13 @@ def print_session_status_at_start() -> None:
     info = get_linkedin_session_info()
     pol = _policy_days()
     print(
-        f"\n  [LinkedIn session] Policy: prefer re-login check about every {pol} day(s) "
+        f"\n  [LinkedIn session] Policy: session valid for {pol} day(s) from session_created_at "
         f"(set LEADPILOT_LINKEDIN_SESSION_DAYS; use 49 for ~7 weeks).\n  [LinkedIn session] {info.message}\n",
         flush=True,
     )
-    if not info.within_policy and info.has_cache:
+    if not info.within_policy:
         print(
-            "  [LinkedIn session] You can still scrape — this is a reminder. Cookies live in your Chrome user-data folder.\n",
+            "  [LinkedIn session] LinkedIn tasks should pause now for manual login. Cookies live only in your Chrome profile.\n",
             flush=True,
         )
 
@@ -163,6 +172,7 @@ def session_info_dict() -> dict[str, Any]:
     i = get_linkedin_session_info()
     return {
         "policy_days": i.policy_days,
+        "session_created_at": i.session_created_at,
         "last_verified_at": i.last_verified_at,
         "age_days": None if i.age_days is None else round(i.age_days, 2),
         "within_policy": i.within_policy,
