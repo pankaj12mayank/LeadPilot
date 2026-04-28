@@ -69,6 +69,11 @@ _CSV_FIELDS = [
     "connection_sent",
     "replied_yn",
     "solution_text",
+    "signal_hiring",
+    "signal_scaling",
+    "signal_content_gap",
+    "signal_ads_gap",
+    "priority",
 ]
 
 
@@ -158,6 +163,13 @@ def _csv_row_to_lead_dict(r: Dict[str, Any]) -> Dict[str, Any] | None:
         "connection_sent": _csv_cell_str(r.get("connection_sent", "")),
         "replied_yn": _csv_cell_str(r.get("replied_yn", "")) or "N",
         "solution_text": _csv_cell_str(r.get("solution_text", "")),
+        "signal_hiring": 1 if _csv_cell_str(r.get("signal_hiring", "")).lower() in ("1", "true", "yes", "y") else 0,
+        "signal_scaling": 1 if _csv_cell_str(r.get("signal_scaling", "")).lower() in ("1", "true", "yes", "y") else 0,
+        "signal_content_gap": 1
+        if _csv_cell_str(r.get("signal_content_gap", "")).lower() in ("1", "true", "yes", "y")
+        else 0,
+        "signal_ads_gap": 1 if _csv_cell_str(r.get("signal_ads_gap", "")).lower() in ("1", "true", "yes", "y") else 0,
+        "priority": _csv_cell_str(r.get("priority", "")),
     }
     fs = _csv_cell_float(r.get("score"))
     if fs is not None:
@@ -204,6 +216,11 @@ def _leads_template_csv_bytes() -> bytes:
             "connection_sent": "",
             "replied_yn": "N",
             "solution_text": "",
+            "signal_hiring": "",
+            "signal_scaling": "",
+            "signal_content_gap": "",
+            "signal_ads_gap": "",
+            "priority": "",
         }
     )
     writer.writerow(sample)

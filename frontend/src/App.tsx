@@ -8,6 +8,7 @@ const LoginPage = lazy(() => import('@/pages/LoginPage').then((m) => ({ default:
 const DashboardPage = lazy(() => import('@/pages/DashboardPage').then((m) => ({ default: m.DashboardPage })))
 const SearchLeadsPage = lazy(() => import('@/pages/SearchLeadsPage').then((m) => ({ default: m.SearchLeadsPage })))
 const LeadsPage = lazy(() => import('@/pages/LeadsPage').then((m) => ({ default: m.LeadsPage })))
+const OutreachQueuePage = lazy(() => import('@/pages/OutreachQueuePage').then((m) => ({ default: m.OutreachQueuePage })))
 const AnalyticsPage = lazy(() => import('@/pages/AnalyticsPage').then((m) => ({ default: m.AnalyticsPage })))
 const SettingsPage = lazy(() => import('@/pages/SettingsPage').then((m) => ({ default: m.SettingsPage })))
 const AboutPage = lazy(() => import('@/pages/AboutPage').then((m) => ({ default: m.AboutPage })))
@@ -50,6 +51,7 @@ export default function App() {
           <Route path="/dashboard" element={<DashboardPage />} />
           <Route path="/search-leads" element={<SearchLeadsPage />} />
           <Route path="/leads" element={<LeadsPage />} />
+          <Route path="/outreach-queue" element={<OutreachQueuePage />} />
           <Route path="/platforms" element={<Navigate to="/search-leads" replace />} />
           <Route path="/analytics" element={<AnalyticsPage />} />
           <Route path="/settings" element={<SettingsPage />} />

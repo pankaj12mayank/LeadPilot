@@ -10,7 +10,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from database.orm.bootstrap import get_session_factory
-from database.orm.models import Lead
+from database.orm.models import Company, Lead
 
 _CACHE_TTL_SEC = 25.0
 _dashboard_cache: Tuple[float, Dict[str, Any]] | None = None
@@ -23,6 +23,7 @@ def _invalidate_dashboard_cache() -> None:
 
 def _compute_metrics(db: Session) -> Dict[str, Any]:
     total = int(db.scalar(select(func.count(Lead.id))) or 0)
+    total_companies = int(db.scalar(select(func.count(Company.id))) or 0)
 
     by_status: Dict[str, int] = {}
     for st, cnt in db.execute(select(Lead.status, func.count(Lead.id)).group_by(Lead.status)):
@@ -40,6 +41,7 @@ def _compute_metrics(db: Session) -> Dict[str, Any]:
     hot = int(tier_c.get("hot", 0))
     warm = int(tier_c.get("warm", 0))
     cold = int(tier_c.get("cold", 0))
+    new_leads = int(db.scalar(select(func.count(Lead.id)).where(func.lower(Lead.status) == "new")) or 0)
 
     _outreach = (
         "message_sent",
@@ -98,10 +100,12 @@ def _compute_metrics(db: Session) -> Dict[str, Any]:
 
     return {
         "total": total,
+        "total_companies": total_companies,
         "by_status": dict(by_status),
         "by_platform": dict(by_platform),
         "total_leads": total,
         "hot_leads": hot,
+        "new_leads": new_leads,
         "warm_leads": warm,
         "cold_leads": cold,
         "tier_distribution": {"hot": hot, "warm": warm, "cold": cold},

@@ -16,6 +16,7 @@ from backend.app.routes import (
     ai_messages,
     analytics,
     auth,
+    companies,
     exports,
     health,
     leads,
@@ -89,6 +90,7 @@ app.include_router(health.router)
 app.include_router(public.router, prefix=_api_root)
 app.include_router(admin.router, prefix=_api_root)
 app.include_router(auth.router, prefix=_api_root)
+app.include_router(companies.router, prefix=_api_root)
 app.include_router(leads.router, prefix=_api_root)
 app.include_router(messages.router, prefix=_api_root)
 app.include_router(ai_messages.router, prefix=_api_root)

@@ -1,16 +1,14 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
 
-import { PlatformBar, StatusPie } from '@/components/charts/DistributionCharts'
-import { MonthLineChart, type MonthPoint } from '@/components/charts/MonthLineChart'
-import { StackedTierByPlatform, type TierStackRow } from '@/components/charts/StackedTierByPlatform'
 import { StatCard } from '@/components/dashboard/StatCard'
 import { ApiLoadError } from '@/components/ui/ApiLoadError'
 import { fetchDashboard } from '@/lib/api/analytics'
-import { leadStatusLabel } from '@/lib/copy/appCopy'
+import { fetchSeleniumLeadpilotStatus, type SeleniumLeadpilotStatus } from '@/lib/api/seleniumLeadpilot'
 import type { DashboardData } from '@/types/models'
 
 export function DashboardPage() {
   const [dash, setDash] = useState<DashboardData | null>(null)
+  const [runStatus, setRunStatus] = useState<SeleniumLeadpilotStatus | null>(null)
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState<string | null>(null)
   const [retryNonce, setRetryNonce] = useState(0)
@@ -21,11 +19,15 @@ export function DashboardPage() {
     setLoadError(null)
     ;(async () => {
       try {
-        const d = await fetchDashboard()
-        if (!cancelled) setDash(d)
+        const [d, s] = await Promise.all([fetchDashboard(), fetchSeleniumLeadpilotStatus()])
+        if (!cancelled) {
+          setDash(d)
+          setRunStatus(s)
+        }
       } catch {
         if (!cancelled) {
           setDash(null)
+          setRunStatus(null)
           setLoadError(
             'The dashboard could not load from the API. Start the backend (port 8000 by default), confirm Vite proxy /api → API_ROOT_PATH, or set VITE_API_BASE_URL (e.g. http://localhost:8000/api), then try again.',
           )
@@ -39,48 +41,15 @@ export function DashboardPage() {
     }
   }, [retryNonce])
 
-  const { monthData, stackData } = useMemo(() => {
-    const lm = dash?.leads_by_month ?? []
-    const monthData: MonthPoint[] = lm.map((x) => ({ month: x.month, count: x.count }))
-    const tm = dash?.tier_mix_by_platform ?? []
-    const stackData: TierStackRow[] = tm.map((x) => ({
-      platform: x.platform,
-      hot: x.hot,
-      warm: x.warm,
-      cold: x.cold,
-    }))
-    return { monthData, stackData }
-  }, [dash])
-
-  const plat = useMemo(() => {
-    const raw = dash?.platform_distribution || dash?.by_platform || {}
-    return Object.entries(raw).map(([name, value]) => ({ name, value: Number(value) }))
-  }, [dash])
-
-  const stat = useMemo(() => {
-    const raw = dash?.status_distribution || dash?.by_status || {}
-    return Object.entries(raw).map(([name, value]) => ({
-      name: leadStatusLabel(String(name).toLowerCase().replace(/\s+/g, '_')),
-      value: Number(value),
-    }))
-  }, [dash])
-
   if (loading) {
     return (
-      <div className="mx-auto max-w-[1600px] space-y-10">
-        <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
-          {[1, 2, 3, 4, 5].map((i) => (
+      <div className="mx-auto max-w-[1200px] space-y-8">
+        <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          {[1, 2, 3, 4].map((i) => (
             <div key={i} className="skeleton-shimmer h-32 rounded-2xl" />
           ))}
         </section>
-        <section className="grid gap-6 lg:grid-cols-2">
-          <div className="skeleton-shimmer h-96 rounded-2xl" />
-          <div className="skeleton-shimmer h-96 rounded-2xl" />
-        </section>
-        <section className="grid gap-6 lg:grid-cols-2">
-          <div className="skeleton-shimmer h-96 rounded-2xl" />
-          <div className="skeleton-shimmer h-96 rounded-2xl" />
-        </section>
+        <div className="skeleton-shimmer h-36 rounded-2xl" />
       </div>
     )
   }
@@ -97,82 +66,56 @@ export function DashboardPage() {
     )
   }
 
-  const total = dash.total_leads ?? dash.total ?? 0
-  const conv = dash.conversion_rate_percent ?? 0
+  const totalCompanies = dash.total_companies ?? 0
+  const totalLeads = dash.total_leads ?? dash.total ?? 0
+  const hotLeads = dash.hot_leads ?? 0
+  const newLeads = dash.new_leads ?? Number(dash.status_distribution?.new ?? dash.by_status?.new ?? 0)
+  const lastRunStatus = runStatus?.state ? runStatus.state.charAt(0).toUpperCase() + runStatus.state.slice(1) : 'Unknown'
+  const lastRunHint = runStatus?.message || 'No recent job status available.'
 
   return (
-    <div className="mx-auto max-w-[1600px] space-y-10">
-      <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
+    <div className="mx-auto max-w-[1200px] space-y-8">
+      <div>
+        <h1 className="font-display text-2xl font-bold tracking-tight text-ink sm:text-3xl">User Dashboard</h1>
+        <p className="mt-2 max-w-2xl text-sm text-ink-muted">
+          System status at a glance. See lead volume, priority, and latest run state immediately on load.
+        </p>
+      </div>
+
+      <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <StatCard
-          title="Total workspace leads"
-          value={total}
-          hint="All prospect records available for lead tracking and sales outreach."
+          title="Total leads"
+          value={totalLeads}
+          hint="All leads currently available in the system."
         />
         <StatCard
-          title="High-priority opportunities"
-          value={dash.hot_leads ?? 0}
-          hint="Lead scoring tier indicating the strongest conversion signals."
+          title="Hot leads"
+          value={hotLeads}
+          hint="High-priority leads with score above 70."
         />
         <StatCard
-          title="Active outreach"
-          value={dash.contacted_leads ?? 0}
-          hint="Contacts with logged outreach activity in your sales pipeline."
+          title="New leads"
+          value={newLeads}
+          hint="Leads currently in New status."
         />
         <StatCard
-          title="Closed outcomes"
-          value={dash.converted_leads ?? 0}
-          hint="Won or converted records for customer acquisition reporting."
-        />
-        <StatCard
-          title="Pipeline conversion rate"
-          value={`${conv}%`}
-          hint="Converted leads divided by total leads for conversion optimization."
+          title="Last run status"
+          value={lastRunStatus}
+          hint={lastRunHint}
         />
       </section>
 
-      <section className="grid gap-6 lg:grid-cols-2">
-        <div>
-          <h2 className="type-section-heading">Lead source distribution</h2>
-          <p className="mb-3 text-xs text-ink-muted">
-            Volume by connected platform to compare prospecting channels and business intelligence inputs.
-          </p>
-          <PlatformBar data={plat.length ? plat : [{ name: '—', value: 0 }]} />
-        </div>
-        <div>
-          <h2 className="type-section-heading">Lead status breakdown</h2>
-          <p className="mb-3 text-xs text-ink-muted">
-            CRM pipeline mix across lead management stages from new through closed.
-          </p>
-          <StatusPie data={stat.length ? stat : [{ name: '—', value: 1 }]} />
-        </div>
-      </section>
-
-      <section className="grid gap-6 lg:grid-cols-2">
-        <div>
-          <h2 className="type-section-heading">Lead activity summary</h2>
-          <p className="mb-3 text-xs text-ink-muted">
-            New lead volume by month for sales analytics and capacity planning.
-          </p>
-          <MonthLineChart
-            data={
-              monthData.length
-                ? monthData
-                : [{ month: new Date().toISOString().slice(0, 7), count: 0 }]
-            }
-          />
-        </div>
-        <div>
-          <h2 className="type-section-heading">Lead scoring mix by source</h2>
-          <p className="mb-3 text-xs text-ink-muted">
-            Hot, warm, and cold qualification tiers by platform for lead scoring calibration.
-          </p>
-          <StackedTierByPlatform
-            data={
-              stackData.length
-                ? stackData
-                : [{ platform: '—', hot: 0, warm: 0, cold: 0 }]
-            }
-          />
+      <section className="rounded-2xl border border-surface-border bg-premium-card-light p-5 shadow-card dark:bg-premium-card-dark sm:p-6">
+        <h2 className="type-panel-title">System Snapshot</h2>
+        <div className="mt-3 grid gap-3 sm:grid-cols-2">
+          <div className="rounded-xl border border-surface-border bg-field/40 px-4 py-3 text-sm text-ink-muted">
+            <div className="text-xs font-semibold uppercase tracking-wide text-ink-subtle">Total companies</div>
+            <div className="mt-1 text-xl font-semibold text-ink">{totalCompanies}</div>
+          </div>
+          <div className="rounded-xl border border-surface-border bg-field/40 px-4 py-3 text-sm text-ink-muted">
+            <div className="text-xs font-semibold uppercase tracking-wide text-ink-subtle">Job state</div>
+            <div className="mt-1 text-xl font-semibold capitalize text-ink">{runStatus?.state ?? 'unknown'}</div>
+          </div>
         </div>
       </section>
     </div>

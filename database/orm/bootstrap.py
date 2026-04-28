@@ -39,6 +39,14 @@ def _ensure_lead_indexes(engine) -> None:
         "CREATE INDEX IF NOT EXISTS ix_leads_company_name ON leads (company_name)",
         "CREATE INDEX IF NOT EXISTS ix_leads_score ON leads (score)",
         "CREATE INDEX IF NOT EXISTS ix_leads_created_at ON leads (created_at)",
+        "CREATE UNIQUE INDEX IF NOT EXISTS ix_companies_domain ON companies (domain)",
+        "CREATE INDEX IF NOT EXISTS ix_companies_company_name ON companies (company_name)",
+        "CREATE INDEX IF NOT EXISTS ix_companies_last_updated ON companies (last_updated)",
+        "CREATE UNIQUE INDEX IF NOT EXISTS ix_company_enrichment_company_id ON company_enrichment (company_id)",
+        "CREATE INDEX IF NOT EXISTS ix_company_enrichment_last_checked ON company_enrichment (last_checked)",
+        "CREATE INDEX IF NOT EXISTS ix_company_enrichment_score ON company_enrichment (score)",
+        "CREATE INDEX IF NOT EXISTS ix_company_enrichment_priority ON company_enrichment (priority)",
+        "CREATE INDEX IF NOT EXISTS ix_leads_priority ON leads (priority)",
     ]
     with engine.begin() as cx:
         for sql in stmts:
@@ -66,6 +74,16 @@ def _ensure_lead_columns(engine) -> None:
             cx.execute(text("ALTER TABLE leads ADD COLUMN replied_yn VARCHAR(8) DEFAULT 'N'"))
         if "solution_text" not in cols:
             cx.execute(text("ALTER TABLE leads ADD COLUMN solution_text TEXT DEFAULT ''"))
+        if "signal_hiring" not in cols:
+            cx.execute(text("ALTER TABLE leads ADD COLUMN signal_hiring INTEGER NOT NULL DEFAULT 0"))
+        if "signal_scaling" not in cols:
+            cx.execute(text("ALTER TABLE leads ADD COLUMN signal_scaling INTEGER NOT NULL DEFAULT 0"))
+        if "signal_content_gap" not in cols:
+            cx.execute(text("ALTER TABLE leads ADD COLUMN signal_content_gap INTEGER NOT NULL DEFAULT 0"))
+        if "signal_ads_gap" not in cols:
+            cx.execute(text("ALTER TABLE leads ADD COLUMN signal_ads_gap INTEGER NOT NULL DEFAULT 0"))
+        if "priority" not in cols:
+            cx.execute(text("ALTER TABLE leads ADD COLUMN priority VARCHAR(16) DEFAULT 'Cold'"))
 
 
 def _ensure_user_columns(engine) -> None:
@@ -81,12 +99,34 @@ def _ensure_user_columns(engine) -> None:
             cx.execute(text("ALTER TABLE users ADD COLUMN last_login_at VARCHAR(64) DEFAULT ''"))
 
 
+def _ensure_company_enrichment_columns(engine) -> None:
+    """SQLite migrations for ``company_enrichment`` (additive columns)."""
+    with engine.begin() as cx:
+        cur = cx.execute(text("PRAGMA table_info(company_enrichment)"))
+        cols = {row[1] for row in cur.fetchall()}
+        if not cols:
+            return
+        if "signal_hiring" not in cols:
+            cx.execute(text("ALTER TABLE company_enrichment ADD COLUMN signal_hiring INTEGER NOT NULL DEFAULT 0"))
+        if "signal_scaling" not in cols:
+            cx.execute(text("ALTER TABLE company_enrichment ADD COLUMN signal_scaling INTEGER NOT NULL DEFAULT 0"))
+        if "signal_content_gap" not in cols:
+            cx.execute(text("ALTER TABLE company_enrichment ADD COLUMN signal_content_gap INTEGER NOT NULL DEFAULT 0"))
+        if "signal_ads_gap" not in cols:
+            cx.execute(text("ALTER TABLE company_enrichment ADD COLUMN signal_ads_gap INTEGER NOT NULL DEFAULT 0"))
+        if "score" not in cols:
+            cx.execute(text("ALTER TABLE company_enrichment ADD COLUMN score REAL DEFAULT 0"))
+        if "priority" not in cols:
+            cx.execute(text("ALTER TABLE company_enrichment ADD COLUMN priority VARCHAR(16) DEFAULT 'Cold'"))
+
+
 def init_sa_tables() -> None:
     """Create SQLAlchemy-managed tables if missing (SQLite)."""
     engine = get_engine()
     Base.metadata.create_all(bind=engine)
     _ensure_lead_columns(engine)
     _ensure_user_columns(engine)
+    _ensure_company_enrichment_columns(engine)
     _ensure_lead_indexes(engine)
 
 

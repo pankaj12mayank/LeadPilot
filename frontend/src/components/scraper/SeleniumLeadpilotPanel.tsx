@@ -9,6 +9,7 @@ import {
   type LinkedinSessionCacheInfo,
   type SeleniumLeadpilotStatus,
 } from '@/lib/api/seleniumLeadpilot'
+import { fetchLeads } from '@/lib/api/leads'
 import { cn } from '@/lib/utils/cn'
 
 export function SeleniumLeadpilotPanel({
@@ -19,13 +20,19 @@ export function SeleniumLeadpilotPanel({
 } = {}) {
   const [st, setSt] = useState<SeleniumLeadpilotStatus | null>(null)
   const [loading, setLoading] = useState(true)
-  const [maxLeads, setMaxLeads] = useState(10)
-  const [testMode, setTestMode] = useState(true)
+  const [keyword, setKeyword] = useState('')
+  const [location, setLocation] = useState('')
+  const [maxLeads, setMaxLeads] = useState(20)
+  const [testMode, setTestMode] = useState(false)
   const [skipEnrich, setSkipEnrich] = useState(false)
   const [skipScoring, setSkipScoring] = useState(false)
   const [output, setOutput] = useState('')
+  const [formError, setFormError] = useState<string | null>(null)
   const [starting, setStarting] = useState(false)
   const [stopping, setStopping] = useState(false)
+  const [runBaselineTotal, setRunBaselineTotal] = useState<number | null>(null)
+  const [runResultCount, setRunResultCount] = useState<number | null>(null)
+  const [runMeta, setRunMeta] = useState<{ keyword: string; location: string } | null>(null)
 
   const load = useCallback(async () => {
     try {
@@ -49,12 +56,44 @@ export function SeleniumLeadpilotPanel({
   }, [st, load])
 
   useEffect(() => {
+    if (!st || runBaselineTotal == null || st.state === 'running') return
+    ;(async () => {
+      try {
+        const after = await fetchLeads({ page: 1, page_size: 1, sort: 'created_at_desc' })
+        const delta = Math.max(0, Number(after.total || 0) - runBaselineTotal)
+        setRunResultCount(delta)
+      } catch {
+        setRunResultCount(null)
+      } finally {
+        setRunBaselineTotal(null)
+      }
+    })()
+  }, [st, runBaselineTotal])
+
+  useEffect(() => {
     onRunningChange?.(Boolean(st && st.state === 'running'))
   }, [st, onRunningChange])
 
   const onStart = async () => {
+    const kw = keyword.trim()
+    const loc = location.trim()
+    if (!kw || !loc) {
+      setFormError('Keyword and location are required for LinkedIn Mode.')
+      toast.error('Keyword and location are required.')
+      return
+    }
+    if (!Number.isFinite(maxLeads) || maxLeads < 1 || maxLeads > 50) {
+      setFormError('Lead count must be between 1 and 50.')
+      toast.error('Lead count must be 1-50.')
+      return
+    }
+    setFormError(null)
     setStarting(true)
     try {
+      const baseline = await fetchLeads({ page: 1, page_size: 1, sort: 'created_at_desc' })
+      setRunBaselineTotal(Number(baseline.total || 0))
+      setRunResultCount(null)
+      setRunMeta({ keyword: kw, location: loc })
       await startSeleniumLeadpilot({
         max_leads: maxLeads,
         test: testMode,
@@ -125,7 +164,8 @@ export function SeleniumLeadpilotPanel({
           <p className="mt-1 max-w-[720px] text-xs text-ink-muted">
             Runs <span className="font-mono">python -m backend.leadpilot</span> on the server. After start, you get a
             short countdown — switch to Chrome on <strong>People</strong> search results (no need to press Enter in the
-            log).             Uses launch or attach from <span className="font-mono">scraper.env</span>. Set{' '}
+            log), and use the same keyword/location from this form in LinkedIn filters. Uses launch or attach from{' '}
+            <span className="font-mono">scraper.env</span>. Set{' '}
             <span className="font-mono">CHROME_USER_DATA_DIR</span> to keep the same LinkedIn login between runs;
             we also record last successful capture in <span className="font-mono">sessions/linkedin_session_cache.json</span>{' '}
             (default: remind after ~7 days — <span className="font-mono">LEADPILOT_LINKEDIN_SESSION_DAYS</span>).
@@ -147,11 +187,31 @@ export function SeleniumLeadpilotPanel({
 
       <div className="mb-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <div>
-          <label className="text-[10px] font-semibold uppercase tracking-wider text-ink-muted">Max leads</label>
+          <label className="text-[10px] font-semibold uppercase tracking-wider text-ink-muted">Keyword *</label>
+          <input
+            value={keyword}
+            onChange={(e) => setKeyword(e.target.value)}
+            disabled={running}
+            placeholder="e.g. founder"
+            className="field-input mt-1"
+          />
+        </div>
+        <div>
+          <label className="text-[10px] font-semibold uppercase tracking-wider text-ink-muted">Location *</label>
+          <input
+            value={location}
+            onChange={(e) => setLocation(e.target.value)}
+            disabled={running}
+            placeholder="e.g. india"
+            className="field-input mt-1"
+          />
+        </div>
+        <div>
+          <label className="text-[10px] font-semibold uppercase tracking-wider text-ink-muted">Lead count (max 50)</label>
           <input
             type="number"
             min={1}
-            max={500}
+            max={50}
             value={maxLeads}
             onChange={(e) => setMaxLeads(Number(e.target.value))}
             disabled={running}
@@ -201,6 +261,23 @@ export function SeleniumLeadpilotPanel({
           </label>
         </div>
       </div>
+      {formError ? (
+        <p className="mb-3 rounded-xl border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-xs text-rose-800 dark:text-rose-200">
+          {formError}
+        </p>
+      ) : null}
+      {runMeta ? (
+        <p className="mb-3 rounded-xl border border-surface-border bg-field/40 px-3 py-2 text-xs text-ink-muted">
+          Last run input: <span className="font-semibold text-ink">{runMeta.keyword}</span> in{' '}
+          <span className="font-semibold text-ink">{runMeta.location}</span>
+          {runResultCount != null ? (
+            <span>
+              {' '}
+              · Fresh leads captured: <span className="font-semibold text-ink">{runResultCount}</span>
+            </span>
+          ) : null}
+        </p>
+      ) : null}
 
       {(() => {
         const ls = st.linkedin_session as LinkedinSessionCacheInfo | { message?: string; has_cache?: boolean } | undefined

@@ -37,6 +37,11 @@ class LeadCreate(BaseModel):
     # Set on CSV re-import to preserve values; if omitted, ``create_lead`` computes from scoring engine.
     score: Optional[float] = None
     tier: Optional[str] = None
+    signal_hiring: Optional[int] = None
+    signal_scaling: Optional[int] = None
+    signal_content_gap: Optional[int] = None
+    signal_ads_gap: Optional[int] = None
+    priority: Optional[str] = None
 
     @model_validator(mode="after")
     def require_contact_vector(self) -> "LeadCreate":
@@ -82,6 +87,11 @@ class LeadUpdate(BaseModel):
     connection_sent: Optional[str] = None
     replied_yn: Optional[str] = None
     solution_text: Optional[str] = None
+    signal_hiring: Optional[int] = None
+    signal_scaling: Optional[int] = None
+    signal_content_gap: Optional[int] = None
+    signal_ads_gap: Optional[int] = None
+    priority: Optional[str] = None
 
     @field_validator("status")
     @classmethod
@@ -131,6 +141,11 @@ class LeadResponse(BaseModel):
     connection_sent: str = ""
     replied_yn: str = "N"
     solution_text: str = ""
+    signal_hiring: int = 0
+    signal_scaling: int = 0
+    signal_content_gap: int = 0
+    signal_ads_gap: int = 0
+    priority: str = ""
 
     @classmethod
     def from_orm_lead(cls, lead: LeadORM) -> "LeadResponse":
@@ -163,6 +178,11 @@ class LeadResponse(BaseModel):
             connection_sent=getattr(lead, "connection_sent", "") or "",
             replied_yn=getattr(lead, "replied_yn", "") or "N",
             solution_text=getattr(lead, "solution_text", "") or "",
+            signal_hiring=int(getattr(lead, "signal_hiring", 0) or 0),
+            signal_scaling=int(getattr(lead, "signal_scaling", 0) or 0),
+            signal_content_gap=int(getattr(lead, "signal_content_gap", 0) or 0),
+            signal_ads_gap=int(getattr(lead, "signal_ads_gap", 0) or 0),
+            priority=str(getattr(lead, "priority", "") or ""),
         )
 
 

@@ -23,6 +23,7 @@ ALLOWED_STATUSES: FrozenSet[str] = frozenset(
 LEGACY_TO_CANON: dict[str, str] = {
     "contacted": "message_sent",
     "replied": "replied_got",
+    "follow_up": "on_discussion",
     "follow_up_sent": "message_sent",
     "meeting_scheduled": "on_discussion",
     "deal_discussion": "deal",
@@ -76,7 +77,8 @@ def display_label(slug: str) -> str:
         "not_interested": "Not interested",
         # legacy (display if raw still in DB)
         "contacted": "Message Sent",
-        "replied": "Replied got",
+        "replied": "Replied",
+        "follow_up": "Follow-up",
         "follow_up_sent": "Message Sent",
         "meeting_scheduled": "On Discussion",
         "deal_discussion": "Deal",

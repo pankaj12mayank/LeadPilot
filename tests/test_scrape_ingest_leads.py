@@ -1,6 +1,9 @@
 from __future__ import annotations
 
+from sqlalchemy import delete
+
 from database.orm.bootstrap import get_session_factory, init_sa_tables
+from database.orm.models import Lead
 from backend.services import lead_orm_service
 
 
@@ -9,6 +12,8 @@ def test_ingest_scrape_rows_into_leads_dedupes():
     Session = get_session_factory()
     db = Session()
     try:
+        db.execute(delete(Lead))
+        db.commit()
         rows = [
             {"full_name": "One", "linkedin_url": "https://www.linkedin.com/in/person-a", "search_keyword": "ceo"},
             {"full_name": "Two", "linkedin_url": "https://www.linkedin.com/in/person-b", "title": "VP"},

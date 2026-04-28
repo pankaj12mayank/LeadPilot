@@ -100,3 +100,33 @@ def get_smtp() -> dict[str, Any]:
             "\\n", "\n"
         ),
     }
+
+
+def get_admin_controls() -> dict[str, Any]:
+    s = settings_service.load_settings()
+    raw = s.get("admin_controls")
+    if not isinstance(raw, dict):
+        raw = {}
+    sw = raw.get("scoring_weights")
+    if not isinstance(sw, dict):
+        sw = {}
+    tf = raw.get("targeting_filters")
+    if not isinstance(tf, dict):
+        tf = {}
+    # Hard safety bounds
+    out = {
+        "scoring_weights": {
+            "role_relevance": int(sw.get("role_relevance") or 30),
+            "company_size": int(sw.get("company_size") or 20),
+            "signals": int(sw.get("signals") or 25),
+            "data_completeness": int(sw.get("data_completeness") or 15),
+            "base_factor_mix": int(sw.get("base_factor_mix") or 10),
+        },
+        "targeting_filters": {
+            "allowed_sources": list(tf.get("allowed_sources") or ["yc", "job_board", "local", "crunchbase", "builtwith", "manual"]),
+            "min_company_score": int(tf.get("min_company_score") or 70),
+            "preferred_locations": list(tf.get("preferred_locations") or []),
+            "preferred_keywords": list(tf.get("preferred_keywords") or []),
+        },
+    }
+    return out

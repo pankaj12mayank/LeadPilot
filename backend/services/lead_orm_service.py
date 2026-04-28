@@ -12,7 +12,7 @@ from sqlalchemy.orm import Session
 from database.orm.models import Lead
 from backend.services.lead_statuses import assert_status_writable, normalize_status
 from backend.services.platform_service import normalize_platform
-from backend.lead_scoring.tiers import assign_tier
+from backend.lead_scoring.tiers import assign_tier, tier_label
 from backend.services.scoring_service import score
 from backend.settings.lead_schema import utc_now_iso
 
@@ -26,6 +26,10 @@ def _score_input_from_dict(d: Dict[str, Any]) -> Dict[str, Any]:
     out["company_name"] = str(out.get("company_name") or out.get("company") or "")
     out["company_website"] = str(out.get("company_website") or out.get("website") or "")
     out["linkedin_url"] = str(out.get("linkedin_url") or out.get("profile_url") or "")
+    out["signal_hiring"] = int(d.get("signal_hiring") or 0)
+    out["signal_scaling"] = int(d.get("signal_scaling") or 0)
+    out["signal_content_gap"] = int(d.get("signal_content_gap") or 0)
+    out["signal_ads_gap"] = int(d.get("signal_ads_gap") or 0)
     return out
 
 
@@ -72,6 +76,11 @@ def lead_to_response_dict(lead: Lead) -> Dict[str, Any]:
         "connection_sent": getattr(lead, "connection_sent", "") or "",
         "replied_yn": getattr(lead, "replied_yn", "") or "N",
         "solution_text": getattr(lead, "solution_text", "") or "",
+        "signal_hiring": int(getattr(lead, "signal_hiring", 0) or 0),
+        "signal_scaling": int(getattr(lead, "signal_scaling", 0) or 0),
+        "signal_content_gap": int(getattr(lead, "signal_content_gap", 0) or 0),
+        "signal_ads_gap": int(getattr(lead, "signal_ads_gap", 0) or 0),
+        "priority": str(getattr(lead, "priority", "") or ""),
     }
 
 
@@ -95,7 +104,8 @@ def _apply_list_filters(
             )
         )
     if status and str(status).strip():
-        stmt = stmt.where(func.lower(Lead.status) == str(status).strip().lower())
+        normalized_status = normalize_status(str(status).strip().lower())
+        stmt = stmt.where(func.lower(Lead.status) == normalized_status)
     if tier and str(tier).strip():
         stmt = stmt.where(func.lower(Lead.tier) == str(tier).strip().lower())
     if platform and str(platform).strip():
@@ -306,6 +316,13 @@ def ingest_leadpilot_v3_scored_rows(
             connection_sent=(str(r.get("Connection Sent (Date)") or r.get("connection_sent") or ""))[:128],
             replied_yn=rep,
             solution_text=str(r.get("Solution") or r.get("solution_text") or "")[:12000],
+            signal_hiring=1 if str(r.get("signal_hiring") or "").strip().lower() in ("1", "true", "yes", "y") else 0,
+            signal_scaling=1 if str(r.get("signal_scaling") or "").strip().lower() in ("1", "true", "yes", "y") else 0,
+            signal_content_gap=1
+            if str(r.get("signal_content_gap") or "").strip().lower() in ("1", "true", "yes", "y")
+            else 0,
+            signal_ads_gap=1 if str(r.get("signal_ads_gap") or "").strip().lower() in ("1", "true", "yes", "y") else 0,
+            priority=tier_label(tier),
         )
         db.add(lead)
         created += 1
@@ -376,6 +393,13 @@ def create_lead(db: Session, data: Dict[str, Any]) -> Lead:
         connection_sent=str(row.get("connection_sent") or "")[:128],
         replied_yn="Y" if str(row.get("replied_yn") or "N").strip().upper().startswith("Y") else "N",
         solution_text=str(row.get("solution_text") or "")[:12000],
+        signal_hiring=1 if str(row.get("signal_hiring") or "").strip().lower() in ("1", "true", "yes", "y") else 0,
+        signal_scaling=1 if str(row.get("signal_scaling") or "").strip().lower() in ("1", "true", "yes", "y") else 0,
+        signal_content_gap=1
+        if str(row.get("signal_content_gap") or "").strip().lower() in ("1", "true", "yes", "y")
+        else 0,
+        signal_ads_gap=1 if str(row.get("signal_ads_gap") or "").strip().lower() in ("1", "true", "yes", "y") else 0,
+        priority=tier_label(tr or assign_tier(fs)),
     )
     db.add(lead)
     db.flush()
@@ -419,6 +443,7 @@ def update_lead(db: Session, lead_id: str, patch: Dict[str, Any]) -> Optional[Le
         sc = score(_score_input_from_dict(d))
         lead.score = float(sc.get("score") or 0)
         lead.tier = str(sc.get("tier") or "")
+        lead.priority = tier_label(lead.tier or assign_tier(lead.score))
     lead.updated_at = now
     db.flush()
     db.refresh(lead)

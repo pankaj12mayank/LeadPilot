@@ -4,11 +4,14 @@ from typing import Any, Dict, List
 
 import config
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
+from sqlalchemy import func, select
 
 from backend.app.api.deps import get_current_admin
 from backend.app.middleware.jwt import create_access_token
 from backend.services import analytics_service, auth_service, branding_files, runtime_settings, settings_service
+from database.orm.bootstrap import get_session_factory
+from database.orm.models import Company
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 
@@ -107,16 +110,72 @@ def admin_workspace_stats(_admin: dict = Depends(get_current_admin)) -> Dict[str
     dash = analytics_service.dashboard(use_cache=True)
     users = auth_service.list_users()
     active_users = sum(1 for u in users if u.get("is_active"))
+    Session = get_session_factory()
+    db = Session()
+    try:
+        total_companies = int(db.scalar(select(func.count(Company.id))) or 0)
+    finally:
+        db.close()
     return {
         "registered_users": len(users),
         "active_users": active_users,
         "inactive_users": max(0, len(users) - active_users),
+        "total_companies": total_companies,
         "total_leads": int(dash.get("total_leads") or dash.get("total") or 0),
         "hot_leads": int(dash.get("hot_leads") or 0),
         "contacted_leads": int(dash.get("contacted_leads") or 0),
         "converted_leads": int(dash.get("converted_leads") or 0),
         "conversion_rate_percent": float(dash.get("conversion_rate_percent") or 0),
     }
+
+
+class AdminScoringWeights(BaseModel):
+    role_relevance: int = Field(default=30, ge=1, le=100)
+    company_size: int = Field(default=20, ge=1, le=100)
+    signals: int = Field(default=25, ge=1, le=100)
+    data_completeness: int = Field(default=15, ge=1, le=100)
+    base_factor_mix: int = Field(default=10, ge=1, le=100)
+
+
+class AdminTargetingFilters(BaseModel):
+    allowed_sources: List[str] = Field(default_factory=lambda: ["yc", "job_board", "local", "crunchbase", "builtwith", "manual"])
+    min_company_score: int = Field(default=70, ge=0, le=100)
+    preferred_locations: List[str] = Field(default_factory=list)
+    preferred_keywords: List[str] = Field(default_factory=list)
+
+    @field_validator("allowed_sources")
+    @classmethod
+    def v_sources(cls, vals: List[str]) -> List[str]:
+        out: list[str] = []
+        for v in vals:
+            x = (v or "").strip().lower().replace("-", "_")
+            if x and x not in out:
+                out.append(x)
+        return out
+
+
+class AdminControlPatch(BaseModel):
+    scoring_weights: AdminScoringWeights | None = None
+    targeting_filters: AdminTargetingFilters | None = None
+
+
+@router.get("/controls")
+def admin_get_controls(_admin: dict = Depends(get_current_admin)) -> Dict[str, Any]:
+    return runtime_settings.get_admin_controls()
+
+
+@router.patch("/controls")
+def admin_patch_controls(
+    body: AdminControlPatch,
+    _admin: dict = Depends(get_current_admin),
+) -> Dict[str, Any]:
+    updates: Dict[str, Any] = {"admin_controls": runtime_settings.get_admin_controls()}
+    if body.scoring_weights is not None:
+        updates["admin_controls"]["scoring_weights"] = body.scoring_weights.model_dump()
+    if body.targeting_filters is not None:
+        updates["admin_controls"]["targeting_filters"] = body.targeting_filters.model_dump()
+    settings_service.patch_settings(updates)
+    return runtime_settings.get_admin_controls()
 
 
 @router.get("/branding")

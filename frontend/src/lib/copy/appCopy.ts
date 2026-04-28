@@ -33,6 +33,13 @@ export const ROUTE_META: Record<
     documentDescription:
       'Lead tracking software and contact management for sales teams. Lead scoring, status updates, and conversion optimization in one table.',
   },
+  '/outreach-queue': {
+    title: 'Outreach Queue',
+    subtitle:
+      'Manage active outreach pipeline, prioritize by lead score, and review last contacted timestamps for follow-up actions.',
+    documentDescription:
+      'Outreach queue for sales pipeline management. View non-closed leads, filter by status and score, and prioritize outreach by qualification score.',
+  },
   '/analytics': {
     title: 'Sales Analytics',
     subtitle:
@@ -57,24 +64,25 @@ export const ROUTE_META: Record<
 /** API status value to professional label (values unchanged for API compatibility) */
 export const LEAD_STATUS_LABELS: Record<string, string> = {
   new: 'New',
-  request_sent: 'Request Sent',
-  message_sent: 'Message Sent',
-  replied_got: 'Replied got',
-  on_discussion: 'On Discussion',
+  request_sent: 'Contacted',
+  message_sent: 'Contacted',
+  replied_got: 'Replied',
+  on_discussion: 'Follow-up',
   interested: 'Interested',
   deal: 'Deal',
-  close: 'Close',
+  close: 'Closed',
   not_interested: 'Not interested',
   // legacy (API may still return until edited)
-  contacted: 'Message Sent',
-  replied: 'Replied got',
-  follow_up_sent: 'Message Sent',
-  meeting_scheduled: 'On Discussion',
+  contacted: 'Contacted',
+  replied: 'Replied',
+  follow_up: 'Follow-up',
+  follow_up_sent: 'Follow-up',
+  meeting_scheduled: 'Follow-up',
   deal_discussion: 'Deal',
-  closed: 'Close',
+  closed: 'Closed',
   rejected: 'Not interested',
-  ready: 'Message Sent',
-  converted: 'Close',
+  ready: 'Contacted',
+  converted: 'Closed',
 }
 
 export function leadStatusLabel(status: string): string {

@@ -9,6 +9,7 @@ import {
 import {
   ChevronLeft,
   ChevronRight,
+  Copy,
   Download,
   FileDown,
   Loader2,
@@ -50,14 +51,10 @@ import type { Lead } from '@/types/models'
 
 const LEAD_STATUSES = [
   'new',
-  'request_sent',
-  'message_sent',
-  'replied_got',
-  'on_discussion',
-  'interested',
-  'deal',
-  'close',
-  'not_interested',
+  'contacted',
+  'replied',
+  'follow_up',
+  'closed',
 ] as const
 
 const PIPELINE_STATUS_SELECT_OPTIONS = LEAD_STATUSES.map((s) => ({
@@ -105,6 +102,12 @@ function fromLocalInput(s: string) {
   const d = new Date(s)
   if (Number.isNaN(d.getTime())) return ''
   return d.toISOString().slice(0, 19) + '+00:00'
+}
+
+function fallbackOutreachTemplate(lead: Lead) {
+  const name = (lead.full_name || 'there').trim()
+  const company = (lead.company_name || 'your company').trim()
+  return `Hi ${name}, I noticed ${company} may have room to improve outreach consistency. If helpful, I can share a quick, practical plan.`
 }
 
 /** Short heading for modals when ``full_name`` contains scraped LinkedIn noise. */
@@ -312,26 +315,32 @@ export function LeadsPage() {
   }, [debouncedSearch, filters.status, filters.tier])
 
   const openModal = useCallback(async (lead: Lead) => {
-    setModalLead(lead)
-    setNotesDraft(lead.notes || '')
-    setLastContactLocal(toLocalInput(lead.last_contacted_at || ''))
-    setFollowUpLocal(toLocalInput(lead.follow_up_reminder_at || ''))
-    setTitleDraft(lead.title || '')
-    setCompanyDraft(lead.company_name || '')
-    setEmailDraft(lead.email || '')
-    setWebsiteDraft(lead.company_website || '')
-    setLinkedinDraft(lead.linkedin_url || '')
-    setCompanySizeDraft(lead.company_size || '')
-    setIndustryDraft(lead.industry || '')
-    setLocationDraft(lead.location || '')
-    setPhoneDraft(lead.phone || '')
-    setMessageDraft(lead.personalized_message || '')
+    let base = lead
+    try {
+      base = await getLead(lead.id)
+    } catch {
+      base = lead
+    }
+    setModalLead(base)
+    setNotesDraft(base.notes || '')
+    setLastContactLocal(toLocalInput(base.last_contacted_at || ''))
+    setFollowUpLocal(toLocalInput(base.follow_up_reminder_at || ''))
+    setTitleDraft(base.title || '')
+    setCompanyDraft(base.company_name || '')
+    setEmailDraft(base.email || '')
+    setWebsiteDraft(base.company_website || '')
+    setLinkedinDraft(base.linkedin_url || '')
+    setCompanySizeDraft(base.company_size || '')
+    setIndustryDraft(base.industry || '')
+    setLocationDraft(base.location || '')
+    setPhoneDraft(base.phone || '')
+    setMessageDraft(base.personalized_message || '')
     setGenErr(null)
     try {
       const [h, sh, em] = await Promise.all([
-        getLeadHistory(lead.id),
-        getLeadStatusHistory(lead.id),
-        getLeadEmailHistory(lead.id),
+        getLeadHistory(base.id),
+        getLeadStatusHistory(base.id),
+        getLeadEmailHistory(base.id),
       ])
       setTimeline(buildOutreachTimeline(h, sh, em))
     } catch {
@@ -692,6 +701,37 @@ export function LeadsPage() {
     }
   }
 
+  async function copyLeadMessage() {
+    const msg = (messageDraft || modalLead?.personalized_message || (modalLead ? fallbackOutreachTemplate(modalLead) : '')).trim()
+    if (!msg) {
+      toast.message('No generated message to copy')
+      return
+    }
+    try {
+      await navigator.clipboard.writeText(msg)
+      toast.success('Message copied')
+    } catch {
+      toast.error('Could not copy message')
+    }
+  }
+
+  async function markAsContacted() {
+    if (!modalLead) return
+    const contactTs = new Date().toISOString().replace('Z', '+00:00')
+    try {
+      const updated = await updateLead(modalLead.id, {
+        status: 'contacted',
+        last_contacted_at: contactTs,
+      })
+      patchLocal(modalLead.id, updated)
+      setModalLead(updated)
+      setLastContactLocal(toLocalInput(updated.last_contacted_at || contactTs))
+      toast.success('Outreach marked as contacted (manual flow)')
+    } catch (e) {
+      toast.error(getApiErrorMessage(e, 'Could not mark as contacted'))
+    }
+  }
+
   if (loading && rows.length === 0) {
     return (
       <div className="mx-auto max-w-[1680px] space-y-6">
@@ -800,6 +840,30 @@ export function LeadsPage() {
               />
             </div>
           </div>
+        </div>
+        <div className="mt-3 flex flex-wrap items-center gap-2">
+          <span className="text-[11px] font-semibold uppercase tracking-wider text-ink-subtle">Quick pipeline filters</span>
+          <button
+            type="button"
+            onClick={() => setStatus('new')}
+            className="rounded-lg border border-surface-border px-2.5 py-1 text-[11px] text-ink-muted transition hover:bg-field hover:text-ink"
+          >
+            Show only New
+          </button>
+          <button
+            type="button"
+            onClick={() => setStatus('contacted')}
+            className="rounded-lg border border-surface-border px-2.5 py-1 text-[11px] text-ink-muted transition hover:bg-field hover:text-ink"
+          >
+            Show Contacted
+          </button>
+          <button
+            type="button"
+            onClick={() => setStatus('replied')}
+            className="rounded-lg border border-surface-border px-2.5 py-1 text-[11px] text-ink-muted transition hover:bg-field hover:text-ink"
+          >
+            Show Replied
+          </button>
         </div>
 
         <div className="mt-4 flex flex-wrap gap-2 border-t border-surface-border pt-4">
@@ -951,6 +1015,77 @@ export function LeadsPage() {
       >
         {modalLead ? (
           <div className="space-y-6 text-sm">
+            <section className="rounded-2xl border border-surface-border bg-field/40 p-4">
+              <h3 className="text-sm font-semibold text-ink">Lead Detail View</h3>
+              <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                <div>
+                  <div className="text-[10px] font-semibold uppercase tracking-wider text-ink-subtle">Name</div>
+                  <div className="mt-1 text-ink">{modalLead.full_name || '—'}</div>
+                </div>
+                <div>
+                  <div className="text-[10px] font-semibold uppercase tracking-wider text-ink-subtle">Role</div>
+                  <div className="mt-1 text-ink">{modalLead.title || '—'}</div>
+                </div>
+                <div>
+                  <div className="text-[10px] font-semibold uppercase tracking-wider text-ink-subtle">Company</div>
+                  <div className="mt-1 text-ink">{modalLead.company_name || '—'}</div>
+                </div>
+                <div>
+                  <div className="text-[10px] font-semibold uppercase tracking-wider text-ink-subtle">Website</div>
+                  <div className="mt-1 break-all text-ink">{modalLead.company_website || '—'}</div>
+                </div>
+                <div>
+                  <div className="text-[10px] font-semibold uppercase tracking-wider text-ink-subtle">Score</div>
+                  <div className="mt-1 text-ink tabular-nums">{Math.round(Number(modalLead.score || 0))}</div>
+                </div>
+                <div>
+                  <div className="text-[10px] font-semibold uppercase tracking-wider text-ink-subtle">Signals</div>
+                  <div className="mt-1 text-ink">
+                    {[
+                      modalLead.signal_hiring ? 'hiring' : '',
+                      modalLead.signal_scaling ? 'scaling' : '',
+                      modalLead.signal_content_gap ? 'content_gap' : '',
+                      modalLead.signal_ads_gap ? 'ads_gap' : '',
+                    ]
+                      .filter(Boolean)
+                      .join(', ') || '—'}
+                  </div>
+                </div>
+                <div className="sm:col-span-2">
+                  <div className="text-[10px] font-semibold uppercase tracking-wider text-ink-subtle">Problems (AI)</div>
+                  <div className="mt-1 whitespace-pre-wrap text-ink">{modalLead.problem_seen || '—'}</div>
+                </div>
+                <div className="sm:col-span-2">
+                  <div className="mb-2 flex items-center justify-between gap-2">
+                    <div className="text-[10px] font-semibold uppercase tracking-wider text-ink-subtle">
+                      Generated message
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => void copyLeadMessage()}
+                      className="inline-flex items-center gap-1 rounded-lg border border-surface-border px-2 py-1 text-[11px] text-ink-muted transition hover:bg-field hover:text-ink"
+                    >
+                      <Copy className="h-3.5 w-3.5" />
+                      Copy message
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => void markAsContacted()}
+                      className="inline-flex items-center gap-1 rounded-lg border border-emerald-500/35 bg-emerald-500/10 px-2 py-1 text-[11px] font-semibold text-emerald-800 transition hover:border-emerald-500/50 dark:text-emerald-200"
+                    >
+                      Mark as Contacted
+                    </button>
+                  </div>
+                  <div className="rounded-xl border border-surface-border bg-white/40 px-3 py-2 text-xs leading-relaxed text-ink dark:bg-zinc-900/40">
+                    {(messageDraft || modalLead.personalized_message || fallbackOutreachTemplate(modalLead)).trim()}
+                  </div>
+                  <p className="mt-2 text-[11px] text-ink-muted">
+                    Manual outreach only: copy the message and paste it in LinkedIn or Email. No auto sending.
+                  </p>
+                </div>
+              </div>
+            </section>
+
             <div className="flex flex-wrap items-center gap-2">
               <Badge variant={tierVariant(modalLead.tier)}>Qualification tier: {tierLabel(modalLead.tier)}</Badge>
               <span className={cn('rounded-full border border-surface-border px-2 py-0.5 text-xs tabular-nums', scoreTone(Number(modalLead.score)))}>

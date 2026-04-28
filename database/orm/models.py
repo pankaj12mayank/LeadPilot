@@ -51,6 +51,45 @@ class Lead(Base):
     connection_sent: Mapped[str] = mapped_column(String(128), default="")
     replied_yn: Mapped[str] = mapped_column(String(8), default="N")
     solution_text: Mapped[str] = mapped_column(Text, default="")
+    signal_hiring: Mapped[int] = mapped_column(Integer, nullable=False, default=0, index=True)
+    signal_scaling: Mapped[int] = mapped_column(Integer, nullable=False, default=0, index=True)
+    signal_content_gap: Mapped[int] = mapped_column(Integer, nullable=False, default=0, index=True)
+    signal_ads_gap: Mapped[int] = mapped_column(Integer, nullable=False, default=0, index=True)
+    priority: Mapped[str] = mapped_column(String(16), default="Cold", index=True)
+
+
+class Company(Base):
+    __tablename__ = "companies"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    company_name: Mapped[str] = mapped_column(Text, default="", index=True)
+    website: Mapped[str] = mapped_column(Text, default="")
+    domain: Mapped[str] = mapped_column(String(255), unique=True, nullable=False, index=True)
+    source: Mapped[str] = mapped_column(String(64), default="", index=True)
+    first_seen: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    last_updated: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+
+
+class CompanyEnrichment(Base):
+    __tablename__ = "company_enrichment"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    company_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("companies.id", ondelete="CASCADE"), nullable=False, unique=True, index=True
+    )
+    source_url: Mapped[str] = mapped_column(Text, default="")
+    has_blog: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    has_careers: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    content_text: Mapped[str] = mapped_column(Text, default="")
+    signal_hiring: Mapped[int] = mapped_column(Integer, nullable=False, default=0, index=True)
+    signal_scaling: Mapped[int] = mapped_column(Integer, nullable=False, default=0, index=True)
+    signal_content_gap: Mapped[int] = mapped_column(Integer, nullable=False, default=0, index=True)
+    signal_ads_gap: Mapped[int] = mapped_column(Integer, nullable=False, default=0, index=True)
+    score: Mapped[float] = mapped_column(Float, default=0.0, index=True)
+    priority: Mapped[str] = mapped_column(String(16), default="Cold", index=True)
+    fetch_ok: Mapped[int] = mapped_column(Integer, nullable=False, default=0, index=True)
+    fetch_error: Mapped[str] = mapped_column(Text, default="")
+    last_checked: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
 
 
 class OutreachHistory(Base):

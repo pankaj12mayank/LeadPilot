@@ -29,6 +29,7 @@ const statusStyles: Record<string, string> = {
   // legacy
   contacted: 'border-sky-400/80 bg-sky-600 text-white dark:border-sky-500/50 dark:bg-sky-700 dark:text-white',
   replied: 'border-amber-700/50 bg-amber-800 text-amber-50 dark:border-amber-600 dark:bg-amber-900 dark:text-amber-100',
+  follow_up: 'border-rose-200/80 bg-rose-100 text-rose-900 dark:border-rose-500/35 dark:bg-rose-950/50 dark:text-rose-100',
   follow_up_sent: 'border-sky-400/80 bg-sky-600 text-white dark:border-sky-500/50 dark:bg-sky-700 dark:text-white',
   meeting_scheduled: 'border-rose-200/80 bg-rose-100 text-rose-900 dark:border-rose-500/35 dark:bg-rose-950/50 dark:text-rose-100',
   deal_discussion: 'border-slate-500/60 bg-slate-600 text-white dark:border-slate-500 dark:bg-slate-800 dark:text-slate-100',

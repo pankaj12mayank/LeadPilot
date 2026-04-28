@@ -31,6 +31,21 @@ def _defaults() -> Dict[str, Any]:
             "favicon_url": "",
             "footer_copyright": "",
         },
+        "admin_controls": {
+            "scoring_weights": {
+                "role_relevance": 30,
+                "company_size": 20,
+                "signals": 25,
+                "data_completeness": 15,
+                "base_factor_mix": 10,
+            },
+            "targeting_filters": {
+                "allowed_sources": ["yc", "job_board", "local", "crunchbase", "builtwith", "manual"],
+                "min_company_score": 70,
+                "preferred_locations": [],
+                "preferred_keywords": [],
+            },
+        },
     }
 
 

@@ -27,6 +27,11 @@ export type Lead = {
   connection_sent?: string
   replied_yn?: string
   solution_text?: string
+  signal_hiring?: number
+  signal_scaling?: number
+  signal_content_gap?: number
+  signal_ads_gap?: number
+  priority?: string
 }
 
 export type User = {
@@ -57,10 +62,12 @@ export type DashboardTierMixRow = {
 
 export type DashboardData = {
   total?: number
+  total_companies?: number
   by_status?: Record<string, number>
   by_platform?: Record<string, number>
   total_leads?: number
   hot_leads?: number
+  new_leads?: number
   warm_leads?: number
   cold_leads?: number
   tier_distribution?: Record<string, number>

@@ -19,5 +19,28 @@
     "logo_url": "/branding/logo.png",
     "favicon_url": "/branding/favicon.png",
     "footer_copyright": "Guide every lead to conversion"
+  },
+  "admin_controls": {
+    "scoring_weights": {
+      "role_relevance": 35,
+      "company_size": 15,
+      "signals": 30,
+      "data_completeness": 10,
+      "base_factor_mix": 10
+    },
+    "targeting_filters": {
+      "allowed_sources": [
+        "yc",
+        "job_board"
+      ],
+      "min_company_score": 75,
+      "preferred_locations": [
+        "us",
+        "india"
+      ],
+      "preferred_keywords": [
+        "saas"
+      ]
+    }
   }
 }
