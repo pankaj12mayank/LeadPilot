@@ -26,7 +26,6 @@ export function AdminUsersPage() {
   const [stats, setStats] = useState<AdminWorkspaceStats | null>(null)
   const [loadErr, setLoadErr] = useState<string | null>(null)
   const [search, setSearch] = useState('')
-  const [selected, setSelected] = useState<Record<string, boolean>>({})
   const [busy, setBusy] = useState(false)
   const [newEmail, setNewEmail] = useState('')
   const [newPassword, setNewPassword] = useState('')
@@ -54,11 +53,6 @@ export function AdminUsersPage() {
     if (!q) return users
     return users.filter((x) => x.email.toLowerCase().includes(q))
   }, [users, search])
-
-  const selectedIds = useMemo(() => Object.keys(selected).filter((id) => selected[id]), [selected])
-
-  const allFilteredSelected =
-    filtered.length > 0 ? filtered.every((u) => selected[u.id]) : false
 
   async function onToggleActive(u: AdminUserRow) {
     try {
@@ -105,37 +99,18 @@ export function AdminUsersPage() {
     }
   }
 
-  async function onBulkDelete() {
-    if (!selectedIds.length) return
-    if (!window.confirm(`Permanently delete ${selectedIds.length} user account(s)? This cannot be undone.`)) return
+  async function onDeleteOne(userId: string, email: string) {
+    if (!window.confirm(`Delete user "${email}"? This cannot be undone.`)) return
     setBusy(true)
     try {
-      await adminBulkDeleteUsers(selectedIds)
-      setSelected({})
+      await adminBulkDeleteUsers([userId])
       await load()
-      toast.success('Users removed')
+      toast.success('User removed')
     } catch (e) {
       toast.error(getApiErrorMessage(e, 'Delete failed'))
     } finally {
       setBusy(false)
     }
-  }
-
-  function toggleSelect(id: string) {
-    setSelected((s) => ({ ...s, [id]: !s[id] }))
-  }
-
-  function selectAllFiltered() {
-    if (!filtered.length) return
-    const turnOn = !allFilteredSelected
-    setSelected((prev) => {
-      const next = { ...prev }
-      for (const u of filtered) {
-        if (turnOn) next[u.id] = true
-        else delete next[u.id]
-      }
-      return next
-    })
   }
 
   return (
@@ -213,42 +188,29 @@ export function AdminUsersPage() {
       </section>
 
       <section className="rounded-2xl border border-surface-border bg-premium-card-light p-6 shadow-card dark:bg-premium-card-dark">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <div className="min-w-0 flex-1">
+        <div className="space-y-3">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <h2 className="text-sm font-semibold text-ink">User list</h2>
+            <p className="text-xs text-ink-subtle">No bulk select. Manage accounts with clear row actions.</p>
+          </div>
+          <div className="max-w-2xl">
             <label className="text-[10px] font-semibold uppercase tracking-wider text-ink-muted" htmlFor="user-search">
-              Search
+              Search by email
             </label>
             <input
               id="user-search"
-              className="field-input mt-1 max-w-md"
+              className="field-input mt-1 w-full"
               placeholder="Filter by email…"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
             />
           </div>
-          <button
-            type="button"
-            disabled={!selectedIds.length || busy}
-            className="rounded-xl border border-red-500/40 bg-red-500/10 px-4 py-2.5 text-sm font-semibold text-red-800 transition hover:bg-red-500/15 disabled:opacity-40 dark:text-red-200"
-            onClick={() => void onBulkDelete()}
-          >
-            Delete selected ({selectedIds.length})
-          </button>
         </div>
 
         <div className="mt-6 overflow-x-auto">
           <table className="w-full min-w-[720px] text-left text-sm">
             <thead>
               <tr className="border-b border-surface-border text-xs uppercase text-ink-muted">
-                <th className="w-10 py-2 pr-2">
-                  <input
-                    type="checkbox"
-                    checked={allFilteredSelected}
-                    onChange={() => selectAllFiltered()}
-                    aria-label="Select all filtered users"
-                    className="h-4 w-4 rounded border-surface-border"
-                  />
-                </th>
                 <th className="py-2 pr-4">Email</th>
                 <th className="py-2 pr-4">Status</th>
                 <th className="py-2 pr-4">Last login</th>
@@ -259,15 +221,6 @@ export function AdminUsersPage() {
             <tbody>
               {filtered.map((u) => (
                 <tr key={u.id} className="border-b border-surface-border/80">
-                  <td className="py-2 pr-2 align-middle">
-                    <input
-                      type="checkbox"
-                      checked={!!selected[u.id]}
-                      onChange={() => toggleSelect(u.id)}
-                      aria-label={`Select ${u.email}`}
-                      className="h-4 w-4 rounded border-surface-border"
-                    />
-                  </td>
                   <td className="py-2 pr-4 align-middle font-medium text-ink">{u.email}</td>
                   <td className="py-2 pr-4 align-middle">
                     <button
@@ -286,16 +239,26 @@ export function AdminUsersPage() {
                   <td className="py-2 pr-4 align-middle text-xs text-ink-muted tabular-nums">{fmtLogin(u.last_login_at)}</td>
                   <td className="py-2 pr-4 align-middle text-xs text-ink-muted tabular-nums">{fmtLogin(u.created_at)}</td>
                   <td className="py-2 align-middle">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setPwTarget(u)
-                        setPwValue('')
-                      }}
-                      className="rounded-lg border border-surface-border px-2 py-1 text-xs font-medium text-ink-muted transition hover:border-amber-500/30 hover:text-ink"
-                    >
-                      Set password
-                    </button>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setPwTarget(u)
+                          setPwValue('')
+                        }}
+                        className="rounded-lg border border-surface-border px-2 py-1 text-xs font-medium text-ink-muted transition hover:border-amber-500/30 hover:text-ink"
+                      >
+                        Set password
+                      </button>
+                      <button
+                        type="button"
+                        disabled={busy}
+                        onClick={() => void onDeleteOne(u.id, u.email)}
+                        className="rounded-lg border border-red-500/35 px-2 py-1 text-xs font-semibold text-red-700 disabled:opacity-50 dark:text-red-300"
+                      >
+                        Delete
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}

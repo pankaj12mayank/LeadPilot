@@ -734,3 +734,34 @@ sqlite3.OperationalError: database is locked
 2026-04-27 18:55:12,352 | INFO | leadpilot.startup | Lead storage initialized (STORAGE_MODE=csv).
 2026-04-27 18:55:12,352 | INFO | leadpilot.startup | LeadPilot API — ready to accept requests.
 2026-04-27 18:59:11,687 | INFO | leadpilot.startup | LeadPilot API — shutdown.
+2026-04-28 18:33:52,478 | INFO | leadpilot.startup | LeadPilot API — startup beginning.
+2026-04-28 18:33:52,478 | INFO | leadpilot.startup | python-dotenv: loaded .env from repository root (see config.py).
+2026-04-28 18:33:52,479 | INFO | leadpilot.startup | Runtime directories ready (exports, sessions, logs, DB parents, branding).
+2026-04-28 18:33:52,482 | INFO | leadpilot.startup | Meta SQLite schema OK (database/api_meta.db).
+2026-04-28 18:33:52,500 | INFO | leadpilot.startup | SQLAlchemy tables OK (ORM / leads schema).
+2026-04-28 18:33:52,500 | INFO | leadpilot.startup | Lead storage initialized (STORAGE_MODE=csv).
+2026-04-28 18:33:52,500 | INFO | leadpilot.startup | LeadPilot API — ready to accept requests.
+2026-04-28 18:36:59,544 | WARNING | backend.app.middleware.error_handlers | POST /api/auth/login -> HTTP 401: Incorrect email or password
+2026-04-28 18:36:59,553 | WARNING | backend.app.middleware.error_handlers | POST /api/admin/login -> HTTP 401: Invalid admin email or password
+2026-04-28 18:38:45,186 | WARNING | backend.app.middleware.error_handlers | POST /api/auth/login -> HTTP 401: Incorrect email or password
+2026-04-28 18:44:12,962 | WARNING | backend.app.middleware.error_handlers | POST /api/admin/login -> HTTP 401: Invalid admin email or password
+2026-04-28 18:49:14,938 | INFO | httpx | HTTP Request: GET https://www.ycombinator.com/companies?query=software "HTTP/1.1 200 OK"
+2026-04-28 18:49:17,653 | INFO | httpx | HTTP Request: GET https://wellfound.com/discover/companies?query=software "HTTP/1.1 403 Forbidden"
+2026-04-28 18:49:19,079 | INFO | httpx | HTTP Request: GET https://www.indeed.com/companies/search?q=software "HTTP/1.1 403 Forbidden"
+2026-04-28 18:49:20,941 | INFO | httpx | HTTP Request: GET https://www.google.com/search?q=software+company+official+site "HTTP/1.1 200 OK"
+2026-04-28 18:49:22,997 | INFO | httpx | HTTP Request: GET https://www.crunchbase.com/discover/organization.companies/field/organizations/categories/software "HTTP/1.1 403 Forbidden"
+2026-04-28 18:49:26,089 | INFO | httpx | HTTP Request: GET https://support.google.com "HTTP/1.1 200 OK"
+2026-04-28 18:49:29,326 | INFO | httpx | HTTP Request: GET https://google.com "HTTP/1.1 301 Moved Permanently"
+2026-04-28 18:49:29,642 | INFO | httpx | HTTP Request: GET https://www.google.com/ "HTTP/1.1 200 OK"
+2026-04-28 19:01:21,033 | INFO | httpx | HTTP Request: GET https://www.ycombinator.com/companies?query=Founder+Dubai "HTTP/1.1 200 OK"
+2026-04-28 19:01:22,440 | INFO | httpx | HTTP Request: GET https://wellfound.com/discover/companies?query=Founder+Dubai "HTTP/1.1 403 Forbidden"
+2026-04-28 19:01:24,783 | INFO | httpx | HTTP Request: GET https://www.indeed.com/companies/search?q=Founder+Dubai "HTTP/1.1 403 Forbidden"
+2026-04-28 19:01:26,587 | INFO | httpx | HTTP Request: GET https://www.google.com/search?q=Founder+Dubai+company+official+site "HTTP/1.1 200 OK"
+2026-04-28 19:01:28,143 | INFO | httpx | HTTP Request: GET https://www.crunchbase.com/discover/organization.companies/field/organizations/categories/Founder+Dubai "HTTP/1.1 403 Forbidden"
+2026-04-28 19:01:30,050 | INFO | httpx | HTTP Request: GET https://support.google.com "HTTP/1.1 200 OK"
+2026-04-28 19:01:32,954 | INFO | httpx | HTTP Request: GET https://google.com "HTTP/1.1 301 Moved Permanently"
+2026-04-28 19:01:33,327 | INFO | httpx | HTTP Request: GET https://www.google.com/ "HTTP/1.1 200 OK"
+2026-04-28 19:01:56,031 | WARNING | backend.app.middleware.error_handlers | POST /api/auth/login -> HTTP 401: Incorrect email or password
+2026-04-28 19:01:56,039 | WARNING | backend.app.middleware.error_handlers | POST /api/admin/login -> HTTP 401: Invalid admin email or password
+2026-04-28 19:02:01,370 | WARNING | backend.app.middleware.error_handlers | POST /api/auth/login -> HTTP 401: Incorrect email or password
+2026-04-28 19:05:54,759 | INFO | leadpilot.startup | LeadPilot API — shutdown.

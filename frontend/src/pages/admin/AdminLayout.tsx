@@ -20,16 +20,26 @@ export function AdminLayout() {
 
   return (
     <div className="min-h-screen bg-surface text-ink">
-      <header className="border-b border-surface-border bg-premium-card-light px-4 py-4 dark:bg-premium-card-dark">
-        <div className="mx-auto flex max-w-6xl flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+      <header className="border-b border-surface-border bg-gradient-to-b from-premium-card-light to-transparent px-4 py-4 dark:from-premium-card-dark">
+        <div className="mx-auto flex max-w-6xl flex-col gap-4">
+          <div className="flex flex-wrap items-center justify-between gap-3">
           <Link
             to="/admin/overview"
             className="flex items-center gap-2 rounded-lg outline-none ring-offset-2 transition hover:opacity-90 focus-visible:ring-2 focus-visible:ring-amber-500/40"
           >
             <Shield className="h-5 w-5 text-amber-700 dark:text-amber-300" />
-            <span className="font-display text-sm font-semibold tracking-tight">LeadPilot admin</span>
+            <span className="font-display text-sm font-semibold tracking-tight">LeadPilot Admin Console</span>
           </Link>
-          <nav className="flex flex-wrap items-center gap-2 text-sm">
+            <button
+              type="button"
+              onClick={() => logout()}
+              className="inline-flex items-center gap-1 rounded-lg border border-surface-border px-3 py-2 text-ink-muted transition hover:text-ink"
+            >
+              <LogOut className="h-4 w-4" />
+              Sign out
+            </button>
+          </div>
+          <nav className="flex flex-wrap items-center gap-2 rounded-xl border border-surface-border bg-premium-card-light/70 p-1 text-sm dark:bg-premium-card-dark/60">
             {nav.map(({ to, label, icon: Icon }) => (
               <NavLink
                 key={to}
@@ -37,7 +47,9 @@ export function AdminLayout() {
                 className={({ isActive }) =>
                   cn(
                     'inline-flex items-center gap-1.5 rounded-lg px-3 py-2 font-medium transition',
-                    isActive ? 'bg-amber-500/15 text-ink' : 'text-ink-muted hover:bg-field/80 hover:text-ink dark:hover:bg-white/[0.04]',
+                    isActive
+                      ? 'bg-amber-500/15 text-ink shadow-sm'
+                      : 'text-ink-muted hover:bg-field/80 hover:text-ink dark:hover:bg-white/[0.04]',
                   )
                 }
               >
@@ -45,14 +57,6 @@ export function AdminLayout() {
                 {label}
               </NavLink>
             ))}
-            <button
-              type="button"
-              onClick={() => logout()}
-              className="ml-auto inline-flex items-center gap-1 rounded-lg border border-surface-border px-3 py-2 text-ink-muted transition hover:text-ink"
-            >
-              <LogOut className="h-4 w-4" />
-              Sign out
-            </button>
           </nav>
         </div>
       </header>

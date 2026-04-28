@@ -184,9 +184,11 @@ export function AdminBrandingPage() {
         </p>
       </section>
 
-      <section className="rounded-2xl border border-surface-border bg-premium-card-light p-6 shadow-card dark:bg-premium-card-dark">
-        <div className="mx-auto max-w-2xl space-y-10">
-          <div className="space-y-2">
+      <section className="grid gap-4 lg:grid-cols-3">
+        <div className="rounded-2xl border border-surface-border bg-premium-card-light p-5 shadow-card dark:bg-premium-card-dark">
+          <h2 className="font-display text-base font-semibold text-ink">Step 1: Brand identity</h2>
+          <p className="mt-1 text-xs text-ink-subtle">Set app name and footer line seen by users in the product shell.</p>
+          <div className="mt-4 space-y-2">
             <label className="block text-xs font-semibold uppercase tracking-wider text-ink-muted" htmlFor="bn-name">
               Product name
             </label>
@@ -208,7 +210,7 @@ export function AdminBrandingPage() {
             </div>
           </div>
 
-          <div className="space-y-2">
+          <div className="mt-6 space-y-2">
             <label className="block text-xs font-semibold uppercase tracking-wider text-ink-muted" htmlFor="footer-copy">
               Footer / copyright line
             </label>
@@ -241,80 +243,76 @@ export function AdminBrandingPage() {
               </button>
             </div>
           </div>
-
-          <div className="grid gap-8 border-t border-surface-border pt-8 sm:grid-cols-2">
-            <div>
-              <h2 className="text-xs font-semibold uppercase tracking-wider text-ink-muted">Logo</h2>
-              <p className="mt-1 text-[11px] text-ink-subtle">PNG, JPG, WebP, SVG, or GIF — max 2 MB</p>
-              <div className="mt-3 flex flex-wrap items-center gap-2">
-                <label className="btn-primary cursor-pointer px-4 py-2 text-sm disabled:opacity-50">
-                  <input type="file" accept=".png,.jpg,.jpeg,.webp,.svg,.gif,image/*" className="hidden" onChange={onLogoFile} disabled={logoBusy} />
-                  {logoBusy ? 'Uploading…' : 'Choose logo file'}
-                </label>
-                {logoUrl ? (
-                  <button
-                    type="button"
-                    disabled={logoBusy}
-                    onClick={() => void clearLogo()}
-                    className="rounded-xl border border-red-500/35 px-3 py-2 text-xs font-semibold text-red-800 dark:text-red-300"
-                  >
-                    Remove logo
-                  </button>
-                ) : null}
-              </div>
-              {logoUrl ? (
-                <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-start">
-                  <div className="shrink-0 overflow-hidden rounded-xl border border-surface-border bg-field p-2 shadow-inner">
-                    <img key={logoSrc} src={logoSrc} alt="Logo preview" className="h-20 w-20 object-contain sm:h-24 sm:w-24" />
-                  </div>
-                  <div className="min-w-0">
-                    <div className="text-[10px] font-semibold uppercase tracking-wider text-ink-subtle">URL</div>
-                    <p className="mt-1 break-all font-mono text-[11px] text-ink-muted">{logoUrl}</p>
-                  </div>
-                </div>
-              ) : (
-                <p className="mt-3 text-xs text-ink-muted">No logo — default icon is used in the app.</p>
-              )}
-            </div>
-
-            <div>
-              <h2 className="text-xs font-semibold uppercase tracking-wider text-ink-muted">Favicon</h2>
-              <p className="mt-1 text-[11px] text-ink-subtle">ICO, PNG, or SVG — max 2 MB</p>
-              <div className="mt-3 flex flex-wrap items-center gap-2">
-                <label className="btn-primary cursor-pointer px-4 py-2 text-sm disabled:opacity-50">
-                  <input type="file" accept=".ico,.png,.svg,image/*" className="hidden" onChange={onFaviconFile} disabled={favBusy} />
-                  {favBusy ? 'Uploading…' : 'Choose favicon file'}
-                </label>
-                {faviconUrl ? (
-                  <button
-                    type="button"
-                    disabled={favBusy}
-                    onClick={() => void clearFavicon()}
-                    className="rounded-xl border border-red-500/35 px-3 py-2 text-xs font-semibold text-red-800 dark:text-red-300"
-                  >
-                    Remove favicon
-                  </button>
-                ) : null}
-              </div>
-              {faviconUrl ? (
-                <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-start">
-                  <div className="shrink-0 overflow-hidden rounded-lg border border-surface-border bg-field p-2 shadow-inner">
-                    <img key={favSrc} src={favSrc} alt="Favicon preview" className="h-12 w-12 object-contain" />
-                  </div>
-                  <div className="min-w-0">
-                    <div className="text-[10px] font-semibold uppercase tracking-wider text-ink-subtle">URL</div>
-                    <p className="mt-1 break-all font-mono text-[11px] text-ink-muted">{faviconUrl}</p>
-                  </div>
-                </div>
-              ) : (
-                <p className="mt-3 text-xs text-ink-muted">No favicon — browser default is used.</p>
-              )}
-            </div>
-          </div>
         </div>
 
-        {brandingMsg ? <p className="mt-4 text-sm text-ink-muted">{brandingMsg}</p> : null}
+        <div className="rounded-2xl border border-surface-border bg-premium-card-light p-5 shadow-card dark:bg-premium-card-dark">
+          <h2 className="font-display text-base font-semibold text-ink">Step 2: Logo</h2>
+          <p className="mt-1 text-xs text-ink-subtle">PNG, JPG, WebP, SVG, or GIF - max 2 MB.</p>
+          <div className="mt-3 flex flex-wrap items-center gap-2">
+            <label className="btn-primary cursor-pointer px-4 py-2 text-sm disabled:opacity-50">
+              <input type="file" accept=".png,.jpg,.jpeg,.webp,.svg,.gif,image/*" className="hidden" onChange={onLogoFile} disabled={logoBusy} />
+              {logoBusy ? 'Uploading…' : 'Upload logo'}
+            </label>
+            {logoUrl ? (
+              <button
+                type="button"
+                disabled={logoBusy}
+                onClick={() => void clearLogo()}
+                className="rounded-xl border border-red-500/35 px-3 py-2 text-xs font-semibold text-red-800 dark:text-red-300"
+              >
+                Remove
+              </button>
+            ) : null}
+          </div>
+          {logoUrl ? (
+            <div className="mt-4 space-y-2">
+              <div className="inline-flex overflow-hidden rounded-xl border border-surface-border bg-field p-2 shadow-inner">
+                <img key={logoSrc} src={logoSrc} alt="Logo preview" className="h-20 w-20 object-contain sm:h-24 sm:w-24" />
+              </div>
+              <p className="break-all font-mono text-[11px] text-ink-muted">{logoUrl}</p>
+            </div>
+          ) : (
+            <p className="mt-3 text-xs text-ink-muted">No logo yet.</p>
+          )}
+        </div>
+
+        <div className="rounded-2xl border border-surface-border bg-premium-card-light p-5 shadow-card dark:bg-premium-card-dark">
+          <h2 className="font-display text-base font-semibold text-ink">Step 3: Favicon</h2>
+          <p className="mt-1 text-xs text-ink-subtle">ICO, PNG, or SVG - max 2 MB.</p>
+          <div className="mt-3 flex flex-wrap items-center gap-2">
+            <label className="btn-primary cursor-pointer px-4 py-2 text-sm disabled:opacity-50">
+              <input type="file" accept=".ico,.png,.svg,image/*" className="hidden" onChange={onFaviconFile} disabled={favBusy} />
+              {favBusy ? 'Uploading…' : 'Upload favicon'}
+            </label>
+            {faviconUrl ? (
+              <button
+                type="button"
+                disabled={favBusy}
+                onClick={() => void clearFavicon()}
+                className="rounded-xl border border-red-500/35 px-3 py-2 text-xs font-semibold text-red-800 dark:text-red-300"
+              >
+                Remove
+              </button>
+            ) : null}
+          </div>
+          {faviconUrl ? (
+            <div className="mt-4 space-y-2">
+              <div className="inline-flex overflow-hidden rounded-lg border border-surface-border bg-field p-2 shadow-inner">
+                <img key={favSrc} src={favSrc} alt="Favicon preview" className="h-12 w-12 object-contain" />
+              </div>
+              <p className="break-all font-mono text-[11px] text-ink-muted">{faviconUrl}</p>
+            </div>
+          ) : (
+            <p className="mt-3 text-xs text-ink-muted">No favicon yet.</p>
+          )}
+        </div>
       </section>
+
+      {brandingMsg ? (
+        <p className="rounded-xl border border-surface-border bg-premium-card-light px-4 py-3 text-sm text-ink-muted dark:bg-premium-card-dark">
+          {brandingMsg}
+        </p>
+      ) : null}
     </div>
   )
 }

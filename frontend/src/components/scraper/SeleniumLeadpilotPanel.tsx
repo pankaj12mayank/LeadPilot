@@ -26,7 +26,6 @@ export function SeleniumLeadpilotPanel({
   const [testMode, setTestMode] = useState(false)
   const [skipEnrich, setSkipEnrich] = useState(false)
   const [skipScoring, setSkipScoring] = useState(false)
-  const [output, setOutput] = useState('')
   const [formError, setFormError] = useState<string | null>(null)
   const [starting, setStarting] = useState(false)
   const [stopping, setStopping] = useState(false)
@@ -99,7 +98,7 @@ export function SeleniumLeadpilotPanel({
         test: testMode,
         skip_enrich: skipEnrich,
         skip_scoring: skipScoring,
-        output: output.trim() || null,
+        output: null,
         lnn_base_url: null,
         skip_preflight: false,
       })
@@ -185,7 +184,7 @@ export function SeleniumLeadpilotPanel({
         </span>
       </div>
 
-      <div className="mb-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="mb-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         <div>
           <label className="text-[10px] font-semibold uppercase tracking-wider text-ink-muted">Keyword *</label>
           <input
@@ -218,17 +217,7 @@ export function SeleniumLeadpilotPanel({
             className="field-input mt-1"
           />
         </div>
-        <div>
-          <label className="text-[10px] font-semibold uppercase tracking-wider text-ink-muted">Output .xlsx (optional)</label>
-          <input
-            value={output}
-            onChange={(e) => setOutput(e.target.value)}
-            disabled={running}
-            placeholder="leadpilot_runs.xlsx"
-            className="field-input mt-1 font-mono text-xs"
-          />
-        </div>
-        <div className="flex flex-col justify-end gap-2 sm:col-span-2 lg:col-span-2">
+        <div className="flex flex-col justify-end gap-2 sm:col-span-2 lg:col-span-3">
           <label className="flex cursor-pointer items-center gap-2 text-xs text-ink-muted">
             <input
               type="checkbox"
