@@ -1,11 +1,13 @@
 import { lazy, Suspense } from 'react'
-import { Navigate, Route, Routes } from 'react-router-dom'
+import { Navigate, Outlet, Route, Routes } from 'react-router-dom'
 
 import { AppShell } from '@/layouts/AppShell'
 import { useAuthStore } from '@/store/authStore'
 
 const LoginPage = lazy(() => import('@/pages/LoginPage').then((m) => ({ default: m.LoginPage })))
+const LandingPage = lazy(() => import('@/pages/LandingPage').then((m) => ({ default: m.LandingPage })))
 const DashboardPage = lazy(() => import('@/pages/DashboardPage').then((m) => ({ default: m.DashboardPage })))
+const BuyerDashboardPage = lazy(() => import('@/pages/BuyerDashboardPage').then((m) => ({ default: m.BuyerDashboardPage })))
 const SearchLeadsPage = lazy(() => import('@/pages/SearchLeadsPage').then((m) => ({ default: m.SearchLeadsPage })))
 const LeadsPage = lazy(() => import('@/pages/LeadsPage').then((m) => ({ default: m.LeadsPage })))
 const OutreachQueuePage = lazy(() => import('@/pages/OutreachQueuePage').then((m) => ({ default: m.OutreachQueuePage })))
@@ -34,10 +36,20 @@ function RequireAuth() {
   return <AppShell />
 }
 
+function RequireRole({ allowed }: { allowed: Array<'admin' | 'user' | 'buyer'> }) {
+  const user = useAuthStore((s) => s.user)
+  const role = (user?.role || 'user') as 'admin' | 'user' | 'buyer'
+  if (!allowed.includes(role)) {
+    return <Navigate to="/dashboard" replace />
+  }
+  return <Outlet />
+}
+
 export default function App() {
   return (
     <Suspense fallback={<PageFallback />}>
       <Routes>
+        <Route path="/" element={<LandingPage />} />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/admin/login" element={<Navigate to="/login?next=%2Fadmin" replace />} />
         <Route path="/admin" element={<AdminLayout />}>
@@ -47,17 +59,21 @@ export default function App() {
           <Route path="branding" element={<AdminBrandingPage />} />
         </Route>
         <Route element={<RequireAuth />}>
-          <Route path="/" element={<Navigate to="/dashboard" replace />} />
           <Route path="/dashboard" element={<DashboardPage />} />
-          <Route path="/search-leads" element={<SearchLeadsPage />} />
-          <Route path="/leads" element={<LeadsPage />} />
-          <Route path="/outreach-queue" element={<OutreachQueuePage />} />
+          <Route element={<RequireRole allowed={['admin', 'buyer']} />}>
+            <Route path="/buyer-dashboard" element={<BuyerDashboardPage />} />
+          </Route>
+          <Route element={<RequireRole allowed={['admin', 'user']} />}>
+            <Route path="/search-leads" element={<SearchLeadsPage />} />
+            <Route path="/leads" element={<LeadsPage />} />
+            <Route path="/outreach-queue" element={<OutreachQueuePage />} />
+          </Route>
           <Route path="/platforms" element={<Navigate to="/search-leads" replace />} />
           <Route path="/analytics" element={<AnalyticsPage />} />
           <Route path="/settings" element={<SettingsPage />} />
           <Route path="/about" element={<AboutPage />} />
         </Route>
-        <Route path="*" element={<Navigate to="/dashboard" replace />} />
+        <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </Suspense>
   )

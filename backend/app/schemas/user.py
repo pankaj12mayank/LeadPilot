@@ -8,6 +8,7 @@ from pydantic import BaseModel, Field
 class UserCreate(BaseModel):
     email: str = Field(..., min_length=3, max_length=320)
     password: str = Field(..., min_length=6, max_length=128)
+    role: str = Field(default="user")
 
 
 class UserLogin(BaseModel):
@@ -20,6 +21,7 @@ class UserResponse(BaseModel):
     email: str
     created_at: str
     is_active: bool = True
+    role: str = "user"
     last_login_at: str = ""
 
 

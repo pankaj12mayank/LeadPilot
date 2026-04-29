@@ -41,6 +41,16 @@ function setAdminConfig(overrides: Record<string, unknown> = {}) {
         startup_directories: true,
         local_listings: true,
         manual_seeds: true,
+        linkedin: true,
+        public_db: true,
+        google_maps: true,
+        indiamart: true,
+        justdial: true,
+        eworldtrade: true,
+        global_sources: true,
+        thomasnet: true,
+        yelp: true,
+        faire: true,
         allowed_sources: ['yc', 'job_board', 'local', 'manual'],
       },
       scoring_weights: {
@@ -70,6 +80,26 @@ function setAdminConfig(overrides: Record<string, unknown> = {}) {
         scoring: 'high',
         enrichment: 'medium',
         ingestion: 'low',
+      },
+      ai_control: {
+        ollama_enabled: true,
+        api_enabled: true,
+      },
+      scoring_control: {
+        role: 40,
+        signals: 35,
+        ai_score: 25,
+      },
+      safety_control: {
+        delay_seconds: 1,
+        batch_size: 10,
+        retry_count: 3,
+        pagination_limit: 5,
+      },
+      queue_priority: {
+        linkedin: 'high',
+        ai: 'high',
+        others: 'medium',
       },
       source_registry: [
         { source_name: 'yc', source_type: 'directory', enabled: true, input_type: 'url', adapter_function: 'collect_companies_from_source_pages' },
@@ -172,7 +202,8 @@ describe('SearchLeadsPage admin -> user sync', () => {
           company_name: 'Origin Labs',
           website: 'https://originlabs.ai',
           domain: 'originlabs.ai',
-          source: 'job_board',
+          source: 'job_board,google_maps',
+          source_values: ['job_board', 'google_maps'],
           first_seen: '2026-04-29T12:00:00Z',
           last_updated: '2026-04-29T12:00:00Z',
           score: 78,
@@ -208,6 +239,7 @@ describe('SearchLeadsPage admin -> user sync', () => {
 
     await screen.findByText('Origin Labs')
     expect(screen.getByRole('link', { name: 'https://originlabs.ai' })).toBeInTheDocument()
-    expect(screen.getByText('Job Board')).toBeInTheDocument()
+    expect(screen.getByText(/Job Board.*Google Maps/i)).toBeInTheDocument()
+    expect(screen.getByDisplayValue('0')).toBeInTheDocument()
   })
 })

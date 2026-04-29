@@ -13,12 +13,12 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 @router.post("/register", response_model=TokenResponse)
 def register(body: UserCreate) -> TokenResponse:
     try:
-        user = auth_service.create_user(body.email, body.password)
+        user = auth_service.create_user(body.email, body.password, role=body.role)
     except ValueError as e:
         if str(e) == "email_taken":
             raise HTTPException(status_code=400, detail="Email already registered")
         raise HTTPException(status_code=400, detail="Registration failed")
-    token = create_access_token(user["id"])
+    token = create_access_token(user["id"], {"role": user.get("role", "user")})
     return TokenResponse(
         access_token=token,
         user=UserResponse(
@@ -26,6 +26,7 @@ def register(body: UserCreate) -> TokenResponse:
             email=user["email"],
             created_at=user["created_at"],
             is_active=bool(user.get("is_active", True)),
+            role=str(user.get("role") or "user"),
             last_login_at=str(user.get("last_login_at") or ""),
         ),
     )
@@ -36,7 +37,7 @@ def login(body: UserLogin) -> TokenResponse:
     user = auth_service.authenticate(body.email, body.password)
     if not user:
         raise HTTPException(status_code=401, detail="Incorrect email or password")
-    token = create_access_token(user["id"])
+    token = create_access_token(user["id"], {"role": user.get("role", "user")})
     return TokenResponse(
         access_token=token,
         user=UserResponse(
@@ -44,6 +45,7 @@ def login(body: UserLogin) -> TokenResponse:
             email=user["email"],
             created_at=user["created_at"],
             is_active=bool(user.get("is_active", True)),
+            role=str(user.get("role") or "user"),
             last_login_at=str(user.get("last_login_at") or ""),
         ),
     )
@@ -56,5 +58,6 @@ def me(user: dict = Depends(get_current_user)) -> UserResponse:
         email=user["email"],
         created_at=user["created_at"],
         is_active=bool(user.get("is_active", True)),
+        role=str(user.get("role") or "user"),
         last_login_at=str(user.get("last_login_at") or ""),
     )

@@ -3,7 +3,7 @@ from __future__ import annotations
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
-from backend.app.api.deps import get_current_user, get_db
+from backend.app.api.deps import get_current_user, get_db, require_app_roles
 from backend.app.schemas.message import MessageResponse
 from backend.services import email_service, history_service, lead_orm_service, message_service, status_history_service
 from backend.settings.lead_schema import utc_now_iso
@@ -11,7 +11,7 @@ from backend.utils.logger import get_logger
 
 logger = get_logger(__name__)
 
-router = APIRouter(prefix="/messages", tags=["messages"])
+router = APIRouter(prefix="/messages", tags=["messages"], dependencies=[Depends(require_app_roles("admin", "user"))])
 
 
 def _subject_for_lead(lead) -> str:

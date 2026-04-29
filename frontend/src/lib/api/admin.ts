@@ -14,6 +14,7 @@ export type AdminUserRow = {
   email: string
   created_at: string
   is_active: boolean
+  role?: 'admin' | 'user' | 'buyer'
   last_login_at: string
 }
 
@@ -80,6 +81,16 @@ export type AdminConfig = {
     startup_directories: boolean
     local_listings: boolean
     manual_seeds: boolean
+    linkedin: boolean
+    public_db: boolean
+    google_maps: boolean
+    indiamart: boolean
+    justdial: boolean
+    eworldtrade: boolean
+    global_sources: boolean
+    thomasnet: boolean
+    yelp: boolean
+    faire: boolean
     allowed_sources: string[]
   }
   scoring_weights: {
@@ -114,11 +125,31 @@ export type AdminConfig = {
     enrichment: 'high' | 'medium' | 'low'
     ingestion: 'high' | 'medium' | 'low'
   }
+  ai_control: {
+    ollama_enabled: boolean
+    api_enabled: boolean
+  }
+  scoring_control: {
+    role: number
+    signals: number
+    ai_score: number
+  }
+  safety_control: {
+    delay_seconds: number
+    batch_size: number
+    retry_count: number
+    pagination_limit: number
+  }
+  queue_priority: {
+    linkedin: 'high' | 'medium' | 'low'
+    ai: 'high' | 'medium' | 'low'
+    others: 'high' | 'medium' | 'low'
+  }
   source_registry: Array<{
     source_name: string
-    source_type: 'job_board' | 'directory' | 'local' | 'manual'
+    source_type: 'job_board' | 'directory' | 'local' | 'manual' | 'marketplace'
     enabled: boolean
-    input_type: 'url' | 'keyword' | 'file'
+    input_type: 'url' | 'keyword' | 'file' | 'csv'
     adapter_function: string
   }>
   worker_config: {
@@ -156,8 +187,8 @@ export async function adminListUsers() {
   return data.users
 }
 
-export async function adminCreateUser(email: string, password: string) {
-  const { data } = await adminClient.post<{ user: AdminUserRow }>('/admin/users', { email, password })
+export async function adminCreateUser(email: string, password: string, role: 'admin' | 'user' | 'buyer' = 'user') {
+  const { data } = await adminClient.post<{ user: AdminUserRow }>('/admin/users', { email, password, role })
   return data.user
 }
 

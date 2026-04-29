@@ -95,6 +95,8 @@ def _ensure_user_columns(engine) -> None:
             return
         if "is_active" not in cols:
             cx.execute(text("ALTER TABLE users ADD COLUMN is_active INTEGER NOT NULL DEFAULT 1"))
+        if "role" not in cols:
+            cx.execute(text("ALTER TABLE users ADD COLUMN role VARCHAR(32) NOT NULL DEFAULT 'user'"))
         if "last_login_at" not in cols:
             cx.execute(text("ALTER TABLE users ADD COLUMN last_login_at VARCHAR(64) DEFAULT ''"))
 
@@ -118,6 +120,33 @@ def _ensure_company_enrichment_columns(engine) -> None:
             cx.execute(text("ALTER TABLE company_enrichment ADD COLUMN score REAL DEFAULT 0"))
         if "priority" not in cols:
             cx.execute(text("ALTER TABLE company_enrichment ADD COLUMN priority VARCHAR(16) DEFAULT 'Cold'"))
+        if "ai_summary" not in cols:
+            cx.execute(text("ALTER TABLE company_enrichment ADD COLUMN ai_summary TEXT DEFAULT ''"))
+        if "ai_problems" not in cols:
+            cx.execute(text("ALTER TABLE company_enrichment ADD COLUMN ai_problems TEXT DEFAULT ''"))
+        if "ai_opportunity" not in cols:
+            cx.execute(text("ALTER TABLE company_enrichment ADD COLUMN ai_opportunity TEXT DEFAULT ''"))
+        if "ai_score" not in cols:
+            cx.execute(text("ALTER TABLE company_enrichment ADD COLUMN ai_score REAL DEFAULT 0"))
+        if "ai_provider" not in cols:
+            cx.execute(text("ALTER TABLE company_enrichment ADD COLUMN ai_provider VARCHAR(32) DEFAULT ''"))
+        if "ai_cache_key" not in cols:
+            cx.execute(text("ALTER TABLE company_enrichment ADD COLUMN ai_cache_key VARCHAR(64) DEFAULT ''"))
+        if "ai_updated_at" not in cols:
+            cx.execute(text("ALTER TABLE company_enrichment ADD COLUMN ai_updated_at VARCHAR(64) DEFAULT ''"))
+
+
+def _ensure_company_columns(engine) -> None:
+    """SQLite migrations for ``companies`` (additive columns)."""
+    with engine.begin() as cx:
+        cur = cx.execute(text("PRAGMA table_info(companies)"))
+        cols = {row[1] for row in cur.fetchall()}
+        if not cols:
+            return
+        if "signals" not in cols:
+            cx.execute(text("ALTER TABLE companies ADD COLUMN signals TEXT DEFAULT ''"))
+        if "ai_score" not in cols:
+            cx.execute(text("ALTER TABLE companies ADD COLUMN ai_score REAL DEFAULT 0"))
 
 
 def init_sa_tables() -> None:
@@ -126,6 +155,7 @@ def init_sa_tables() -> None:
     Base.metadata.create_all(bind=engine)
     _ensure_lead_columns(engine)
     _ensure_user_columns(engine)
+    _ensure_company_columns(engine)
     _ensure_company_enrichment_columns(engine)
     _ensure_lead_indexes(engine)
 

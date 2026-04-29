@@ -10,6 +10,7 @@ from sqlalchemy import delete, func, select
 from sqlalchemy.orm import Session
 
 PRIORITY_ORDER = {"high": 0, "medium": 1, "low": 2}
+ALLOWED_TASK_TYPES = frozenset({"ingestion", "enrichment", "ai", "scoring", "linkedin", "signals"})
 
 _PRIORITY_RANK = {"high": 0, "medium": 1, "low": 2}
 
@@ -17,6 +18,11 @@ _PRIORITY_RANK = {"high": 0, "medium": 1, "low": 2}
 def _normalize_priority(priority: str) -> str:
     p = str(priority or "medium").strip().lower()
     return p if p in PRIORITY_ORDER else "medium"
+
+
+def _normalize_task_type(task_type: str) -> str:
+    t = str(task_type or "ingestion").strip().lower()
+    return t if t in ALLOWED_TASK_TYPES else "ingestion"
 
 
 def _now() -> str:
@@ -54,7 +60,7 @@ def enqueue(task: dict[str, Any], *, db: Session | None = None) -> dict[str, Any
     Expected shape: task_type, priority, requires_login, payload.
     """
     item = {
-        "task_type": str(task.get("task_type") or "ingestion").strip().lower(),
+        "task_type": _normalize_task_type(task.get("task_type")),
         "priority": _normalize_priority(str(task.get("priority") or "medium")),
         "requires_login": bool(task.get("requires_login", False)),
         "payload": task.get("payload") if isinstance(task.get("payload"), dict) else {"batch": "default"},
@@ -127,7 +133,7 @@ def size(*, db: Session | None = None) -> int:
 
 def enqueue_waiting(task: dict[str, Any], *, reason: str = "waiting_for_login", db: Session | None = None) -> dict[str, Any]:
     item = {
-        "task_type": str(task.get("task_type") or "ingestion").strip().lower(),
+        "task_type": _normalize_task_type(task.get("task_type")),
         "priority": _normalize_priority(str(task.get("priority") or "medium")),
         "requires_login": bool(task.get("requires_login", False)),
         "payload": task.get("payload") if isinstance(task.get("payload"), dict) else {"batch": "default"},
@@ -156,7 +162,7 @@ def enqueue_waiting(task: dict[str, Any], *, reason: str = "waiting_for_login", 
 
 def enqueue_failed(task: dict[str, Any], *, reason: str = "task_failed", db: Session | None = None) -> dict[str, Any]:
     item = {
-        "task_type": str(task.get("task_type") or "ingestion").strip().lower(),
+        "task_type": _normalize_task_type(task.get("task_type")),
         "priority": _normalize_priority(str(task.get("priority") or "medium")),
         "requires_login": bool(task.get("requires_login", False)),
         "payload": task.get("payload") if isinstance(task.get("payload"), dict) else {"batch": "default"},

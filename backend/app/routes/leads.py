@@ -9,7 +9,7 @@ import pandas as pd
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
 from sqlalchemy.orm import Session
 
-from backend.app.api.deps import get_current_user, get_db
+from backend.app.api.deps import get_current_user, get_db, require_app_roles
 from backend.app.schemas.lead import (
     BulkDeleteRequest,
     BulkDeleteResponse,
@@ -38,7 +38,7 @@ def _invalidate_dashboard_cache() -> None:
         pass
 from backend.services.platform_service import normalize_platform
 
-router = APIRouter(prefix="/leads", tags=["leads"])
+router = APIRouter(prefix="/leads", tags=["leads"], dependencies=[Depends(require_app_roles("admin", "user"))])
 
 _CSV_FIELDS = [
     "id",

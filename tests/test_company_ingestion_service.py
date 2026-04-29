@@ -250,3 +250,24 @@ def test_source_adapters_do_not_crash_on_sparse_input():
             },
         )
         assert rows == []
+
+
+def test_marketplace_source_adapters_return_uniform_rows():
+    sources = ["google_maps", "indiamart", "justdial", "eworldtrade", "global_sources", "thomasnet", "yelp", "faire"]
+    for src in sources:
+        rows = company_ingestion_service.run_source(
+            src,
+            {
+                "keyword": "bags",
+                "location": "mumbai",
+                "batch_size": 2,
+                "delay_seconds": 0.2,
+                "max_companies": 10,
+                "fetch_html": lambda _url: """
+                <html><body>
+                  <a href="https://www.vendoralpha.com">Vendor Alpha</a>
+                </body></html>
+                """,
+            },
+        )
+        assert rows == [{"company_name": "Vendor Alpha", "website": "https://vendoralpha.com", "source": src}]

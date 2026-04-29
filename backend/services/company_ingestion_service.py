@@ -11,15 +11,39 @@ from bs4 import BeautifulSoup
 
 from backend.services import company_service, runtime_settings
 from backend.services.company_service import normalize_company_domain, normalize_company_source
+from backend.utils.logger import get_logger
+
+logger = get_logger(__name__)
 
 SUPPORTED_REAL_SOURCES = frozenset(
     {
         "manual",
+        "linkedin",
         "job_board",
         "yc",
         "crunchbase",
         "local",
         "builtwith",
+        "google_maps",
+        "indiamart",
+        "justdial",
+        "eworldtrade",
+        "global_sources",
+        "thomasnet",
+        "yelp",
+        "faire",
+    }
+)
+MARKETPLACE_SOURCES = frozenset(
+    {
+        "google_maps",
+        "indiamart",
+        "justdial",
+        "eworldtrade",
+        "global_sources",
+        "thomasnet",
+        "yelp",
+        "faire",
     }
 )
 
@@ -101,13 +125,15 @@ def _apply_quality_filters(
             stats["short_content"] += 1
             continue
         local_seen.add(domain)
-        out.append(
-            {
-                "company_name": company_name,
-                "website": f"https://{domain}",
-                "source": src,
-            }
-        )
+        normalized = {
+            "company_name": company_name,
+            "website": f"https://{domain}",
+            "source": src,
+        }
+        contact = str(raw.get("contact") or "").strip()
+        if contact:
+            normalized["contact"] = contact
+        out.append(normalized)
     return out, stats
 
 
@@ -509,6 +535,54 @@ def _run_local_business_source(
     return found, stats
 
 
+def _run_marketplace_source(
+    source: str,
+    source_input: dict[str, Any],
+) -> tuple[list[dict[str, str]], dict[str, int]]:
+    """
+    Generic marketplace/directory adapter wrapper.
+    Keeps behavior safe and modular while allowing source-specific seeds.
+    """
+    keyword = str(source_input.get("keyword") or "").strip()
+    location = str(source_input.get("location") or "").strip()
+    cleaned = [str(u).strip() for u in (source_input.get("seed_urls") or []) if str(u).strip()]
+    if not cleaned:
+        cleaned = default_seed_urls_for_source(source=source, keyword=keyword, location=location)
+    source_input = dict(source_input)
+    source_input["seed_urls"] = cleaned
+    return _run_source_pages(source, source_input)
+
+
+def _safety_capped_source_input(source_input: dict[str, Any]) -> dict[str, Any]:
+    cfg = runtime_settings.get_admin_config()
+    safety = cfg.get("safety_control") or {}
+    out = dict(source_input or {})
+    requested_batch = int(out.get("batch_size") or 10)
+    requested_delay = float(out.get("delay_seconds") or 1.0)
+    requested_max = int(out.get("max_companies") or 200)
+    cap_batch = max(1, min(int(safety.get("batch_size") or 10), 100))
+    cap_delay = max(0.2, min(float(safety.get("delay_seconds") or 1.0), 8.0))
+    cap_pages = max(1, min(int(safety.get("pagination_limit") or 50), 2000))
+    out["batch_size"] = max(1, min(requested_batch, cap_batch))
+    out["delay_seconds"] = max(0.2, min(requested_delay, cap_delay))
+    out["max_companies"] = max(1, min(requested_max, cap_pages))
+    return out
+
+
+def _run_source_with_stats(source: str, source_input: dict[str, Any]) -> tuple[list[dict[str, str]], dict[str, int]]:
+    src_input = _safety_capped_source_input(source_input)
+    src = (source or "").strip().lower().replace("-", "_")
+    if src == "job_board":
+        return _run_job_board_source(src, src_input)
+    if src == "local":
+        return _run_local_business_source(src, src_input)
+    if src in {"yc", "crunchbase", "builtwith", "linkedin"}:
+        return _run_startup_directory_source(src, src_input)
+    if src in MARKETPLACE_SOURCES:
+        return _run_marketplace_source(src, src_input)
+    return _run_source_pages(src, src_input)
+
+
 def run_source(source: str, source_input: dict[str, Any]) -> list[dict[str, str]]:
     """
     Common adapter interface for all sources.
@@ -532,16 +606,9 @@ def run_source(source: str, source_input: dict[str, Any]) -> list[dict[str, str]
     if input_type in {"csv", "file"} or adapter_function == "ingest_public_companies":
         raise ValueError(f"Source {source!r} expects CSV/manual ingestion, use /companies/ingest")
     if registry_entry is not None and src not in SUPPORTED_REAL_SOURCES:
-        rows, _stats = _run_source_pages(src, source_input)
+        rows, _stats = _run_source_pages(src, _safety_capped_source_input(source_input))
         return _normalize_adapter_rows(rows, source=src)
-    if src == "job_board":
-        rows, _stats = _run_job_board_source(src, source_input)
-    elif src == "local":
-        rows, _stats = _run_local_business_source(src, source_input)
-    elif src in {"yc", "crunchbase", "builtwith"}:
-        rows, _stats = _run_startup_directory_source(src, source_input)
-    else:
-        rows, _stats = _run_source_pages(src, source_input)
+    rows, _stats = _run_source_with_stats(src, source_input)
     return _normalize_adapter_rows(rows, source=src)
 
 
@@ -581,13 +648,7 @@ def collect_companies_from_source_pages(
         "min_content_length": min_content_length,
         "fetch_html": fetch_html,
     }
-    if src == "job_board":
-        return _run_job_board_source(src, source_input)
-    if src == "local":
-        return _run_local_business_source(src, source_input)
-    if src in {"yc", "crunchbase", "builtwith"}:
-        return _run_startup_directory_source(src, source_input)
-    return _run_source_pages(src, source_input)
+    return _run_source_with_stats(src, source_input)
 
 
 def ingest_from_source(
@@ -604,15 +665,13 @@ def ingest_from_source(
     - Update ``last_updated`` when domain exists
     - Insert new row otherwise
     """
-    rows = run_source(source, source_input)
+    rows, fetch_stats = _run_source_with_stats(source, source_input)
+    rows = _normalize_adapter_rows(rows, source=source)
     save_stats = company_service.ingest_public_companies(db, rows, default_source=source)
     return {
-        "fetched": {
-            "pages_ok": 0,
-            "pages_failed": 0,
-            "candidates": len(rows),
-        },
+        "fetched": fetch_stats,
         "saved": save_stats,
+        "rows": rows,
     }
 
 
@@ -641,32 +700,73 @@ def ingest_from_sources(
         unique_sources.append(src)
 
     source_delay = max(0.2, min(float(delay_between_sources or 1.0), 8.0))
+    cfg = runtime_settings.get_admin_config()
+    safety = cfg.get("safety_control") or {}
+    if delay_between_sources is None:
+        source_delay = max(0.2, min(float(safety.get("delay_seconds") or 1.0), 8.0))
     runs: list[dict[str, Any]] = []
     fetched_total = {"pages_ok": 0, "pages_failed": 0, "candidates": 0}
     saved_total = {"created": 0, "updated": 0, "skipped": 0}
+    failed_sources = 0
+    quality_skips_total = {"missing_website": 0, "duplicate_domain": 0, "invalid_url": 0, "short_content": 0}
+    errors: list[dict[str, str]] = []
 
+    logger.info("ingestion.multi_source.start sources=%s delay=%s", unique_sources, source_delay)
     for idx, src in enumerate(unique_sources):
-        source_input = dict(shared_source_input or {})
-        if source_input_factory is not None:
-            source_input.update(source_input_factory(src) or {})
-        result = ingest_from_source(db=db, source=src, source_input=source_input)
-        fetched = result.get("fetched") or {}
-        saved = result.get("saved") or {}
-        fetched_total["pages_ok"] += int(fetched.get("pages_ok") or 0)
-        fetched_total["pages_failed"] += int(fetched.get("pages_failed") or 0)
-        fetched_total["candidates"] += int(fetched.get("candidates") or 0)
-        saved_total["created"] += int(saved.get("created") or 0)
-        saved_total["updated"] += int(saved.get("updated") or 0)
-        saved_total["skipped"] += int(saved.get("skipped") or 0)
-        runs.append({"source": src, **result})
+        logger.info("ingestion.source.start source=%s index=%s/%s", src, idx + 1, len(unique_sources))
+        try:
+            source_input = dict(shared_source_input or {})
+            if source_input_factory is not None:
+                source_input.update(source_input_factory(src) or {})
+            source_input["batch_size"] = int(source_input.get("batch_size") or safety.get("batch_size") or 10)
+            source_input["delay_seconds"] = float(source_input.get("delay_seconds") or safety.get("delay_seconds") or 1.0)
+            source_input["max_companies"] = int(source_input.get("max_companies") or safety.get("pagination_limit") or 200)
+            source_input["max_companies"] = max(1, min(source_input["max_companies"], 2000))
+            result = ingest_from_source(db=db, source=src, source_input=source_input)
+            fetched = result.get("fetched") or {}
+            saved = result.get("saved") or {}
+            fetched_total["pages_ok"] += int(fetched.get("pages_ok") or 0)
+            fetched_total["pages_failed"] += int(fetched.get("pages_failed") or 0)
+            fetched_total["candidates"] += int(fetched.get("candidates") or 0)
+            for key in quality_skips_total:
+                quality_skips_total[key] += int(fetched.get(key) or 0)
+            saved_total["created"] += int(saved.get("created") or 0)
+            saved_total["updated"] += int(saved.get("updated") or 0)
+            saved_total["skipped"] += int(saved.get("skipped") or 0)
+            runs.append({"source": src, "status": "ok", **result})
+            logger.info(
+                "ingestion.source.done source=%s candidates=%s created=%s updated=%s skipped=%s",
+                src,
+                int(fetched.get("candidates") or 0),
+                int(saved.get("created") or 0),
+                int(saved.get("updated") or 0),
+                int(saved.get("skipped") or 0),
+            )
+        except Exception as e:  # noqa: BLE001
+            failed_sources += 1
+            err = {"source": src, "stage": "adapter", "error": str(e)}
+            errors.append(err)
+            logger.warning("source_ingestion_failed source=%s stage=%s error=%s", src, "adapter", str(e))
+            runs.append({"source": src, "status": "failed", "error": str(e)})
         if idx < len(unique_sources) - 1:
             time.sleep(source_delay)
 
+    logger.info(
+        "ingestion.multi_source.done total_sources=%s failed_sources=%s total_created=%s total_updated=%s total_skipped=%s",
+        len(unique_sources),
+        failed_sources,
+        int(saved_total.get("created") or 0),
+        int(saved_total.get("updated") or 0),
+        int(saved_total.get("skipped") or 0),
+    )
     return {
         "runs": runs,
         "fetched_total": fetched_total,
         "saved_total": saved_total,
         "sources": unique_sources,
+        "failed_sources": failed_sources,
+        "quality_skips_total": quality_skips_total,
+        "errors": errors,
     }
 
 
@@ -691,6 +791,22 @@ def default_seed_urls_for_source(*, source: str, keyword: str, location: str = "
         return [f"https://www.google.com/search?q={q}+company+official+site"]
     if src == "builtwith":
         return [f"https://trends.builtwith.com/websitelist/{q}"]
+    if src == "google_maps":
+        return [f"https://www.google.com/maps/search/{q}"]
+    if src == "indiamart":
+        return [f"https://dir.indiamart.com/search.mp?ss={q}"]
+    if src == "justdial":
+        return [f"https://www.justdial.com/search?query={q}"]
+    if src == "eworldtrade":
+        return [f"https://www.eworldtrade.com/search?q={q}"]
+    if src == "global_sources":
+        return [f"https://www.globalsources.com/search?query={q}"]
+    if src == "thomasnet":
+        return [f"https://www.thomasnet.com/search.html?what={q}"]
+    if src == "yelp":
+        return [f"https://www.yelp.com/search?find_desc={q}"]
+    if src == "faire":
+        return [f"https://www.faire.com/search?q={q}"]
     registry_entry = runtime_settings.get_source_registry_entry(src)
     input_type = str((registry_entry or {}).get("input_type") or "").strip().lower()
     if registry_entry is not None and input_type == "keyword":

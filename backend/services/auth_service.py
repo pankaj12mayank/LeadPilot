@@ -24,7 +24,15 @@ def verify_password(plain: str, hashed: str) -> bool:
         return False
 
 
-def create_user(email: str, password: str) -> Dict[str, Any]:
+ALLOWED_ROLES = frozenset({"admin", "user", "buyer"})
+
+
+def normalize_role(role: str | None) -> str:
+    r = str(role or "user").strip().lower()
+    return r if r in ALLOWED_ROLES else "user"
+
+
+def create_user(email: str, password: str, *, role: str = "user") -> Dict[str, Any]:
     uid = str(uuid.uuid4())
     em = email.strip().lower()
     Session = get_session_factory()
@@ -38,6 +46,7 @@ def create_user(email: str, password: str) -> Dict[str, Any]:
             password_hash=hash_password(password),
             created_at=utc_now_iso(),
             is_active=1,
+            role=normalize_role(role),
             last_login_at="",
         )
         db.add(u)
@@ -62,6 +71,7 @@ def get_user_by_id(user_id: str) -> Optional[Dict[str, Any]]:
             "email": u.email,
             "created_at": u.created_at,
             "is_active": bool(int(getattr(u, "is_active", 1) or 0)),
+            "role": normalize_role(getattr(u, "role", "user")),
             "last_login_at": str(getattr(u, "last_login_at", "") or ""),
         }
     finally:
@@ -82,6 +92,7 @@ def get_user_by_email(email: str) -> Optional[Dict[str, Any]]:
             "password_hash": u.password_hash,
             "created_at": u.created_at,
             "is_active": int(getattr(u, "is_active", 1) or 0),
+            "role": normalize_role(getattr(u, "role", "user")),
         }
     finally:
         db.close()
@@ -124,6 +135,7 @@ def list_users() -> List[Dict[str, Any]]:
                 "email": u.email,
                 "created_at": u.created_at,
                 "is_active": bool(int(getattr(u, "is_active", 1) or 0)),
+                "role": normalize_role(getattr(u, "role", "user")),
                 "last_login_at": str(getattr(u, "last_login_at", "") or ""),
             }
             for u in rows
@@ -140,6 +152,23 @@ def set_user_active(user_id: str, active: bool) -> Optional[Dict[str, Any]]:
         if not u:
             return None
         u.is_active = 1 if active else 0
+        db.commit()
+        return get_user_by_id(user_id)
+    except Exception:
+        db.rollback()
+        raise
+    finally:
+        db.close()
+
+
+def set_user_role(user_id: str, role: str) -> Optional[Dict[str, Any]]:
+    Session = get_session_factory()
+    db = Session()
+    try:
+        u = db.get(User, user_id)
+        if not u:
+            return None
+        u.role = normalize_role(role)
         db.commit()
         return get_user_by_id(user_id)
     except Exception:

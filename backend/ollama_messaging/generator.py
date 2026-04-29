@@ -110,6 +110,9 @@ def generate_lead_messages(
     provider = runtime_settings.get_ai_provider()
     raw: Optional[str] = None
 
+    if provider == "none":
+        logger.info("AI providers disabled by admin config; using template fallback")
+        return build_fallback_pack(lead)
     if provider == "external_api":
         if not runtime_settings.get_external_api_key():
             logger.warning("external_api selected but no API key; using template fallback")

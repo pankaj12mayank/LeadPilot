@@ -19,6 +19,12 @@ export const ROUTE_META: Record<
     documentDescription:
       'CRM dashboard for sales performance, lead tracking, and sales pipeline visibility. Monitor customer acquisition metrics and lead management KPIs.',
   },
+  '/buyer-dashboard': {
+    title: 'Buyer Marketplace Dashboard',
+    subtitle: 'Browse curated lead packs, preview lead quality, simulate purchase, and unlock downloads.',
+    documentDescription:
+      'Buyer dashboard for lead pack marketplace: review pricing, preview leads, and export purchased lead bundles.',
+  },
   '/search-leads': {
     title: 'LinkedIn people search',
     subtitle:

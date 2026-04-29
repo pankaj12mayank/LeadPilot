@@ -32,6 +32,18 @@ def get_current_user(
     return user
 
 
+def require_app_roles(*allowed_roles: str):
+    allowed = {str(r or "").strip().lower() for r in allowed_roles if str(r or "").strip()}
+
+    def _inner(user: Dict[str, Any] = Depends(get_current_user)) -> Dict[str, Any]:
+        role = str(user.get("role") or "user").strip().lower()
+        if role not in allowed:
+            raise HTTPException(status_code=403, detail="Insufficient role permission")
+        return user
+
+    return _inner
+
+
 def get_current_admin(
     creds: HTTPAuthorizationCredentials = Depends(_bearer),
 ) -> Dict[str, Any]:

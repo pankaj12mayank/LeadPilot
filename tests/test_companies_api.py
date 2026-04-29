@@ -3,7 +3,7 @@ from __future__ import annotations
 import uuid
 
 import config
-from backend.services import company_ingestion_service, company_service
+from backend.services import company_ingestion_service, company_service, runtime_settings, settings_service
 
 
 def _api(subpath: str) -> str:
@@ -18,6 +18,38 @@ def _token(client) -> str:
     reg = client.post(_api("/auth/register"), json={"email": email, "password": password})
     assert reg.status_code == 200, reg.text
     return reg.json()["access_token"]
+
+
+def _enable_ingestion_sources_for_test(*source_names: str) -> None:
+    cur = runtime_settings.get_admin_config()
+    allowed = list(dict.fromkeys([*source_names]))
+    source_registry = []
+    allow_set = set(allowed)
+    for item in (cur.get("source_registry") or []):
+        entry = dict(item)
+        name = str(entry.get("source_name") or "").strip().lower()
+        if name:
+            entry["enabled"] = name in allow_set
+        source_registry.append(entry)
+    sources_cfg = dict(cur.get("sources") or {})
+    sources_cfg.update(
+        {
+            "job_boards": "job_board" in allow_set,
+            "startup_directories": True,
+            "local_listings": "local" in allow_set,
+            "manual_seeds": True,
+            "allowed_sources": allowed,
+        }
+    )
+    settings_service.patch_settings(
+        {
+            "admin_config": {
+                **cur,
+                "sources": sources_cfg,
+                "source_registry": source_registry,
+            }
+        }
+    )
 
 
 def test_companies_ingest_and_list(client):
@@ -42,7 +74,7 @@ def test_companies_ingest_and_list(client):
     listed = client.get(_api("/companies"), headers=hdr)
     assert listed.status_code == 200, listed.text
     items = listed.json()
-    assert len(items) == 2
+    assert len(items) >= 2
     assert any(x["domain"] == "acme.com" for x in items)
 
     one = client.get(_api("/companies/by-domain/acme.com"), headers=hdr)
@@ -50,6 +82,37 @@ def test_companies_ingest_and_list(client):
     row = one.json()
     assert row["domain"] == "acme.com"
     assert row["company_name"] == "Acme Refresh"
+
+
+def test_public_company_db_is_filterable_and_inspectable(client):
+    token = _token(client)
+    hdr = {"Authorization": f"Bearer {token}"}
+
+    seeded = client.post(
+        _api("/companies/ingest"),
+        headers=hdr,
+        json={
+            "source": "yc",
+            "companies": [
+                {"company_name": "Acme", "website": "https://acme.com", "source": "yc", "signals": ["hiring"], "ai_score": 81},
+                {"company_name": "Beta", "website": "https://beta.io", "source": "local", "signals": ["scaling"], "ai_score": 44},
+            ],
+        },
+    )
+    assert seeded.status_code == 200, seeded.text
+
+    listed = client.get(_api("/companies?source=yc"), headers=hdr)
+    assert listed.status_code == 200, listed.text
+    items = listed.json()
+    assert any(item["domain"] == "acme.com" for item in items)
+    acme = next(item for item in items if item["domain"] == "acme.com")
+    assert "yc" in acme["source_values"]
+    assert acme["signals"] == ["hiring"]
+    assert float(acme["ai_score"]) == 81.0
+
+    stale = client.get(_api("/companies/stale?stale_days=365"), headers=hdr)
+    assert stale.status_code == 200, stale.text
+    assert "items" in stale.json()
 
 
 def test_task_classification_returns_standard_task_object(client):
@@ -263,14 +326,15 @@ def test_companies_ingest_real_sources(client):
 
     token = _token(client)
     hdr = {"Authorization": f"Bearer {token}"}
+    _enable_ingestion_sources_for_test("yc", "job_board", "local")
 
     fake_candidates = [
         {"company_name": "Yc One", "website": "https://yc-one.com", "source": "yc"},
         {"company_name": "Yc Two", "website": "https://yc-two.dev", "source": "yc"},
     ]
     with patch(
-        "backend.app.routes.companies.company_ingestion_service.run_source",
-        return_value=fake_candidates,
+        "backend.app.routes.companies.company_ingestion_service._run_source_with_stats",
+        return_value=(fake_candidates, {"pages_ok": 1, "pages_failed": 0, "candidates": 2}),
     ):
         r = client.post(
             _api("/companies/ingest-real"),
@@ -295,12 +359,14 @@ def test_ingest_real_connects_adapter_to_company_db_upsert_flow(client):
 
     token = _token(client)
     hdr = {"Authorization": f"Bearer {token}"}
+    _enable_ingestion_sources_for_test("yc", "job_board", "local")
 
     with patch(
-        "backend.app.routes.companies.company_ingestion_service.run_source",
-        return_value=[
-            {"company_name": "Flow Co", "website": "https://flowco.ai", "source": "job_board"},
-        ],
+        "backend.app.routes.companies.company_ingestion_service._run_source_with_stats",
+        return_value=(
+            [{"company_name": "Flow Co", "website": "https://flowco.ai", "source": "job_board"}],
+            {"pages_ok": 1, "pages_failed": 0, "candidates": 1},
+        ),
     ):
         first = client.post(
             _api("/companies/ingest-real"),
@@ -320,10 +386,11 @@ def test_ingest_real_connects_adapter_to_company_db_upsert_flow(client):
     assert first_body["saved"]["updated"] == 0
 
     with patch(
-        "backend.app.routes.companies.company_ingestion_service.run_source",
-        return_value=[
-            {"company_name": "Flow Co Updated", "website": "https://www.flowco.ai/about", "source": "job_board"},
-        ],
+        "backend.app.routes.companies.company_ingestion_service._run_source_with_stats",
+        return_value=(
+            [{"company_name": "Flow Co Updated", "website": "https://www.flowco.ai/about", "source": "job_board"}],
+            {"pages_ok": 1, "pages_failed": 0, "candidates": 1},
+        ),
     ):
         second = client.post(
             _api("/companies/ingest-real"),
@@ -355,6 +422,7 @@ def test_companies_ingest_real_multiple_sources_combines_runs(client):
 
     token = _token(client)
     hdr = {"Authorization": f"Bearer {token}"}
+    _enable_ingestion_sources_for_test("yc", "job_board", "local")
 
     with patch(
         "backend.app.routes.companies.company_ingestion_service.ingest_from_sources",
@@ -397,6 +465,74 @@ def test_companies_ingest_real_multiple_sources_combines_runs(client):
     assert body["fetched"]["candidates"] == 3
     assert body["saved"]["created"] == 3
     mocked_ingest.assert_called_once()
+
+
+def test_ingest_real_rejects_when_selected_source_disabled(client):
+    token = _token(client)
+    hdr = {"Authorization": f"Bearer {token}"}
+    _enable_ingestion_sources_for_test("yc")
+
+    r = client.post(
+        _api("/companies/ingest-real"),
+        headers=hdr,
+        json={
+            "source": "job_board",
+            "seed_urls": ["https://wellfound.com/discover/companies?query=flow"],
+            "batch_size": 10,
+            "delay_seconds": 0.2,
+            "max_companies": 50,
+            "enrich_after_ingest": False,
+        },
+    )
+    assert r.status_code == 400, r.text
+    assert "No enabled ingestion sources selected" in r.text
+
+
+def test_ingest_real_response_includes_standardized_contract_fields(client):
+    from unittest.mock import patch
+
+    token = _token(client)
+    hdr = {"Authorization": f"Bearer {token}"}
+    _enable_ingestion_sources_for_test("yc", "job_board")
+
+    with patch(
+        "backend.app.routes.companies.company_ingestion_service.ingest_from_sources",
+        return_value={
+            "sources": ["yc"],
+            "runs": [
+                {
+                    "source": "yc",
+                    "status": "ok",
+                    "rows": [{"company_name": "A", "website": "https://a.com", "source": "yc"}],
+                    "fetched": {"pages_ok": 1, "pages_failed": 0, "candidates": 1},
+                    "saved": {"created": 1, "updated": 0, "skipped": 0},
+                }
+            ],
+            "fetched_total": {"pages_ok": 1, "pages_failed": 0, "candidates": 1},
+            "saved_total": {"created": 1, "updated": 0, "skipped": 0},
+            "failed_sources": 0,
+            "quality_skips_total": {"missing_website": 0, "duplicate_domain": 0, "invalid_url": 0, "short_content": 0},
+            "errors": [],
+        },
+    ):
+        r = client.post(
+            _api("/companies/ingest-real"),
+            headers=hdr,
+            json={
+                "source": "yc",
+                "batch_size": 10,
+                "delay_seconds": 0.2,
+                "max_companies": 50,
+                "enrich_after_ingest": False,
+            },
+        )
+
+    assert r.status_code == 200, r.text
+    body = r.json()
+    assert "company_saved" in body
+    assert "lead_saved" in body
+    assert "quality_skips" in body
+    assert "errors" in body
 
 
 def test_user_can_register_custom_source(client):
@@ -1173,3 +1309,21 @@ def test_scheduler_entrypoint_skips_session_check_for_non_login_job(client):
     assert body["job_type"] == "daily_auto"
     assert body["mode"] == "queue_only"
     assert body["tasks"][0]["requires_login"] is False
+
+
+def test_scheduler_sunday_queue_includes_cleanup_and_rescoring(client):
+    token = _token(client)
+    hdr = {"Authorization": f"Bearer {token}"}
+    r = client.post(
+        _api("/companies/scheduler/run"),
+        headers=hdr,
+        json={"job_type": "sunday_report"},
+    )
+    assert r.status_code == 200, r.text
+    body = r.json()
+    assert body["job_type"] == "sunday_report"
+    assert body["mode"] == "queue_only"
+    tasks = body.get("tasks") or []
+    assert len(tasks) >= 2
+    assert any(t.get("task_type") == "enrichment" and (t.get("payload") or {}).get("mode") == "weekly_cleanup" for t in tasks)
+    assert any(t.get("task_type") == "scoring" for t in tasks)

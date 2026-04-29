@@ -28,6 +28,16 @@ const BASE_CONFIG: AdminConfig = {
     startup_directories: true,
     local_listings: true,
     manual_seeds: true,
+    linkedin: true,
+    public_db: true,
+    google_maps: true,
+    indiamart: true,
+    justdial: true,
+    eworldtrade: true,
+    global_sources: true,
+    thomasnet: true,
+    yelp: true,
+    faire: true,
     allowed_sources: ['yc', 'job_board', 'local', 'manual'],
   },
   scoring_weights: {
@@ -57,6 +67,26 @@ const BASE_CONFIG: AdminConfig = {
     scoring: 'high',
     enrichment: 'medium',
     ingestion: 'low',
+  },
+  ai_control: {
+    ollama_enabled: true,
+    api_enabled: true,
+  },
+  scoring_control: {
+    role: 40,
+    signals: 35,
+    ai_score: 25,
+  },
+  safety_control: {
+    delay_seconds: 1,
+    batch_size: 10,
+    retry_count: 3,
+    pagination_limit: 5,
+  },
+  queue_priority: {
+    linkedin: 'high',
+    ai: 'high',
+    others: 'medium',
   },
   source_registry: [
     { source_name: 'yc', source_type: 'directory', enabled: true, input_type: 'url', adapter_function: 'collect_companies_from_source_pages' },

@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 from typing import Any, Dict, List
 from pathlib import Path
+from datetime import datetime, timezone
 
 import config
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
@@ -13,7 +14,7 @@ from backend.app.api.deps import get_current_admin
 from backend.app.middleware.jwt import create_access_token
 from backend.services import analytics_service, auth_service, branding_files, runtime_settings, settings_service
 from database.orm.bootstrap import get_session_factory
-from database.orm.models import Company
+from database.orm.models import Company, LeadPack
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 
@@ -23,6 +24,14 @@ _MAX_BRANDING_BYTES = 2 * 1024 * 1024
 class AdminLoginBody(BaseModel):
     email: str = Field(..., min_length=3)
     password: str = Field(..., min_length=1)
+
+
+class AdminLeadPackCreate(BaseModel):
+    name: str = Field(..., min_length=1, max_length=255)
+    description: str = Field(default="", max_length=2000)
+    lead_ids: List[str] = Field(default_factory=list)
+    price_usd: float = Field(default=0.0, ge=0.0)
+    is_active: bool = True
 
 
 @router.post("/login")
@@ -40,6 +49,75 @@ def admin_login(body: AdminLoginBody) -> Dict[str, Any]:
     return {"access_token": token, "token_type": "bearer"}
 
 
+@router.get("/lead-packs")
+def admin_list_lead_packs(_admin: dict = Depends(get_current_admin)) -> Dict[str, Any]:
+    Session = get_session_factory()
+    db = Session()
+    try:
+        rows = list(db.scalars(select(LeadPack).order_by(LeadPack.created_at.desc())))
+        return {
+            "items": [
+                {
+                    "id": x.id,
+                    "name": x.name,
+                    "description": x.description or "",
+                    "lead_ids": json.loads(x.lead_ids_json or "[]"),
+                    "price_usd": float(x.price_usd or 0),
+                    "is_active": bool(int(x.is_active or 0)),
+                    "created_at": x.created_at,
+                    "updated_at": x.updated_at,
+                }
+                for x in rows
+            ]
+        }
+    finally:
+        db.close()
+
+
+@router.post("/lead-packs")
+def admin_create_lead_pack(body: AdminLeadPackCreate, admin: dict = Depends(get_current_admin)) -> Dict[str, Any]:
+    Session = get_session_factory()
+    db = Session()
+    try:
+        now = datetime.now(timezone.utc).isoformat(timespec="seconds")
+        row = LeadPack(
+            name=body.name.strip(),
+            description=body.description.strip(),
+            lead_ids_json=json.dumps([str(x).strip() for x in body.lead_ids if str(x).strip()], ensure_ascii=False),
+            price_usd=float(body.price_usd or 0),
+            is_active=1 if body.is_active else 0,
+            created_by=str(admin.get("sub") or "admin"),
+            created_at=now,
+            updated_at=now,
+        )
+        db.add(row)
+        db.commit()
+        db.refresh(row)
+        return {"ok": True, "id": row.id}
+    finally:
+        db.close()
+
+
+@router.patch("/lead-packs/{pack_id}")
+def admin_patch_lead_pack(pack_id: int, body: AdminLeadPackCreate, _admin: dict = Depends(get_current_admin)) -> Dict[str, Any]:
+    Session = get_session_factory()
+    db = Session()
+    try:
+        row = db.get(LeadPack, int(pack_id))
+        if row is None:
+            raise HTTPException(status_code=404, detail="Lead pack not found")
+        row.name = body.name.strip()
+        row.description = body.description.strip()
+        row.lead_ids_json = json.dumps([str(x).strip() for x in body.lead_ids if str(x).strip()], ensure_ascii=False)
+        row.price_usd = float(body.price_usd or 0)
+        row.is_active = 1 if body.is_active else 0
+        row.updated_at = datetime.now(timezone.utc).isoformat(timespec="seconds")
+        db.commit()
+        return {"ok": True}
+    finally:
+        db.close()
+
+
 @router.get("/users")
 def admin_list_users(_admin: dict = Depends(get_current_admin)) -> Dict[str, Any]:
     return {"users": auth_service.list_users()}
@@ -48,12 +126,13 @@ def admin_list_users(_admin: dict = Depends(get_current_admin)) -> Dict[str, Any
 class AdminCreateUserBody(BaseModel):
     email: str = Field(..., min_length=3, max_length=320)
     password: str = Field(..., min_length=8, max_length=128)
+    role: str = Field(default="user")
 
 
 @router.post("/users")
 def admin_create_user(body: AdminCreateUserBody, _admin: dict = Depends(get_current_admin)) -> Dict[str, Any]:
     try:
-        user = auth_service.create_user(body.email.strip().lower(), body.password)
+        user = auth_service.create_user(body.email.strip().lower(), body.password, role=body.role)
     except ValueError as e:
         if str(e) == "email_taken":
             raise HTTPException(status_code=400, detail="Email already registered") from None
@@ -76,6 +155,7 @@ def admin_bulk_delete_users(
 
 class AdminUserActiveBody(BaseModel):
     is_active: bool
+    role: str | None = None
 
 
 @router.patch("/users/{user_id}")
@@ -85,6 +165,8 @@ def admin_patch_user(
     _admin: dict = Depends(get_current_admin),
 ) -> Dict[str, Any]:
     updated = auth_service.set_user_active(user_id, body.is_active)
+    if updated and body.role is not None:
+        updated = auth_service.set_user_role(user_id, body.role)
     if not updated:
         raise HTTPException(status_code=404, detail="User not found")
     return {"user": updated}
@@ -177,7 +259,35 @@ class AdminSourcesConfig(BaseModel):
     startup_directories: bool = True
     local_listings: bool = True
     manual_seeds: bool = True
-    allowed_sources: List[str] = Field(default_factory=lambda: ["yc", "job_board", "local", "crunchbase", "builtwith", "manual"])
+    linkedin: bool = True
+    public_db: bool = True
+    google_maps: bool = True
+    indiamart: bool = True
+    justdial: bool = True
+    eworldtrade: bool = True
+    global_sources: bool = True
+    thomasnet: bool = True
+    yelp: bool = True
+    faire: bool = True
+    allowed_sources: List[str] = Field(
+        default_factory=lambda: [
+            "linkedin",
+            "yc",
+            "job_board",
+            "local",
+            "crunchbase",
+            "builtwith",
+            "google_maps",
+            "indiamart",
+            "justdial",
+            "eworldtrade",
+            "global_sources",
+            "thomasnet",
+            "yelp",
+            "faire",
+            "manual",
+        ]
+    )
 
     @field_validator("allowed_sources")
     @classmethod
@@ -261,8 +371,8 @@ class AdminSourceRegistryEntry(BaseModel):
     @classmethod
     def v_source_type(cls, v: str) -> str:
         x = (v or "").strip().lower().replace("-", "_")
-        if x not in {"job_board", "directory", "local", "manual"}:
-            raise ValueError("source_type must be job_board/directory/local/manual")
+        if x not in {"job_board", "directory", "local", "manual", "marketplace"}:
+            raise ValueError("source_type must be job_board/directory/local/manual/marketplace")
         return x
 
     @field_validator("input_type")
@@ -286,6 +396,38 @@ class AdminWorkerConfig(BaseModel):
     worker_count: int = Field(default=3, ge=1, le=64)
 
 
+class AdminAiControl(BaseModel):
+    ollama_enabled: bool = True
+    api_enabled: bool = True
+
+
+class AdminScoringControl(BaseModel):
+    role: int = Field(default=40, ge=1, le=100)
+    signals: int = Field(default=35, ge=1, le=100)
+    ai_score: int = Field(default=25, ge=1, le=100)
+
+
+class AdminSafetyControl(BaseModel):
+    delay_seconds: float = Field(default=1.0, ge=0.2, le=8.0)
+    batch_size: int = Field(default=10, ge=1, le=100)
+    retry_count: int = Field(default=3, ge=1, le=10)
+    pagination_limit: int = Field(default=5, ge=1, le=100)
+
+
+class AdminQueuePriority(BaseModel):
+    linkedin: str = Field(default="high")
+    ai: str = Field(default="high")
+    others: str = Field(default="medium")
+
+    @field_validator("linkedin", "ai", "others")
+    @classmethod
+    def v_q_priority(cls, v: str) -> str:
+        x = (v or "").strip().lower()
+        if x not in {"high", "medium", "low"}:
+            raise ValueError("priority must be high/medium/low")
+        return x
+
+
 class AdminConfigPatch(BaseModel):
     targeting: AdminTargetingConfig | None = None
     sources: AdminSourcesConfig | None = None
@@ -297,6 +439,10 @@ class AdminConfigPatch(BaseModel):
     task_priority: AdminTaskPriority | None = None
     source_registry: List[AdminSourceRegistryEntry] | None = None
     worker_config: AdminWorkerConfig | None = None
+    ai_control: AdminAiControl | None = None
+    scoring_control: AdminScoringControl | None = None
+    safety_control: AdminSafetyControl | None = None
+    queue_priority: AdminQueuePriority | None = None
 
 
 def _job_logs_path() -> Path:
@@ -421,6 +567,14 @@ def admin_patch_config(
         nxt["source_registry"] = [item.model_dump() for item in body.source_registry]
     if body.worker_config is not None:
         nxt["worker_config"] = body.worker_config.model_dump()
+    if body.ai_control is not None:
+        nxt["ai_control"] = body.ai_control.model_dump()
+    if body.scoring_control is not None:
+        nxt["scoring_control"] = body.scoring_control.model_dump()
+    if body.safety_control is not None:
+        nxt["safety_control"] = body.safety_control.model_dump()
+    if body.queue_priority is not None:
+        nxt["queue_priority"] = body.queue_priority.model_dump()
     settings_service.patch_settings({"admin_config": nxt})
     return runtime_settings.get_admin_config()
 

@@ -14,6 +14,7 @@ import {
   type AdminWorkspaceStats,
 } from '@/lib/api/admin'
 import { getApiErrorMessage } from '@/lib/api/client'
+import { adminCreateLeadPack, adminListLeadPacks, adminUpdateLeadPack } from '@/lib/api/marketplace'
 
 export function AdminOverviewPage() {
   const [stats, setStats] = useState<AdminWorkspaceStats | null>(null)
@@ -27,6 +28,11 @@ export function AdminOverviewPage() {
   const [jobFilter, setJobFilter] = useState('')
   const [statusFilter, setStatusFilter] = useState<'all' | 'success' | 'partial_success' | 'failure'>('all')
   const [page, setPage] = useState(1)
+  const [packName, setPackName] = useState('')
+  const [packDescription, setPackDescription] = useState('')
+  const [packLeadIds, setPackLeadIds] = useState('')
+  const [packPrice, setPackPrice] = useState(99)
+  const [packs, setPacks] = useState<Array<{ id: number; name: string; price_usd: number; lead_ids: string[]; is_active: boolean }>>([])
   const pageSize = 10
 
   function listToCsv(items: string[]) {
@@ -101,11 +107,13 @@ export function AdminOverviewPage() {
     ;(async () => {
       try {
         const [s, ctl, cfg, logs] = await Promise.all([adminGetStats(), adminGetControls(), adminGetConfig(), adminGetJobLogs(300)])
+        const packRows = await adminListLeadPacks()
         if (!c) {
           setStats(s)
           setControls(ctl)
           setAdminConfig(cfg)
           setJobLogs(logs.items || [])
+          setPacks(packRows || [])
           setLogsRefreshedAt(new Date().toLocaleTimeString())
         }
       } catch (e) {
@@ -327,7 +335,24 @@ export function AdminOverviewPage() {
           </div>
 
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4 text-xs text-ink-muted">
-            {(['job_boards', 'startup_directories', 'local_listings', 'manual_seeds'] as const).map((key) => (
+            {(
+              [
+                'job_boards',
+                'startup_directories',
+                'local_listings',
+                'manual_seeds',
+                'linkedin',
+                'public_db',
+                'google_maps',
+                'indiamart',
+                'justdial',
+                'eworldtrade',
+                'global_sources',
+                'thomasnet',
+                'yelp',
+                'faire',
+              ] as const
+            ).map((key) => (
               <label key={key} className="flex items-center gap-2 rounded-lg border border-surface-border px-3 py-2">
                 <input
                   type="checkbox"
@@ -411,6 +436,48 @@ export function AdminOverviewPage() {
               </label>
             ))}
           </div>
+          <div>
+            <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-ink-muted">AI Control</h3>
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4 text-xs text-ink-muted">
+              {(['ollama_enabled', 'api_enabled'] as const).map((key) => (
+                <label key={key} className="flex items-center gap-2 rounded-lg border border-surface-border px-3 py-2">
+                  <input
+                    type="checkbox"
+                    checked={Boolean(adminConfig.ai_control[key])}
+                    onChange={(e) =>
+                      setAdminConfig((prev) =>
+                        prev ? { ...prev, ai_control: { ...prev.ai_control, [key]: e.target.checked } } : prev,
+                      )
+                    }
+                  />
+                  <span>{key.replaceAll('_', ' ')}</span>
+                </label>
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-ink-muted">Scoring Control</h3>
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              {Object.entries(adminConfig.scoring_control).map(([key, value]) => (
+                <label key={key} className="space-y-1 text-xs text-ink-muted">
+                  <span>{key.replaceAll('_', ' ')}</span>
+                  <input
+                    type="number"
+                    min={1}
+                    max={100}
+                    value={value}
+                    onChange={(e) =>
+                      setAdminConfig((prev) =>
+                        prev ? { ...prev, scoring_control: { ...prev.scoring_control, [key]: Number(e.target.value || 1) } } : prev,
+                      )
+                    }
+                    className="field-input w-full rounded-lg px-2 py-1.5 text-sm"
+                  />
+                </label>
+              ))}
+            </div>
+          </div>
 
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
             {Object.entries(adminConfig.task_priority).map(([key, value]) => (
@@ -439,6 +506,38 @@ export function AdminOverviewPage() {
                 </select>
               </label>
             ))}
+          </div>
+
+          <div>
+            <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-ink-muted">Queue Priority</h3>
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              {Object.entries(adminConfig.queue_priority).map(([key, value]) => (
+                <label key={key} className="space-y-1 text-xs text-ink-muted">
+                  <span>{key}</span>
+                  <select
+                    value={value}
+                    onChange={(e) =>
+                      setAdminConfig((prev) =>
+                        prev
+                          ? {
+                              ...prev,
+                              queue_priority: {
+                                ...prev.queue_priority,
+                                [key]: e.target.value as 'high' | 'medium' | 'low',
+                              },
+                            }
+                          : prev,
+                      )
+                    }
+                    className="field-input w-full rounded-lg px-2 py-1.5 text-sm"
+                  >
+                    <option value="high">High</option>
+                    <option value="medium">Medium</option>
+                    <option value="low">Low</option>
+                  </select>
+                </label>
+              ))}
+            </div>
           </div>
 
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
@@ -528,6 +627,37 @@ export function AdminOverviewPage() {
               />
             </label>
           </div>
+          <div>
+            <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-ink-muted">Safety Control</h3>
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+              {Object.entries(adminConfig.safety_control).map(([key, value]) => (
+                <label key={key} className="space-y-1 text-xs text-ink-muted">
+                  <span>{key.replaceAll('_', ' ')}</span>
+                  <input
+                    type="number"
+                    min={key === 'delay_seconds' ? 0.2 : 1}
+                    max={key === 'delay_seconds' ? 8 : 2000}
+                    step={key === 'delay_seconds' ? 0.1 : 1}
+                    value={Number(value)}
+                    onChange={(e) =>
+                      setAdminConfig((prev) =>
+                        prev
+                          ? {
+                              ...prev,
+                              safety_control: {
+                                ...prev.safety_control,
+                                [key]: Number(e.target.value || 0),
+                              },
+                            }
+                          : prev,
+                      )
+                    }
+                    className="field-input w-full rounded-lg px-2 py-1.5 text-sm"
+                  />
+                </label>
+              ))}
+            </div>
+          </div>
 
           <button
             type="button"
@@ -546,6 +676,123 @@ export function AdminOverviewPage() {
           </button>
         </section>
       ) : null}
+
+      <section className="space-y-4 rounded-2xl border border-surface-border bg-premium-card-light p-5 shadow-card dark:bg-premium-card-dark">
+        <div>
+          <h2 className="font-display text-lg font-semibold text-ink">Lead packs marketplace</h2>
+          <p className="mt-1 text-xs text-ink-muted">Create buyer lead packs, set pricing, and control active availability.</p>
+        </div>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <label className="space-y-1 text-xs text-ink-muted">
+            <span>Pack name</span>
+            <input value={packName} onChange={(e) => setPackName(e.target.value)} className="field-input w-full rounded-lg px-2 py-1.5 text-sm" />
+          </label>
+          <label className="space-y-1 text-xs text-ink-muted">
+            <span>Price (USD)</span>
+            <input
+              type="number"
+              min={0}
+              step="0.01"
+              value={packPrice}
+              onChange={(e) => setPackPrice(Number(e.target.value || 0))}
+              className="field-input w-full rounded-lg px-2 py-1.5 text-sm"
+            />
+          </label>
+        </div>
+        <label className="space-y-1 text-xs text-ink-muted">
+          <span>Description</span>
+          <textarea
+            value={packDescription}
+            onChange={(e) => setPackDescription(e.target.value)}
+            rows={2}
+            className="field-input w-full rounded-lg px-2 py-1.5 text-sm"
+          />
+        </label>
+        <label className="space-y-1 text-xs text-ink-muted">
+          <span>Lead IDs (comma separated)</span>
+          <textarea
+            value={packLeadIds}
+            onChange={(e) => setPackLeadIds(e.target.value)}
+            rows={2}
+            className="field-input w-full rounded-lg px-2 py-1.5 font-mono text-xs"
+          />
+        </label>
+        <button
+          type="button"
+          onClick={async () => {
+            try {
+              await adminCreateLeadPack({
+                name: packName.trim(),
+                description: packDescription.trim(),
+                lead_ids: packLeadIds.split(',').map((x) => x.trim()).filter(Boolean),
+                price_usd: Number(packPrice || 0),
+                is_active: true,
+              })
+              setSaveMsg('Lead pack created.')
+              setPacks(await adminListLeadPacks())
+            } catch (e) {
+              setSaveMsg(getApiErrorMessage(e, 'Could not create lead pack.'))
+            }
+          }}
+          className="w-fit rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs font-semibold text-amber-900 dark:text-amber-200"
+        >
+          Create lead pack
+        </button>
+
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[720px] text-left text-xs">
+            <thead className="border-b border-surface-border text-ink-muted">
+              <tr>
+                <th className="px-2 py-2">Name</th>
+                <th className="px-2 py-2">Price</th>
+                <th className="px-2 py-2">Leads</th>
+                <th className="px-2 py-2">Active</th>
+                <th className="px-2 py-2">Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              {packs.length === 0 ? (
+                <tr>
+                  <td colSpan={5} className="px-2 py-3 text-ink-muted">
+                    No packs yet.
+                  </td>
+                </tr>
+              ) : (
+                packs.map((pack) => (
+                  <tr key={pack.id} className="border-b border-surface-border/70">
+                    <td className="px-2 py-2">{pack.name}</td>
+                    <td className="px-2 py-2">${Number(pack.price_usd || 0).toFixed(2)}</td>
+                    <td className="px-2 py-2">{(pack.lead_ids || []).length}</td>
+                    <td className="px-2 py-2">{pack.is_active ? 'Yes' : 'No'}</td>
+                    <td className="px-2 py-2">
+                      <button
+                        type="button"
+                        className="rounded border border-surface-border px-2 py-1 hover:bg-field/60"
+                        onClick={async () => {
+                          try {
+                            await adminUpdateLeadPack(pack.id, {
+                              name: pack.name,
+                              description: '',
+                              lead_ids: pack.lead_ids || [],
+                              price_usd: Number(pack.price_usd || 0),
+                              is_active: !pack.is_active,
+                            })
+                            setPacks(await adminListLeadPacks())
+                          } catch (e) {
+                            setSaveMsg(getApiErrorMessage(e, 'Could not update pack'))
+                          }
+                        }}
+                      >
+                        Toggle
+                      </button>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+      </section>
 
       {saveMsg ? <p className="text-xs text-ink-muted">{saveMsg}</p> : null}
 

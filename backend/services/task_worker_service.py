@@ -11,7 +11,7 @@ from typing import Any
 
 import config
 from backend.leadpilot.linkedin_session_cache import session_info_dict
-from backend.services import company_enrichment_service, company_weekly_engine, runtime_settings, task_queue_service
+from backend.services import company_enrichment_service, company_weekly_engine, lead_orm_service, runtime_settings, task_queue_service
 from database.orm.bootstrap import get_session_factory
 from database.orm.models import CompanyEnrichment
 from sqlalchemy import func, select
@@ -104,6 +104,10 @@ def _execute_task(db: Session, task: dict[str, Any]) -> dict[str, Any]:
             delay_seconds=float(payload.get("delay_seconds") or 1.0),
         )
     if t == "enrichment":
+        if str(payload.get("mode") or "").strip().lower() == "weekly_cleanup":
+            out = company_weekly_engine.run_weekly_engine(db, day="sun")
+            db.commit()
+            return {"task_type": "enrichment", "cleanup": out.get("result") if isinstance(out, dict) else out}
         company_id = int(payload.get("company_id") or 0)
         ids = [company_id] if company_id > 0 else []
         stats = company_enrichment_service.enrich_companies_batch(
@@ -115,16 +119,31 @@ def _execute_task(db: Session, task: dict[str, Any]) -> dict[str, Any]:
         )
         db.commit()
         return {"task_type": "enrichment", "stats": stats}
-    if t == "scoring":
-        # score refresh piggybacks on enrichment recalculation
-        stats = company_enrichment_service.enrich_companies_batch(
+    if t == "ai":
+        company_id = int(payload.get("company_id") or 0)
+        ids = [company_id] if company_id > 0 else []
+        stats = company_enrichment_service.run_ai_qualification_batch(
             db,
-            limit=max(1, int(payload.get("limit") or 20)),
-            timeout_seconds=float(payload.get("timeout_seconds") or 10.0),
-            delay_seconds=float(payload.get("delay_seconds") or 0.4),
+            company_ids=ids,
+            limit=max(1, int(payload.get("limit") or (1 if ids else 50))),
+            live_ai=bool(payload.get("live_ai", False)),
         )
         db.commit()
-        return {"task_type": "scoring", "score_refresh": stats}
+        return {"task_type": "ai", "ai_refresh": stats}
+    if t == "scoring":
+        lead_stats = lead_orm_service.rescore_all_leads(db, limit=max(1, int(payload.get("lead_limit") or 5000)))
+        company_stats = company_enrichment_service.rescore_all_companies(
+            db, limit=max(1, int(payload.get("company_limit") or 5000))
+        )
+        db.commit()
+        return {
+            "task_type": "scoring",
+            "score_refresh": {
+                "processed": int(lead_stats.get("processed") or 0) + int(company_stats.get("processed") or 0),
+                "leads_processed": int(lead_stats.get("processed") or 0),
+                "companies_processed": int(company_stats.get("processed") or 0),
+            },
+        }
     if t == "signals":
         # signal refresh piggybacks on enrichment recalculation
         stats = company_enrichment_service.enrich_companies_batch(
@@ -150,7 +169,13 @@ def _execute_task(db: Session, task: dict[str, Any]) -> dict[str, Any]:
 def _priority_for(task_type: str) -> str:
     cfg = runtime_settings.get_admin_config()
     mp = cfg.get("task_priority") or {}
-    p = str(mp.get(str(task_type or "").strip().lower()) or "medium").strip().lower()
+    key = str(task_type or "").strip().lower()
+    p = str(mp.get(key) or "").strip().lower()
+    if not p and key == "ai":
+        qp = cfg.get("queue_priority") or {}
+        p = str(qp.get("ai") or "medium").strip().lower()
+    if not p:
+        p = "medium"
     return p if p in {"high", "medium", "low"} else "medium"
 
 
@@ -174,7 +199,9 @@ def _chain_next_tasks(db: Session, *, task: dict[str, Any], ok: bool) -> list[di
     if t == "ingestion":
         chained.append(_enqueue_chain("enrichment", payload={"batch": payload.get("batch") or "from_ingestion"}))
     elif t == "enrichment":
-        chained.append(_enqueue_chain("signals", payload={"batch": payload.get("batch") or "from_enrichment"}))
+        chained.append(_enqueue_chain("ai", payload={"batch": payload.get("batch") or "from_enrichment"}))
+    elif t == "ai":
+        chained.append(_enqueue_chain("scoring", payload={"batch": payload.get("batch") or "from_signals"}))
     elif t == "signals":
         chained.append(_enqueue_chain("scoring", payload={"batch": payload.get("batch") or "from_signals"}))
     elif t == "scoring":

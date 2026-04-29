@@ -46,7 +46,7 @@ TASK_META: dict[str, dict[str, str]] = {
     "public_ingestion": {"task_type": "ingestion"},
     "company_db_update": {"task_type": "ingestion"},
     "enrichment": {"task_type": "enrichment"},
-    "ai_enrichment": {"task_type": "enrichment"},
+    "ai_enrichment": {"task_type": "ai"},
     "scoring": {"task_type": "scoring"},
     "dedupe": {"task_type": "ingestion"},
     "db_normalization": {"task_type": "ingestion"},
@@ -938,6 +938,17 @@ def run_scheduled_job(
             queued.append(
                 task_queue_service.enqueue(
                     {
+                        "task_type": "ai",
+                        "priority": _priority_for_task_type("scoring"),
+                        "requires_login": False,
+                        "payload": {"batch": "friday_heavy"},
+                    },
+                    db=db,
+                )
+            )
+            queued.append(
+                task_queue_service.enqueue(
+                    {
                         "task_type": "scoring",
                         "priority": _priority_for_task_type("scoring"),
                         "requires_login": False,
@@ -961,6 +972,17 @@ def run_scheduled_job(
                 )
             )
         else:
+            queued.append(
+                task_queue_service.enqueue(
+                    {
+                        "task_type": "enrichment",
+                        "priority": _priority_for_task_type("enrichment"),
+                        "requires_login": False,
+                        "payload": {"batch": "sunday_report", "mode": "weekly_cleanup"},
+                    },
+                    db=db,
+                )
+            )
             queued.append(
                 task_queue_service.enqueue(
                     {
@@ -1041,5 +1063,9 @@ def run_scheduled_job(
 
 def _priority_for_task_type(task_type: str) -> str:
     cfg = runtime_settings.get_admin_config()
-    p = str((cfg.get("task_priority") or {}).get(task_type) or "medium").strip().lower()
+    p = str((cfg.get("task_priority") or {}).get(task_type) or "").strip().lower()
+    if not p and str(task_type or "").strip().lower() == "ai":
+        p = str((cfg.get("queue_priority") or {}).get("ai") or "medium").strip().lower()
+    if not p:
+        p = "medium"
     return p if p in {"high", "medium", "low"} else "medium"

@@ -52,7 +52,7 @@ def test_upsert_company_dedupes_by_domain() -> None:
         assert one.id == two.id
         assert two.domain == "acme.com"
         assert two.company_name == "Acme Updated"
-        assert two.source == "manual"
+        assert two.source == "linkedin,manual"
         assert two.first_seen == first_seen
         assert company_service.get_company_by_domain(db, "https://acme.com") is not None
         assert len(company_service.list_companies(db)) == 1
@@ -105,6 +105,27 @@ def test_ingest_public_companies_stats() -> None:
         assert row.company_name == "Acme 2"
         assert row.source == "manual"
         assert stats2 == {"created": 0, "updated": 1, "skipped": 0}
+    finally:
+        db.close()
+
+
+def test_upsert_company_persists_signals_and_ai_score() -> None:
+    init_sa_tables()
+    Session = get_session_factory()
+    db = Session()
+    try:
+        _reset_companies(db)
+        row = company_service.upsert_company(
+            db,
+            company_name="Signal Co",
+            website="https://signalco.ai",
+            source="yc",
+            signals={"hiring": True, "ads_gap": True},
+            ai_score=88,
+        )
+        db.commit()
+        assert row.signals == "hiring,ads_gap"
+        assert float(row.ai_score) == 88.0
     finally:
         db.close()
 

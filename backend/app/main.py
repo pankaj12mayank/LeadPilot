@@ -44,7 +44,10 @@ def _log_config_update(event: dict) -> None:
         changed,
     )
     requires_rescore = any(
-        f.startswith("admin_config.scoring_weights") or f.startswith("admin_config.signals_config") for f in changed
+        f.startswith("admin_config.scoring_weights")
+        or f.startswith("admin_config.scoring_control")
+        or f.startswith("admin_config.signals_config")
+        for f in changed
     )
     if not requires_rescore:
         return

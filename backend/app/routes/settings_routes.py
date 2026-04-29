@@ -37,6 +37,10 @@ class TestExternalBody(BaseModel):
     model: Optional[str] = None
 
 
+class DebugModeBody(BaseModel):
+    enabled: bool
+
+
 def _ollama_tags_url() -> str:
     u = str(getattr(config, "OLLAMA_URL", "") or "").strip().rstrip("/")
     if not u:
@@ -64,6 +68,17 @@ def patch_settings(
         del patch["external_api_key"]
     merged = settings_service.patch_settings(patch)
     return SettingsResponse(data=_mask_settings(merged))
+
+
+@router.get("/debug-mode")
+def get_debug_mode(_user: dict = Depends(get_current_user)) -> Dict[str, Any]:
+    return {"enabled": bool(runtime_settings.get_debug_mode())}
+
+
+@router.patch("/debug-mode")
+def set_debug_mode(body: DebugModeBody, _user: dict = Depends(get_current_user)) -> Dict[str, Any]:
+    merged = settings_service.patch_settings({"debug_mode": bool(body.enabled)})
+    return {"enabled": bool(merged.get("debug_mode"))}
 
 
 def _collect_model_names(data: Dict[str, Any]) -> set[str]:

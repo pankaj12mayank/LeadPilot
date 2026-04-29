@@ -142,6 +142,54 @@ def test_worker_chains_next_task_after_success(client):
     assert nxt.get("task_type") == "enrichment"
 
 
+def test_worker_chains_ai_after_enrichment(client):
+    _drain_queue()
+    token = _token(client)
+    hdr = {"Authorization": f"Bearer {token}"}
+
+    q = client.post(
+        _api("/tools/task-queue/enqueue"),
+        headers=hdr,
+        json={"task_type": "enrichment", "priority": "medium", "requires_login": False, "payload": {"limit": 1}},
+    )
+    assert q.status_code == 200, q.text
+
+    with patch(
+        "backend.services.task_worker_service.company_enrichment_service.enrich_companies_batch",
+        return_value={"selected": 1, "ok": 1, "failed": 0, "skipped": 0},
+    ):
+        r = client.post(_api("/tools/task-worker/run-once"), headers=hdr)
+    assert r.status_code == 200, r.text
+    body = r.json()
+    assert body["status"] == "success"
+    chained = body.get("chained_tasks") or []
+    assert any(x.get("task_type") == "ai" for x in chained)
+
+
+def test_worker_executes_ai_task(client):
+    _drain_queue()
+    token = _token(client)
+    hdr = {"Authorization": f"Bearer {token}"}
+
+    q = client.post(
+        _api("/tools/task-queue/enqueue"),
+        headers=hdr,
+        json={"task_type": "ai", "priority": "medium", "requires_login": False, "payload": {"limit": 2}},
+    )
+    assert q.status_code == 200, q.text
+
+    with patch(
+        "backend.services.task_worker_service.company_enrichment_service.run_ai_qualification_batch",
+        return_value={"processed": 2, "cached": 1},
+    ):
+        r = client.post(_api("/tools/task-worker/run-once"), headers=hdr)
+    assert r.status_code == 200, r.text
+    body = r.json()
+    assert body["status"] == "success"
+    ai_refresh = ((body.get("result") or {}).get("ai_refresh") or {})
+    assert int(ai_refresh.get("processed") or 0) == 2
+
+
 def test_worker_retries_failed_task(client):
     _drain_queue()
     token = _token(client)
@@ -204,3 +252,31 @@ def test_worker_moves_task_to_failed_queue_after_retries_exhausted(client):
     st = client.get(_api("/tools/task-queue/status"), headers=hdr)
     assert st.status_code == 200, st.text
     assert int(st.json().get("failed_queue_size") or 0) >= 1
+
+
+def test_worker_scoring_recomputes_leads_and_companies(client):
+    _drain_queue()
+    token = _token(client)
+    hdr = {"Authorization": f"Bearer {token}"}
+
+    q = client.post(
+        _api("/tools/task-queue/enqueue"),
+        headers=hdr,
+        json={"task_type": "scoring", "priority": "high", "requires_login": False, "payload": {"batch": "refresh"}},
+    )
+    assert q.status_code == 200, q.text
+
+    with patch(
+        "backend.services.task_worker_service.lead_orm_service.rescore_all_leads",
+        return_value={"processed": 3},
+    ), patch(
+        "backend.services.task_worker_service.company_enrichment_service.rescore_all_companies",
+        return_value={"processed": 2},
+    ):
+        r = client.post(_api("/tools/task-worker/run-once"), headers=hdr)
+    assert r.status_code == 200, r.text
+    body = r.json()
+    assert body["status"] == "success"
+    refresh = (body.get("result") or {}).get("score_refresh") or {}
+    assert int(refresh.get("leads_processed") or 0) == 3
+    assert int(refresh.get("companies_processed") or 0) == 2

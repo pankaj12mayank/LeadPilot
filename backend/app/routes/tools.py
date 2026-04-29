@@ -7,7 +7,7 @@ from typing import Any, Optional
 import os
 
 from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 
 from backend.app.api.deps import get_current_user, get_db
 from backend.lead_cleaning.engine import run_cleaning_pipeline
@@ -52,6 +52,15 @@ class QueueTaskBody(BaseModel):
     priority: str = "medium"
     requires_login: bool = False
     payload: dict[str, Any] = {}
+
+    @field_validator("task_type")
+    @classmethod
+    def v_task_type(cls, value: str) -> str:
+        allowed = {"ingestion", "enrichment", "ai", "scoring", "linkedin"}
+        t = str(value or "").strip().lower()
+        if t not in allowed:
+            raise ValueError(f"task_type must be one of: {', '.join(sorted(allowed))}")
+        return t
 
 
 class ParallelWorkerBody(BaseModel):

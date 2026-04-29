@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from typing import Any, List
+from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field, field_validator
@@ -18,9 +19,43 @@ from backend.services import (
     runtime_settings,
     settings_service,
 )
-from database.orm.models import Company, CompanyEnrichment
+from database.orm.models import Company, CompanyEnrichment, Lead
 
 router = APIRouter(prefix="/companies", tags=["companies"])
+
+
+def _insert_company_rows_into_leads(db: Session, rows: list[dict[str, Any]]) -> dict[str, int]:
+    created = 0
+    skipped = 0
+    for row in rows:
+        website = str(row.get("website") or "").strip().lower()
+        company_name = str(row.get("company_name") or "").strip()
+        source = str(row.get("source") or "public_db").strip().lower()
+        if not website or not company_name:
+            skipped += 1
+            continue
+        existing = db.scalar(
+            select(Lead).where(
+                func.lower(Lead.company_website) == website,
+                func.lower(Lead.source_platform) == source,
+            )
+        )
+        if existing is not None:
+            skipped += 1
+            continue
+        lead_orm_service.create_lead(
+            db,
+            {
+                "full_name": f"Decision Maker - {company_name}",
+                "title": "Decision Maker",
+                "company_name": company_name,
+                "company_website": website,
+                "source_platform": source,
+                "notes": f"Auto-created from company ingestion source={source}",
+            },
+        )
+        created += 1
+    return {"created": created, "skipped": skipped}
 
 
 @router.get("/user-config")
@@ -52,6 +87,8 @@ class CompanyIngestItem(BaseModel):
     website: str | None = None
     domain: str | None = None
     source: str | None = None
+    signals: list[str] | dict[str, Any] | None = None
+    ai_score: float | None = None
 
 
 class CompanyIngestRequest(BaseModel):
@@ -104,6 +141,7 @@ class ExplorerSearchRequest(BaseModel):
     keyword: str = ""
     location: str = ""
     source_filter: str = Field(default="all")
+    updated_within_days: int = Field(default=0, ge=0, le=365)
     min_score: float = Field(default=0.0, ge=0.0, le=100.0)
     signal_hiring: bool = False
     signal_scaling: bool = False
@@ -181,8 +219,22 @@ class CustomSourceCreateRequest(BaseModel):
 def list_companies(
     db: Session = Depends(get_db),
     _user: dict = Depends(get_current_user),
+    source: str = "all",
+    updated_within_days: int = 0,
 ) -> list[dict[str, Any]]:
-    return [company_service.company_to_dict(x) for x in company_service.list_companies(db)]
+    rows = company_service.list_companies_filtered(db, source_filter=source, updated_within_days=updated_within_days, limit=500)
+    return [company_service.company_to_dict(x) for x in rows]
+
+
+@router.get("/stale")
+def list_stale_public_companies(
+    stale_days: int = 7,
+    limit: int = 200,
+    db: Session = Depends(get_db),
+    _user: dict = Depends(get_current_user),
+) -> dict[str, Any]:
+    rows = company_service.list_stale_companies(db, stale_days=stale_days, limit=limit)
+    return {"count": len(rows), "items": [company_service.company_to_dict(x) for x in rows], "stale_days": stale_days}
 
 
 @router.get("/by-domain/{domain}")
@@ -272,6 +324,12 @@ def ingest_companies_real_sources(
             status_code=400,
             detail="For manual seeds use /companies/ingest. /ingest-real expects source pages.",
         )
+    enabled_sources = set(runtime_settings.get_enabled_ingestion_sources())
+    filtered_sources = [src for src in requested_sources if src in enabled_sources]
+    if not filtered_sources:
+        raise HTTPException(status_code=400, detail="No enabled ingestion sources selected")
+    requested_sources = filtered_sources
+
     ingest_flow = company_ingestion_service.ingest_from_sources(
         db=db,
         sources=requested_sources,
@@ -285,6 +343,13 @@ def ingest_companies_real_sources(
     )
     fetch_stats = ingest_flow.get("fetched_total") or {"pages_ok": 0, "pages_failed": 0, "candidates": 0}
     save_stats = ingest_flow.get("saved_total") or {"created": 0, "updated": 0, "skipped": 0}
+    lead_stats_total = {"created": 0, "skipped": 0}
+    for run in ingest_flow.get("runs") or []:
+        rows = run.get("rows") if isinstance(run, dict) else []
+        if isinstance(rows, list):
+            lead_stats = _insert_company_rows_into_leads(db, rows)
+            lead_stats_total["created"] += int(lead_stats.get("created") or 0)
+            lead_stats_total["skipped"] += int(lead_stats.get("skipped") or 0)
     enrich_stats: dict[str, Any] | None = None
     if body.enrich_after_ingest:
         enrich_stats = company_enrichment_service.enrich_companies_batch(
@@ -299,7 +364,14 @@ def ingest_companies_real_sources(
         "sources": ingest_flow.get("sources") or requested_sources,
         "fetched": fetch_stats,
         "saved": save_stats,
+        "leads_saved": lead_stats_total,
+        "company_saved": save_stats,
+        "lead_saved": lead_stats_total,
         "runs": ingest_flow.get("runs") or [],
+        "failed_sources": int(ingest_flow.get("failed_sources") or 0),
+        "quality_skips": ingest_flow.get("quality_skips_total")
+        or {"missing_website": 0, "duplicate_domain": 0, "invalid_url": 0, "short_content": 0},
+        "errors": ingest_flow.get("errors") or [],
         "enrichment": enrich_stats,
     }
 
@@ -374,7 +446,10 @@ def explorer_search_companies(
                 | func.lower(Company.website).like(loc_term)
             )
         if effective_source_filter != "all":
-            stmt = stmt.where(Company.source == effective_source_filter)
+            stmt = stmt.where(func.lower(Company.source).like(f"%{effective_source_filter}%"))
+        if int(body.updated_within_days or 0) > 0:
+            cutoff = datetime.now(timezone.utc) - timedelta(days=int(body.updated_within_days))
+            stmt = stmt.where(Company.last_updated >= cutoff.replace(microsecond=0).isoformat())
         if float(body.min_score or 0) > 0:
             stmt = stmt.where(func.coalesce(CompanyEnrichment.score, 0.0) >= float(body.min_score))
         if effective_signal_hiring:
@@ -391,13 +466,13 @@ def explorer_search_companies(
             rows.append(
                 {
                     **company_service.company_to_dict(c),
-                    "score": float(e.score or 0) if e else 0.0,
+                    "score": float(getattr(c, "ai_score", 0.0) or (e.score if e else 0.0) or 0.0),
                     "priority": (e.priority or "") if e else "",
                     "signals": {
-                        "hiring": int(e.signal_hiring or 0) if e else 0,
-                        "scaling": int(e.signal_scaling or 0) if e else 0,
-                        "content_gap": int(e.signal_content_gap or 0) if e else 0,
-                        "ads_gap": int(e.signal_ads_gap or 0) if e else 0,
+                        "hiring": int(e.signal_hiring or 0) if e else int("hiring" in str(getattr(c, "signals", "") or "").split(",")),
+                        "scaling": int(e.signal_scaling or 0) if e else int("scaling" in str(getattr(c, "signals", "") or "").split(",")),
+                        "content_gap": int(e.signal_content_gap or 0) if e else int("content_gap" in str(getattr(c, "signals", "") or "").split(",")),
+                        "ads_gap": int(e.signal_ads_gap or 0) if e else int("ads_gap" in str(getattr(c, "signals", "") or "").split(",")),
                     },
                 }
             )
@@ -425,6 +500,13 @@ def explorer_search_companies(
         )
         fetch_runs = list(ingest_flow.get("runs") or [])
         saved_total = ingest_flow.get("saved_total") or saved_total
+        quality_skips_total = ingest_flow.get("quality_skips_total") or {
+            "missing_website": 0,
+            "duplicate_domain": 0,
+            "invalid_url": 0,
+            "short_content": 0,
+        }
+        errors = ingest_flow.get("errors") or []
         enrich_stats: dict[str, Any] | None = None
         if body.enrich_after_ingest:
             enrich_stats = company_enrichment_service.enrich_companies_batch(
@@ -436,6 +518,8 @@ def explorer_search_companies(
         db.commit()
     else:
         enrich_stats = None
+        quality_skips_total = {"missing_website": 0, "duplicate_domain": 0, "invalid_url": 0, "short_content": 0}
+        errors = []
 
     final_rows = _search_rows(body.max_results)
     return {
@@ -448,6 +532,9 @@ def explorer_search_companies(
             "triggered": len(existing) < body.min_results,
             "runs": fetch_runs,
             "saved_total": saved_total,
+            "company_saved": saved_total,
+            "quality_skips": quality_skips_total,
+            "errors": errors,
             "enrichment": enrich_stats,
             "effective_sources": chosen_sources,
         },

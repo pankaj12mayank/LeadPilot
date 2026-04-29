@@ -26,8 +26,11 @@ def get_use_ollama() -> bool:
     s = settings_service.load_settings()
     v = s.get("use_ollama")
     if v is None or v == "":
-        return bool(config.USE_OLLAMA)
-    return _truthy(v, bool(config.USE_OLLAMA))
+        enabled = bool(config.USE_OLLAMA)
+    else:
+        enabled = _truthy(v, bool(config.USE_OLLAMA))
+    ai = (get_admin_config().get("ai_control") or {})
+    return enabled and bool(ai.get("ollama_enabled", True))
 
 
 def get_free_api_mode() -> bool:
@@ -41,7 +44,15 @@ def get_free_api_mode() -> bool:
 def get_ai_provider() -> str:
     s = settings_service.load_settings()
     v = (s.get("ai_provider") or "ollama").strip().lower()
-    return v if v in ("ollama", "external_api") else "ollama"
+    provider = v if v in ("ollama", "external_api") else "ollama"
+    ai = get_admin_config().get("ai_control") or {}
+    ollama_enabled = bool(ai.get("ollama_enabled", True))
+    api_enabled = bool(ai.get("api_enabled", True))
+    if provider == "external_api" and not api_enabled:
+        return "ollama" if ollama_enabled else "none"
+    if provider == "ollama" and not ollama_enabled:
+        return "external_api" if api_enabled else "none"
+    return provider
 
 
 def get_external_api_base_url() -> str:
@@ -59,6 +70,14 @@ def get_external_api_model() -> str:
     s = settings_service.load_settings()
     m = (s.get("external_api_model") or "").strip()
     return m or "gpt-4o-mini"
+
+
+def get_debug_mode() -> bool:
+    s = settings_service.load_settings()
+    v = s.get("debug_mode")
+    if v is None or v == "":
+        return bool(getattr(config, "DEBUG", False))
+    return _truthy(v, bool(getattr(config, "DEBUG", False)))
 
 
 def get_branding() -> dict:
@@ -143,6 +162,13 @@ def _normalize_priority(value: Any, default: str) -> str:
 def _default_source_registry() -> list[dict[str, str | bool]]:
     return [
         {
+            "source_name": "linkedin",
+            "source_type": "directory",
+            "enabled": True,
+            "input_type": "keyword",
+            "adapter_function": "collect_companies_from_source_pages",
+        },
+        {
             "source_name": "yc",
             "source_type": "directory",
             "enabled": True,
@@ -178,6 +204,62 @@ def _default_source_registry() -> list[dict[str, str | bool]]:
             "adapter_function": "collect_companies_from_source_pages",
         },
         {
+            "source_name": "google_maps",
+            "source_type": "directory",
+            "enabled": True,
+            "input_type": "keyword",
+            "adapter_function": "collect_companies_from_source_pages",
+        },
+        {
+            "source_name": "indiamart",
+            "source_type": "directory",
+            "enabled": True,
+            "input_type": "keyword",
+            "adapter_function": "collect_companies_from_source_pages",
+        },
+        {
+            "source_name": "justdial",
+            "source_type": "directory",
+            "enabled": True,
+            "input_type": "keyword",
+            "adapter_function": "collect_companies_from_source_pages",
+        },
+        {
+            "source_name": "eworldtrade",
+            "source_type": "directory",
+            "enabled": True,
+            "input_type": "keyword",
+            "adapter_function": "collect_companies_from_source_pages",
+        },
+        {
+            "source_name": "global_sources",
+            "source_type": "directory",
+            "enabled": True,
+            "input_type": "keyword",
+            "adapter_function": "collect_companies_from_source_pages",
+        },
+        {
+            "source_name": "thomasnet",
+            "source_type": "directory",
+            "enabled": True,
+            "input_type": "keyword",
+            "adapter_function": "collect_companies_from_source_pages",
+        },
+        {
+            "source_name": "yelp",
+            "source_type": "directory",
+            "enabled": True,
+            "input_type": "keyword",
+            "adapter_function": "collect_companies_from_source_pages",
+        },
+        {
+            "source_name": "faire",
+            "source_type": "directory",
+            "enabled": True,
+            "input_type": "keyword",
+            "adapter_function": "collect_companies_from_source_pages",
+        },
+        {
             "source_name": "manual",
             "source_type": "manual",
             "enabled": True,
@@ -189,7 +271,7 @@ def _default_source_registry() -> list[dict[str, str | bool]]:
 
 def _normalize_source_type(value: Any, default: str) -> str:
     text = str(value or default).strip().lower().replace("-", "_")
-    return text if text in {"job_board", "directory", "local", "manual"} else default
+    return text if text in {"job_board", "directory", "local", "manual", "marketplace"} else default
 
 
 def _normalize_input_type(value: Any, default: str) -> str:
@@ -291,6 +373,18 @@ def get_admin_config() -> dict[str, Any]:
     tp = raw.get("task_priority")
     if not isinstance(tp, dict):
         tp = {}
+    ai = raw.get("ai_control")
+    if not isinstance(ai, dict):
+        ai = {}
+    sc = raw.get("scoring_control")
+    if not isinstance(sc, dict):
+        sc = {}
+    sf = raw.get("safety_control")
+    if not isinstance(sf, dict):
+        sf = {}
+    qp = raw.get("queue_priority")
+    if not isinstance(qp, dict):
+        qp = {}
     wc = raw.get("worker_config")
     if not isinstance(wc, dict):
         wc = {}
@@ -327,10 +421,36 @@ def get_admin_config() -> dict[str, Any]:
             "startup_directories": bool(src.get("startup_directories", True)),
             "local_listings": bool(src.get("local_listings", True)),
             "manual_seeds": bool(src.get("manual_seeds", True)),
+            "linkedin": bool(src.get("linkedin", True)),
+            "public_db": bool(src.get("public_db", True)),
+            "google_maps": bool(src.get("google_maps", True)),
+            "indiamart": bool(src.get("indiamart", True)),
+            "justdial": bool(src.get("justdial", True)),
+            "eworldtrade": bool(src.get("eworldtrade", True)),
+            "global_sources": bool(src.get("global_sources", True)),
+            "thomasnet": bool(src.get("thomasnet", True)),
+            "yelp": bool(src.get("yelp", True)),
+            "faire": bool(src.get("faire", True)),
             "allowed_sources": _clean_lower_list(
                 src.get("allowed_sources")
                 or legacy_tf.get("allowed_sources")
-                or ["yc", "job_board", "local", "crunchbase", "builtwith", "manual"]
+                or [
+                    "linkedin",
+                    "yc",
+                    "job_board",
+                    "local",
+                    "crunchbase",
+                    "builtwith",
+                    "google_maps",
+                    "indiamart",
+                    "justdial",
+                    "eworldtrade",
+                    "global_sources",
+                    "thomasnet",
+                    "yelp",
+                    "faire",
+                    "manual",
+                ]
             ),
         },
         "scoring_weights": {
@@ -379,6 +499,26 @@ def get_admin_config() -> dict[str, Any]:
             "scoring": _normalize_priority(tp.get("scoring"), "high"),
             "enrichment": _normalize_priority(tp.get("enrichment"), "medium"),
             "ingestion": _normalize_priority(tp.get("ingestion"), "low"),
+        },
+        "ai_control": {
+            "ollama_enabled": bool(ai.get("ollama_enabled", True)),
+            "api_enabled": bool(ai.get("api_enabled", True)),
+        },
+        "scoring_control": {
+            "role": _safe_int(sc.get("role"), 40, min_value=1, max_value=100),
+            "signals": _safe_int(sc.get("signals"), 35, min_value=1, max_value=100),
+            "ai_score": _safe_int(sc.get("ai_score"), 25, min_value=1, max_value=100),
+        },
+        "safety_control": {
+            "delay_seconds": max(0.2, min(float(sf.get("delay_seconds") or 1.0), 8.0)),
+            "batch_size": _safe_int(sf.get("batch_size"), 10, min_value=1, max_value=100),
+            "retry_count": _safe_int(sf.get("retry_count"), 3, min_value=1, max_value=10),
+            "pagination_limit": _safe_int(sf.get("pagination_limit"), 5, min_value=1, max_value=100),
+        },
+        "queue_priority": {
+            "linkedin": _normalize_priority(qp.get("linkedin"), _normalize_priority(tp.get("linkedin"), "high")),
+            "ai": _normalize_priority(qp.get("ai"), "high"),
+            "others": _normalize_priority(qp.get("others"), "medium"),
         },
         "source_registry": _normalize_source_registry(raw.get("source_registry")),
         "worker_config": {
@@ -429,6 +569,18 @@ def get_enabled_ingestion_sources() -> list[str]:
         name = str(item.get("source_name") or "").strip().lower()
         source_type = str(item.get("source_type") or "").strip().lower()
         if not name or not bool(item.get("enabled", True)):
+            continue
+        if name in {
+            "linkedin",
+            "google_maps",
+            "indiamart",
+            "justdial",
+            "eworldtrade",
+            "global_sources",
+            "thomasnet",
+            "yelp",
+            "faire",
+        } and not bool(src.get(name, True)):
             continue
         if source_type == "directory" and not bool(src.get("startup_directories", True)):
             continue

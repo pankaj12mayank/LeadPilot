@@ -1,6 +1,7 @@
 import { AlertTriangle, Loader2, RefreshCw } from 'lucide-react'
 import { useCallback, useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
+import { toast } from 'sonner'
 
 import { SeleniumLeadpilotPanel } from '@/components/scraper/SeleniumLeadpilotPanel'
 import { StatusBadge } from '@/components/ui/Badge'
@@ -34,6 +35,10 @@ function titleizeSource(source: string) {
     .join(' ')
 }
 
+function formatSourceList(sources: string[]) {
+  return sources.map((source) => titleizeSource(source)).join(', ')
+}
+
 export function SearchLeadsPage() {
   const [recent, setRecent] = useState<Lead[]>([])
   const [loading, setLoading] = useState(true)
@@ -41,6 +46,7 @@ export function SearchLeadsPage() {
   const [keyword, setKeyword] = useState('')
   const [location, setLocation] = useState('')
   const [sourceFilter, setSourceFilter] = useState<string>('all')
+  const [updatedWithinDays, setUpdatedWithinDays] = useState<number>(0)
   const [selectedSources, setSelectedSources] = useState<string[]>([])
   const [minScore, setMinScore] = useState(0)
   const [signalHiring, setSignalHiring] = useState(false)
@@ -150,6 +156,7 @@ export function SearchLeadsPage() {
         keyword: keyword.trim() || undefined,
         location: location.trim() || undefined,
         source_filter: sourceFilter,
+        updated_within_days: updatedWithinDays || 0,
         min_score: minScore || 0,
         signal_hiring: enabledSignals.hiring ? signalHiring : false,
         signal_scaling: enabledSignals.scaling ? signalScaling : false,
@@ -175,13 +182,27 @@ export function SearchLeadsPage() {
         metaHints.push('scaling signal filter disabled by admin')
       }
       setExplorerInfo(metaHints.length ? `${info} (${metaHints.join(', ')})` : info)
+      toast.success('Explorer updated', {
+        description: `${(r.results || []).length} companies loaded from Company DB flow.`,
+      })
     } catch (e) {
       setExplorerRows([])
-      setExplorerErr(getApiErrorMessage(e, 'Explorer search failed'))
+      const msg = getApiErrorMessage(e, 'Explorer search failed')
+      setExplorerErr(msg)
+      toast.error('Explorer failed', { description: msg })
     } finally {
       setExplorerBusy(false)
     }
-  }, [enabledSignals.hiring, enabledSignals.scaling, keyword, location, minScore, selectedSources, signalHiring, signalScaling, sourceFilter])
+  }, [enabledSignals.hiring, enabledSignals.scaling, keyword, location, minScore, selectedSources, signalHiring, signalScaling, sourceFilter, updatedWithinDays])
+
+  const explorerInsights = (() => {
+    const rows = explorerRows || []
+    if (!rows.length) return null
+    const avgScore = Math.round(rows.reduce((sum, row) => sum + Number(row.score || 0), 0) / rows.length)
+    const hotCount = rows.filter((row) => Number(row.score || 0) >= Math.max(70, Number(minScore || 0))).length
+    const hiringCount = rows.filter((row) => Number(row.signals?.hiring || 0) > 0).length
+    return { avgScore, hotCount, hiringCount, total: rows.length }
+  })()
 
   useEffect(() => {
     if (!lastConfigEventTs || mode !== 'explorer') return
@@ -247,7 +268,7 @@ export function SearchLeadsPage() {
               {defaultMinScore > 0 ? ` Score floor: ${defaultMinScore}.` : ''}
               {allowedSources.length ? ` Sources: ${allowedSources.join(', ')}.` : ''}
             </div>
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
               <input
                 value={keyword}
                 onChange={(e) => setKeyword(e.target.value)}
@@ -272,6 +293,15 @@ export function SearchLeadsPage() {
                   </option>
                 ))}
               </select>
+              <input
+                type="number"
+                min={0}
+                max={365}
+                value={updatedWithinDays}
+                onChange={(e) => setUpdatedWithinDays(Number(e.target.value))}
+                placeholder="updated within days"
+                className="field-input rounded-xl px-3 py-2 text-sm"
+              />
             </div>
             <div className="text-xs text-ink-muted">
               Source filter controls which origin is shown in Explorer results. Each result includes the source that produced
@@ -352,6 +382,7 @@ export function SearchLeadsPage() {
                     Boolean(keyword.trim()) ||
                     Boolean(location.trim()) ||
                     sourceFilter !== 'all' ||
+                    Number(updatedWithinDays || 0) > 0 ||
                     selectedSources.length > 0 ||
                     Number(minScore || 0) > 0 ||
                     (enabledSignals.hiring && signalHiring) ||
@@ -379,6 +410,26 @@ export function SearchLeadsPage() {
               </button>
               {explorerInfo ? <span className="text-xs text-ink-muted">{explorerInfo}</span> : null}
             </div>
+            {explorerInsights ? (
+              <div className="grid gap-3 sm:grid-cols-3">
+                <div className="rounded-xl border border-surface-border bg-field/40 px-3 py-3 text-xs text-ink-muted">
+                  <div className="text-[10px] font-semibold uppercase tracking-wider text-ink-subtle">Average score</div>
+                  <div className="mt-1 text-lg font-semibold text-ink">{explorerInsights.avgScore}</div>
+                </div>
+                <div className="rounded-xl border border-surface-border bg-field/40 px-3 py-3 text-xs text-ink-muted">
+                  <div className="text-[10px] font-semibold uppercase tracking-wider text-ink-subtle">Hot opportunities</div>
+                  <div className="mt-1 text-lg font-semibold text-ink">
+                    {explorerInsights.hotCount}/{explorerInsights.total}
+                  </div>
+                </div>
+                <div className="rounded-xl border border-surface-border bg-field/40 px-3 py-3 text-xs text-ink-muted">
+                  <div className="text-[10px] font-semibold uppercase tracking-wider text-ink-subtle">Hiring signal</div>
+                  <div className="mt-1 text-lg font-semibold text-ink">
+                    {explorerInsights.hiringCount}/{explorerInsights.total}
+                  </div>
+                </div>
+              </div>
+            ) : null}
             {explorerErr ? <p className="text-xs text-red-600 dark:text-red-300">{explorerErr}</p> : null}
             <div className="overflow-x-auto">
               <table className="w-full min-w-[780px] text-left text-xs">
@@ -387,6 +438,7 @@ export function SearchLeadsPage() {
                     <th className="px-2 py-2">Company</th>
                     <th className="px-2 py-2">Website</th>
                     <th className="px-2 py-2">Source</th>
+                    <th className="px-2 py-2">Last Updated</th>
                     <th className="px-2 py-2">Score</th>
                     <th className="px-2 py-2">Signals</th>
                   </tr>
@@ -394,7 +446,7 @@ export function SearchLeadsPage() {
                 <tbody>
                   {explorerRows.length === 0 ? (
                     <tr>
-                      <td colSpan={5} className="px-2 py-3 text-ink-muted">
+                      <td colSpan={6} className="px-2 py-3 text-ink-muted">
                         No explorer rows yet. Apply filters and run Explorer.
                       </td>
                     </tr>
@@ -418,9 +470,10 @@ export function SearchLeadsPage() {
                         </td>
                         <td className="px-2 py-2">
                           <span className="inline-flex rounded-full border border-surface-border bg-field/40 px-2 py-0.5 text-[11px] font-medium text-ink">
-                            {titleizeSource(row.source || 'manual')}
+                            {formatSourceList((row.source_values || [row.source || 'manual']).filter(Boolean))}
                           </span>
                         </td>
+                        <td className="px-2 py-2">{clip(row.last_updated || '—', 19)}</td>
                         <td className="px-2 py-2">{Math.round(Number(row.score || 0))}</td>
                         <td className="px-2 py-2">
                           {[

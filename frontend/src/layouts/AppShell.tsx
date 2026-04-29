@@ -1,4 +1,5 @@
 import {
+  BriefcaseBusiness,
   Info,
   LayoutDashboard,
   LineChart,
@@ -11,6 +12,7 @@ import {
 } from 'lucide-react'
 import { useEffect } from 'react'
 import { NavLink, Outlet, useLocation } from 'react-router-dom'
+import { toast } from 'sonner'
 
 import { MarketingFooter } from '@/components/layout/MarketingFooter'
 import { TopNav } from '@/components/layout/TopNav'
@@ -24,7 +26,8 @@ import { useUserConfigStore } from '@/store/userConfigStore'
 
 const nav = [
   { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  { to: '/search-leads', label: 'LinkedIn search', icon: Search },
+  { to: '/buyer-dashboard', label: 'Buyer dashboard', icon: BriefcaseBusiness },
+  { to: '/search-leads', label: 'Explorer', icon: Search },
   { to: '/leads', label: 'Leads', icon: Users },
   { to: '/outreach-queue', label: 'Outreach queue', icon: ListChecks },
   { to: '/analytics', label: 'Analytics', icon: LineChart },
@@ -37,10 +40,25 @@ function pathKey(pathname: string) {
   return ROUTE_META[p] ? p : '/dashboard'
 }
 
-function NavItems({ onNavigate }: { onNavigate?: () => void }) {
+function NavItems({ onNavigate, role }: { onNavigate?: () => void; role: 'admin' | 'user' | 'buyer' }) {
+  const visibleNav = nav.filter((item) => {
+    if (role === 'buyer') {
+      return (
+        item.to === '/dashboard' ||
+        item.to === '/buyer-dashboard' ||
+        item.to === '/analytics' ||
+        item.to === '/settings' ||
+        item.to === '/about'
+      )
+    }
+    if (role === 'user' && item.to === '/buyer-dashboard') {
+      return false
+    }
+    return true
+  })
   return (
     <>
-      {nav.map(({ to, label, icon: Icon }) => (
+      {visibleNav.map(({ to, label, icon: Icon }) => (
         <NavLink
           key={to}
           to={to}
@@ -68,6 +86,7 @@ export function AppShell() {
   const logoUrl = useBrandingStore((s) => s.branding.logo_url)
   const mediaRevision = useBrandingStore((s) => s.mediaRevision)
   const { user, logout } = useAuthStore()
+  const role = (user?.role || 'user') as 'admin' | 'user' | 'buyer'
   const startUserConfigSync = useUserConfigStore((s) => s.startSync)
   const stopUserConfigSync = useUserConfigStore((s) => s.stopSync)
   const clearUserConfig = useUserConfigStore((s) => s.clear)
@@ -93,6 +112,19 @@ export function AppShell() {
       stopUserConfigSync()
     }
   }, [startUserConfigSync, stopUserConfigSync])
+
+  useEffect(() => {
+    if (configSyncError) {
+      toast.error('Config sync issue', { description: configSyncError })
+    }
+  }, [configSyncError])
+
+  useEffect(() => {
+    if (!lastConfigEventTs) return
+    toast.info('Admin rules updated', {
+      description: 'Filters, scoring, and queue behavior were synced to latest config.',
+    })
+  }, [lastConfigEventTs])
 
   const configStatusLabel = configSyncError
     ? 'Config sync issue'
@@ -137,7 +169,7 @@ export function AppShell() {
           </div>
         </div>
         <nav className="flex flex-1 flex-col gap-1">
-          <NavItems onNavigate={() => setMobileOpen(false)} />
+          <NavItems onNavigate={() => setMobileOpen(false)} role={role} />
         </nav>
       </aside>
 

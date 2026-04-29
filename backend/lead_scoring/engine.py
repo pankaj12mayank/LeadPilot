@@ -19,8 +19,8 @@ from backend.lead_scoring.factors import (
     score_website_availability,
 )
 from backend.lead_scoring.tiers import assign_tier
+from backend.services.scoring_engine_service import composite_score
 from backend.utils.logger import get_logger
-from backend.services import runtime_settings
 
 logger = get_logger(__name__)
 
@@ -74,26 +74,10 @@ def score_lead(
         setattr(bd, attr, float(pts))
         bd.messages[attr] = msg
 
-    raw = bd.raw_total
-    cfg = runtime_settings.get_admin_config()
-    w = cfg.get("scoring_weights") or {}
-    role_w = max(1.0, float(w.get("role_weight") or 40))
-    sig_w = max(1.0, float(w.get("signal_weight") or 35))
-    data_w = max(1.0, float(w.get("data_weight") or 25))
-    total_w = role_w + sig_w + data_w
-
-    role_component = 0.0
     role_norm = min(1.0, max(0.0, float(getattr(bd, "job_role", 0.0)) / 15.0))
     size_norm = min(1.0, max(0.0, float(getattr(bd, "company_size", 0.0)) / 12.0))
-    # role_weight blends person role + company size relevance
-    role_component = min(role_w, ((role_norm * 0.7) + (size_norm * 0.3)) * role_w)
-    data_component = 0.0
-    if str(L.get("company_website") or "").strip():
-        data_component += data_w * 0.5
-    if str(L.get("email") or "").strip():
-        data_component += data_w * 0.5
-    data_component = min(data_w, data_component)
-    # Step-5 extension: signal-based additive points (does not replace base scoring).
+    role_relevance = (((role_norm * 0.7) + (size_norm * 0.3)) * 100.0)
+
     signal_hiring = bool(lead.get("signal_hiring")) or bool(lead.get("has_careers"))
     signal_scaling = bool(lead.get("signal_scaling"))
     signal_content_gap = bool(lead.get("signal_content_gap")) or (
@@ -104,23 +88,39 @@ def score_lead(
     )
     signal_points = 0.0
     if signal_hiring:
-        signal_points += 8.0
+        signal_points += 40.0
     if signal_scaling:
-        signal_points += 8.0
+        signal_points += 35.0
     if signal_content_gap:
-        signal_points += 4.0
+        signal_points += 12.5
     if signal_ads_gap:
-        signal_points += 4.0
-    signal_component = min(sig_w, signal_points)
-    if signal_component > 0:
-        bd.messages["signal_extension"] = (
-            f"Signals +{signal_component:.0f} (hiring={signal_hiring}, scaling={signal_scaling}, "
-            f"content_gap={signal_content_gap}, ads_gap={signal_ads_gap})"
-        )
-    raw = (role_component + signal_component + data_component) * (100.0 / total_w)
+        signal_points += 12.5
 
-    final = int(max(1, min(100, round(raw))))
+    data_completeness = 0.0
+    if str(L.get("company_website") or "").strip():
+        data_completeness += 35.0
+    if str(L.get("email") or "").strip():
+        data_completeness += 35.0
+    if str(L.get("linkedin_url") or "").strip():
+        data_completeness += 15.0
+    if str(lead.get("phone") or "").strip():
+        data_completeness += 10.0
+    if str(L.get("notes") or "").strip():
+        data_completeness += 5.0
+
+    ai_input = float(lead.get("ai_score") or 0.0)
+    composite = composite_score(
+        role_relevance=role_relevance,
+        signals=min(100.0, signal_points),
+        data_completeness=min(100.0, data_completeness),
+        ai_score=ai_input,
+    )
+    final = int(round(float(composite["score"])))
     tier = assign_tier(final)
+    bd.messages["weighted_components"] = (
+        f"role={role_relevance:.1f}, signals={min(100.0, signal_points):.1f}, "
+        f"data={min(100.0, data_completeness):.1f}, ai={ai_input:.1f}"
+    )
     explanation = " ".join(f"{k}: {v}" for k, v in bd.messages.items())
     reasons = list(bd.messages.values())
 
@@ -132,6 +132,7 @@ def score_lead(
         tier,
         bd.to_dict(),
     )
+    logger.debug("lead_score_breakdown ref=%s weighted=%s", lead_ref, composite)
 
     out = {
         "score": float(final),

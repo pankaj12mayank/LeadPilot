@@ -7,6 +7,9 @@ from datetime import datetime, timezone
 from threading import Lock
 from typing import Any, Dict
 
+from database.orm.bootstrap import get_session_factory, init_sa_tables
+from database.orm.models import AdminConfigState
+
 _ROOT = os.path.dirname(os.path.dirname(__file__))
 SETTINGS_PATH = os.path.join(_ROOT, "data", "runtime_settings.json")
 CONFIG_EVENT_PATH = os.path.join(_ROOT, "data", "config_last_event.json")
@@ -73,7 +76,33 @@ def _defaults() -> Dict[str, Any]:
                 "startup_directories": True,
                 "local_listings": True,
                 "manual_seeds": True,
-                "allowed_sources": ["yc", "job_board", "local", "crunchbase", "builtwith", "manual"],
+                "linkedin": True,
+                "public_db": True,
+                "google_maps": True,
+                "indiamart": True,
+                "justdial": True,
+                "eworldtrade": True,
+                "global_sources": True,
+                "thomasnet": True,
+                "yelp": True,
+                "faire": True,
+                "allowed_sources": [
+                    "linkedin",
+                    "yc",
+                    "job_board",
+                    "local",
+                    "crunchbase",
+                    "builtwith",
+                    "google_maps",
+                    "indiamart",
+                    "justdial",
+                    "eworldtrade",
+                    "global_sources",
+                    "thomasnet",
+                    "yelp",
+                    "faire",
+                    "manual",
+                ],
             },
             "scoring_weights": {
                 "role_weight": 40,
@@ -107,7 +136,34 @@ def _defaults() -> Dict[str, Any]:
                 "enrichment": "medium",
                 "ingestion": "low",
             },
+            "ai_control": {
+                "ollama_enabled": True,
+                "api_enabled": True,
+            },
+            "scoring_control": {
+                "role": 40,
+                "signals": 35,
+                "ai_score": 25,
+            },
+            "safety_control": {
+                "delay_seconds": 1.0,
+                "batch_size": 10,
+                "retry_count": 3,
+                "pagination_limit": 5,
+            },
+            "queue_priority": {
+                "linkedin": "high",
+                "ai": "high",
+                "others": "medium",
+            },
             "source_registry": [
+                {
+                    "source_name": "linkedin",
+                    "source_type": "directory",
+                    "enabled": True,
+                    "input_type": "keyword",
+                    "adapter_function": "collect_companies_from_source_pages",
+                },
                 {
                     "source_name": "yc",
                     "source_type": "directory",
@@ -144,6 +200,62 @@ def _defaults() -> Dict[str, Any]:
                     "adapter_function": "collect_companies_from_source_pages",
                 },
                 {
+                    "source_name": "google_maps",
+                    "source_type": "directory",
+                    "enabled": True,
+                    "input_type": "keyword",
+                    "adapter_function": "collect_companies_from_source_pages",
+                },
+                {
+                    "source_name": "indiamart",
+                    "source_type": "directory",
+                    "enabled": True,
+                    "input_type": "keyword",
+                    "adapter_function": "collect_companies_from_source_pages",
+                },
+                {
+                    "source_name": "justdial",
+                    "source_type": "directory",
+                    "enabled": True,
+                    "input_type": "keyword",
+                    "adapter_function": "collect_companies_from_source_pages",
+                },
+                {
+                    "source_name": "eworldtrade",
+                    "source_type": "directory",
+                    "enabled": True,
+                    "input_type": "keyword",
+                    "adapter_function": "collect_companies_from_source_pages",
+                },
+                {
+                    "source_name": "global_sources",
+                    "source_type": "directory",
+                    "enabled": True,
+                    "input_type": "keyword",
+                    "adapter_function": "collect_companies_from_source_pages",
+                },
+                {
+                    "source_name": "thomasnet",
+                    "source_type": "directory",
+                    "enabled": True,
+                    "input_type": "keyword",
+                    "adapter_function": "collect_companies_from_source_pages",
+                },
+                {
+                    "source_name": "yelp",
+                    "source_type": "directory",
+                    "enabled": True,
+                    "input_type": "keyword",
+                    "adapter_function": "collect_companies_from_source_pages",
+                },
+                {
+                    "source_name": "faire",
+                    "source_type": "directory",
+                    "enabled": True,
+                    "input_type": "keyword",
+                    "adapter_function": "collect_companies_from_source_pages",
+                },
+                {
                     "source_name": "manual",
                     "source_type": "manual",
                     "enabled": True,
@@ -158,7 +270,7 @@ def _defaults() -> Dict[str, Any]:
     }
 
 
-def load_settings() -> Dict[str, Any]:
+def _load_file_settings() -> Dict[str, Any]:
     if not os.path.isfile(SETTINGS_PATH):
         return _defaults()
     try:
@@ -169,6 +281,60 @@ def load_settings() -> Dict[str, Any]:
         return base
     except Exception:
         return _defaults()
+
+
+def _load_admin_config_from_db() -> dict[str, Any] | None:
+    try:
+        init_sa_tables()
+        Session = get_session_factory()
+        db = Session()
+        try:
+            row = db.query(AdminConfigState).order_by(AdminConfigState.id.desc()).first()
+            if row is None:
+                return None
+            raw = json.loads(str(row.config_json or "{}"))
+            return raw if isinstance(raw, dict) else None
+        finally:
+            db.close()
+    except Exception:
+        return None
+
+
+def _save_admin_config_to_db(config_value: dict[str, Any]) -> None:
+    init_sa_tables()
+    Session = get_session_factory()
+    db = Session()
+    try:
+        row = db.query(AdminConfigState).order_by(AdminConfigState.id.desc()).first()
+        if row is None:
+            row = AdminConfigState(
+                config_json=json.dumps(config_value),
+                version=1,
+                updated_at=_utc_now_iso(),
+            )
+            db.add(row)
+        else:
+            row.config_json = json.dumps(config_value)
+            row.version = int(row.version or 1) + 1
+            row.updated_at = _utc_now_iso()
+        db.commit()
+    finally:
+        db.close()
+
+
+def load_settings() -> Dict[str, Any]:
+    base = _load_file_settings()
+    db_admin_config = _load_admin_config_from_db()
+    if isinstance(db_admin_config, dict):
+        base["admin_config"] = db_admin_config
+    else:
+        raw_admin_config = base.get("admin_config")
+        if isinstance(raw_admin_config, dict):
+            try:
+                _save_admin_config_to_db(raw_admin_config)
+            except Exception:
+                pass
+    return base
 
 
 def _utc_now_iso() -> str:
@@ -247,9 +413,16 @@ def emit_config_updated_event(changed_fields: list[str]) -> Dict[str, Any]:
 
 
 def save_settings(data: Dict[str, Any]) -> None:
+    payload = dict(data)
+    raw_admin_config = payload.get("admin_config")
+    if isinstance(raw_admin_config, dict):
+        _save_admin_config_to_db(raw_admin_config)
+    # admin config is canonical in SQLite; JSON keeps the remaining runtime keys.
+    if "admin_config" in payload:
+        payload.pop("admin_config", None)
     os.makedirs(os.path.dirname(SETTINGS_PATH), exist_ok=True)
     with open(SETTINGS_PATH, "w", encoding="utf-8") as f:
-        json.dump(data, f, indent=2)
+        json.dump(payload, f, indent=2)
 
 
 def patch_settings(updates: Dict[str, Any]) -> Dict[str, Any]:

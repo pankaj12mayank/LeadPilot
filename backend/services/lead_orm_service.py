@@ -454,6 +454,26 @@ def update_status(db: Session, lead_id: str, status: str) -> Optional[Lead]:
     return update_lead(db, lead_id, {"status": status})
 
 
+def rescore_all_leads(db: Session, *, limit: int = 5000) -> dict[str, int]:
+    rows = list(
+        db.scalars(
+            select(Lead)
+            .order_by(Lead.updated_at.desc(), Lead.created_at.desc())
+            .limit(max(1, min(int(limit or 5000), 20000)))
+        )
+    )
+    processed = 0
+    for lead in rows:
+        sc = score(_score_input_from_dict(lead_to_response_dict(lead)))
+        lead.score = float(sc.get("score") or 1.0)
+        lead.tier = str(sc.get("tier") or assign_tier(lead.score))
+        lead.priority = tier_label(lead.tier)
+        lead.updated_at = utc_now_iso()
+        processed += 1
+    db.flush()
+    return {"processed": processed}
+
+
 def delete_lead(db: Session, lead_id: str) -> bool:
     lead = db.get(Lead, lead_id)
     if not lead:

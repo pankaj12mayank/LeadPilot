@@ -16,6 +16,7 @@ class User(Base):
     password_hash: Mapped[str] = mapped_column(String(255), nullable=False)
     created_at: Mapped[str] = mapped_column(String(64), nullable=False)
     is_active: Mapped[int] = mapped_column(Integer, nullable=False, default=1, index=True)
+    role: Mapped[str] = mapped_column(String(32), nullable=False, default="user", index=True)
     last_login_at: Mapped[str] = mapped_column(String(64), nullable=False, default="")
 
 
@@ -65,7 +66,9 @@ class Company(Base):
     company_name: Mapped[str] = mapped_column(Text, default="", index=True)
     website: Mapped[str] = mapped_column(Text, default="")
     domain: Mapped[str] = mapped_column(String(255), unique=True, nullable=False, index=True)
-    source: Mapped[str] = mapped_column(String(64), default="", index=True)
+    source: Mapped[str] = mapped_column(Text, default="", index=True)
+    signals: Mapped[str] = mapped_column(Text, default="")
+    ai_score: Mapped[float] = mapped_column(Float, default=0.0, index=True)
     first_seen: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
     last_updated: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
 
@@ -89,6 +92,13 @@ class CompanyEnrichment(Base):
     priority: Mapped[str] = mapped_column(String(16), default="Cold", index=True)
     fetch_ok: Mapped[int] = mapped_column(Integer, nullable=False, default=0, index=True)
     fetch_error: Mapped[str] = mapped_column(Text, default="")
+    ai_summary: Mapped[str] = mapped_column(Text, default="")
+    ai_problems: Mapped[str] = mapped_column(Text, default="")
+    ai_opportunity: Mapped[str] = mapped_column(Text, default="")
+    ai_score: Mapped[float] = mapped_column(Float, default=0.0, index=True)
+    ai_provider: Mapped[str] = mapped_column(String(32), default="", index=True)
+    ai_cache_key: Mapped[str] = mapped_column(String(64), default="", index=True)
+    ai_updated_at: Mapped[str] = mapped_column(String(64), default="", index=True)
     last_checked: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
 
 
@@ -122,6 +132,15 @@ class AppSetting(Base):
     value: Mapped[str] = mapped_column(Text, default="")
 
 
+class AdminConfigState(Base):
+    __tablename__ = "admin_config"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    config_json: Mapped[str] = mapped_column(Text, nullable=False, default="{}")
+    version: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    updated_at: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+
+
 class RawScrapeRecord(Base):
     """Append-only raw rows from Playwright scraper runs (before CRM normalization)."""
 
@@ -151,3 +170,28 @@ class TaskQueueItem(Base):
     waiting_reason: Mapped[str] = mapped_column(String(64), nullable=False, default="")
     created_at: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
     updated_at: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+
+
+class LeadPack(Base):
+    __tablename__ = "lead_packs"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    name: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    description: Mapped[str] = mapped_column(Text, default="")
+    lead_ids_json: Mapped[str] = mapped_column(Text, nullable=False, default="[]")
+    price_usd: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)
+    is_active: Mapped[int] = mapped_column(Integer, nullable=False, default=1, index=True)
+    created_by: Mapped[str] = mapped_column(String(36), default="", index=True)
+    created_at: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    updated_at: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+
+
+class LeadPackPurchase(Base):
+    __tablename__ = "lead_pack_purchases"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    pack_id: Mapped[int] = mapped_column(Integer, ForeignKey("lead_packs.id", ondelete="CASCADE"), nullable=False, index=True)
+    buyer_user_id: Mapped[str] = mapped_column(String(36), nullable=False, index=True)
+    amount_usd: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)
+    status: Mapped[str] = mapped_column(String(32), nullable=False, default="completed", index=True)
+    purchased_at: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
