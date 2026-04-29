@@ -47,6 +47,7 @@ def _ensure_lead_indexes(engine) -> None:
         "CREATE INDEX IF NOT EXISTS ix_company_enrichment_score ON company_enrichment (score)",
         "CREATE INDEX IF NOT EXISTS ix_company_enrichment_priority ON company_enrichment (priority)",
         "CREATE INDEX IF NOT EXISTS ix_leads_priority ON leads (priority)",
+        "CREATE INDEX IF NOT EXISTS ix_leads_user_id ON leads (user_id)",
     ]
     with engine.begin() as cx:
         for sql in stmts:
@@ -84,6 +85,8 @@ def _ensure_lead_columns(engine) -> None:
             cx.execute(text("ALTER TABLE leads ADD COLUMN signal_ads_gap INTEGER NOT NULL DEFAULT 0"))
         if "priority" not in cols:
             cx.execute(text("ALTER TABLE leads ADD COLUMN priority VARCHAR(16) DEFAULT 'Cold'"))
+        if "user_id" not in cols:
+            cx.execute(text("ALTER TABLE leads ADD COLUMN user_id VARCHAR(36) NOT NULL DEFAULT ''"))
 
 
 def _ensure_user_columns(engine) -> None:
@@ -97,6 +100,8 @@ def _ensure_user_columns(engine) -> None:
             cx.execute(text("ALTER TABLE users ADD COLUMN is_active INTEGER NOT NULL DEFAULT 1"))
         if "role" not in cols:
             cx.execute(text("ALTER TABLE users ADD COLUMN role VARCHAR(32) NOT NULL DEFAULT 'user'"))
+        if "plan_id" not in cols:
+            cx.execute(text("ALTER TABLE users ADD COLUMN plan_id VARCHAR(32) NOT NULL DEFAULT 'starter'"))
         if "last_login_at" not in cols:
             cx.execute(text("ALTER TABLE users ADD COLUMN last_login_at VARCHAR(64) DEFAULT ''"))
 

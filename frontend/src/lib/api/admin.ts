@@ -15,6 +15,7 @@ export type AdminUserRow = {
   created_at: string
   is_active: boolean
   role?: 'admin' | 'user' | 'buyer'
+  plan_id?: 'starter' | 'growth' | 'pro' | 'enterprise'
   last_login_at: string
 }
 
@@ -155,6 +156,13 @@ export type AdminConfig = {
   worker_config: {
     worker_count: number
   }
+  plan_channel_access: Record<
+    'starter' | 'growth' | 'pro' | 'enterprise',
+    {
+      channels: string[]
+      lead_limit: number
+    }
+  >
 }
 
 export async function adminGetControls() {
@@ -187,8 +195,18 @@ export async function adminListUsers() {
   return data.users
 }
 
-export async function adminCreateUser(email: string, password: string, role: 'admin' | 'user' | 'buyer' = 'user') {
-  const { data } = await adminClient.post<{ user: AdminUserRow }>('/admin/users', { email, password, role })
+export async function adminCreateUser(
+  email: string,
+  password: string,
+  role: 'admin' | 'user' | 'buyer' = 'user',
+  plan_id: 'starter' | 'growth' | 'pro' | 'enterprise' = 'starter',
+) {
+  const { data } = await adminClient.post<{ user: AdminUserRow }>('/admin/users', {
+    email,
+    password,
+    role,
+    plan_id: role === 'admin' ? 'enterprise' : plan_id,
+  })
   return data.user
 }
 
@@ -197,9 +215,16 @@ export async function adminBulkDeleteUsers(ids: string[]) {
   return data.deleted
 }
 
-export async function adminSetUserActive(userId: string, is_active: boolean) {
+export async function adminSetUserActive(
+  userId: string,
+  is_active: boolean,
+  role?: 'admin' | 'user' | 'buyer',
+  plan_id?: 'starter' | 'growth' | 'pro' | 'enterprise',
+) {
   const { data } = await adminClient.patch<{ user: AdminUserRow }>(`/admin/users/${encodeURIComponent(userId)}`, {
     is_active,
+    role,
+    plan_id,
   })
   return data.user
 }

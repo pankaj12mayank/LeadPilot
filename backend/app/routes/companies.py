@@ -24,7 +24,7 @@ from database.orm.models import Company, CompanyEnrichment, Lead
 router = APIRouter(prefix="/companies", tags=["companies"])
 
 
-def _insert_company_rows_into_leads(db: Session, rows: list[dict[str, Any]]) -> dict[str, int]:
+def _insert_company_rows_into_leads(db: Session, rows: list[dict[str, Any]], *, owner_user_id: str) -> dict[str, int]:
     created = 0
     skipped = 0
     for row in rows:
@@ -38,6 +38,7 @@ def _insert_company_rows_into_leads(db: Session, rows: list[dict[str, Any]]) -> 
             select(Lead).where(
                 func.lower(Lead.company_website) == website,
                 func.lower(Lead.source_platform) == source,
+                Lead.user_id == str(owner_user_id or ""),
             )
         )
         if existing is not None:
@@ -52,6 +53,7 @@ def _insert_company_rows_into_leads(db: Session, rows: list[dict[str, Any]]) -> 
                 "company_website": website,
                 "source_platform": source,
                 "notes": f"Auto-created from company ingestion source={source}",
+                "user_id": owner_user_id,
             },
         )
         created += 1
@@ -62,8 +64,13 @@ def _insert_company_rows_into_leads(db: Session, rows: list[dict[str, Any]]) -> 
 def get_user_config(
     _user: dict = Depends(get_current_user),
 ) -> dict[str, Any]:
+    scoped = runtime_settings.apply_plan_access_to_admin_config(
+        runtime_settings.get_admin_config(),
+        role=str(_user.get("role") or "user"),
+        plan_id=str(_user.get("plan_id") or "starter"),
+    )
     return {
-        "admin_config": runtime_settings.get_admin_config(),
+        "admin_config": scoped,
         "config_event": runtime_settings.get_last_config_event(),
     }
 
@@ -189,6 +196,27 @@ class ExplorerSearchRequest(BaseModel):
             if x in available_sources and x != "manual":
                 out.append(x)
         return out
+
+
+class DirectoryFetchRequest(BaseModel):
+    source: str = Field(...)
+    keyword: str = Field(..., min_length=1)
+    location: str = Field(default="")
+    batch_size: int = Field(default=10, ge=1, le=100)
+    delay_seconds: float = Field(default=1.0, ge=0.2, le=8.0)
+    max_companies: int = Field(default=120, ge=1, le=2000)
+
+    @field_validator("source")
+    @classmethod
+    def v_source(cls, v: str) -> str:
+        x = (v or "").strip().lower().replace("-", "_")
+        available_sources = set(runtime_settings.get_real_ingestion_source_names()) or (
+            set(company_ingestion_service.SUPPORTED_REAL_SOURCES) - {"manual"}
+        )
+        if x not in available_sources:
+            allowed = ", ".join(sorted(available_sources))
+            raise ValueError(f"Unsupported source {v!r}; expected one of: {allowed}")
+        return x
 
 
 class CustomSourceCreateRequest(BaseModel):
@@ -347,7 +375,7 @@ def ingest_companies_real_sources(
     for run in ingest_flow.get("runs") or []:
         rows = run.get("rows") if isinstance(run, dict) else []
         if isinstance(rows, list):
-            lead_stats = _insert_company_rows_into_leads(db, rows)
+            lead_stats = _insert_company_rows_into_leads(db, rows, owner_user_id=str(_user.get("id") or ""))
             lead_stats_total["created"] += int(lead_stats.get("created") or 0)
             lead_stats_total["skipped"] += int(lead_stats.get("skipped") or 0)
     enrich_stats: dict[str, Any] | None = None
@@ -458,7 +486,6 @@ def explorer_search_companies(
             stmt = stmt.where(func.coalesce(CompanyEnrichment.signal_scaling, 0) >= 1)
         stmt = stmt.order_by(
             func.coalesce(CompanyEnrichment.score, 0.0).desc(),
-            Company.last_updated.desc(),
             Company.id.desc(),
         ).limit(limit)
         rows: list[dict[str, Any]] = []
@@ -548,6 +575,51 @@ def explorer_search_companies(
             },
             "enabled_sources": enabled_sources,
         },
+    }
+
+
+@router.post("/directory/fetch")
+def directory_fetch_leads(
+    body: DirectoryFetchRequest,
+    db: Session = Depends(get_db),
+    user: dict = Depends(get_current_user),
+) -> dict[str, Any]:
+    enabled_sources = set(runtime_settings.get_enabled_ingestion_sources())
+    if body.source not in enabled_sources:
+        raise HTTPException(status_code=400, detail="Source disabled by admin/plan policy")
+    seed_urls = company_ingestion_service.default_seed_urls_for_source(
+        source=body.source,
+        keyword=body.keyword,
+        location=body.location,
+    )
+    flow = company_ingestion_service.ingest_from_sources(
+        db=db,
+        sources=[body.source],
+        shared_source_input={
+            "seed_urls": seed_urls,
+            "batch_size": body.batch_size,
+            "delay_seconds": body.delay_seconds,
+            "max_companies": body.max_companies,
+        },
+        delay_between_sources=body.delay_seconds,
+    )
+    lead_stats_total = {"created": 0, "skipped": 0}
+    for run in flow.get("runs") or []:
+        rows = run.get("rows") if isinstance(run, dict) else []
+        if isinstance(rows, list):
+            lead_stats = _insert_company_rows_into_leads(db, rows, owner_user_id=str(user.get("id") or ""))
+            lead_stats_total["created"] += int(lead_stats.get("created") or 0)
+            lead_stats_total["skipped"] += int(lead_stats.get("skipped") or 0)
+    db.commit()
+    return {
+        "ok": True,
+        "source": body.source,
+        "keyword": body.keyword,
+        "location": body.location,
+        "runs": flow.get("runs") or [],
+        "saved": flow.get("saved_total") or {"created": 0, "updated": 0, "skipped": 0},
+        "leads_saved": lead_stats_total,
+        "errors": flow.get("errors") or [],
     }
 
 
@@ -718,6 +790,7 @@ def create_lead_from_company_manual_linkedin(
             "linkedin_url": link,
             "source_platform": "linkedin",
             "notes": f"Created from Company DB (company_id={company.id}) via manual LinkedIn conversion.",
+            "user_id": str(user.get("id") or ""),
         },
     )
     db.commit()
@@ -842,6 +915,7 @@ def run_weekly_engine(
             saturday_limit=body.saturday_limit,
             saturday_manual_profiles=body.saturday_manual_profiles,
             saturday_require_fresh_session=body.saturday_require_fresh_session,
+            owner_user_id=str(_user.get("id") or ""),
         )
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e)) from e

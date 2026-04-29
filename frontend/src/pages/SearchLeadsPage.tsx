@@ -7,6 +7,8 @@ import { SeleniumLeadpilotPanel } from '@/components/scraper/SeleniumLeadpilotPa
 import { StatusBadge } from '@/components/ui/Badge'
 import {
   checkLinkedinSession,
+  createLeadFromCompanyLinkedin,
+  directoryFetchLeads,
   explorerSearchCompanies,
   runScheduledJob,
   type ExplorerCompany,
@@ -26,9 +28,26 @@ function clip(s: string, n: number) {
 }
 
 function titleizeSource(source: string) {
-  const text = (source || '').trim()
-  if (!text) return 'Manual'
-  return text
+  const key = String(source || '').trim().toLowerCase()
+  const labels: Record<string, string> = {
+    linkedin: 'LinkedIn',
+    google_maps: 'Google Maps',
+    indiamart: 'IndiaMart',
+    justdial: 'Justdial',
+    eworldtrade: 'eWorldTrade',
+    global_sources: 'Global Sources',
+    thomasnet: 'ThomasNet',
+    yelp: 'Yelp',
+    faire: 'Faire',
+    public_db: 'Public DB',
+    yc: 'Y Combinator',
+    crunchbase: 'Crunchbase',
+    job_board: 'Job Board',
+    local: 'Local Business',
+    builtwith: 'BuiltWith',
+  }
+  if (!key) return 'Manual'
+  return labels[key] || key
     .split('_')
     .filter(Boolean)
     .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
@@ -60,6 +79,9 @@ export function SearchLeadsPage() {
   const [sessionStatus, setSessionStatus] = useState<LinkedinSessionCheckResponse | null>(null)
   const [linkedinJobMsg, setLinkedinJobMsg] = useState<string>('')
   const [linkedinCandidates, setLinkedinCandidates] = useState(0)
+  const [directorySource, setDirectorySource] = useState<string>('')
+  const [directoryBusy, setDirectoryBusy] = useState(false)
+  const [directoryMsg, setDirectoryMsg] = useState('')
   const mode = useModeStore((s) => s.mode)
   const setMode = useModeStore((s) => s.setMode)
   const hydrateMode = useModeStore((s) => s.hydrate)
@@ -249,6 +271,13 @@ export function SearchLeadsPage() {
           </button>
           <button
             type="button"
+            onClick={() => setMode('directory')}
+            className={`rounded-xl border px-3 py-1.5 text-xs ${mode === 'directory' ? 'border-amber-500/50 bg-amber-500/10 text-ink' : 'border-surface-border text-ink-muted'}`}
+          >
+            Directory Mode
+          </button>
+          <button
+            type="button"
             onClick={() => setMode('explorer')}
             className={`rounded-xl border px-3 py-1.5 text-xs ${mode === 'explorer' ? 'border-amber-500/50 bg-amber-500/10 text-ink' : 'border-surface-border text-ink-muted'}`}
           >
@@ -256,7 +285,10 @@ export function SearchLeadsPage() {
           </button>
         </div>
         <div className="mt-3 rounded-xl border border-surface-border bg-field/40 px-4 py-3 text-xs text-ink-muted">
-          Active mode: <span className="font-semibold text-ink">{mode === 'explorer' ? 'Explorer Mode' : 'LinkedIn Mode'}</span>
+          Active mode:{' '}
+          <span className="font-semibold text-ink">
+            {mode === 'explorer' ? 'Explorer Mode' : mode === 'directory' ? 'Directory Mode' : 'LinkedIn Mode'}
+          </span>
         </div>
 
         {mode === 'explorer' ? (
@@ -441,12 +473,13 @@ export function SearchLeadsPage() {
                     <th className="px-2 py-2">Last Updated</th>
                     <th className="px-2 py-2">Score</th>
                     <th className="px-2 py-2">Signals</th>
+                    <th className="px-2 py-2">Action</th>
                   </tr>
                 </thead>
                 <tbody>
                   {explorerRows.length === 0 ? (
                     <tr>
-                      <td colSpan={6} className="px-2 py-3 text-ink-muted">
+                      <td colSpan={7} className="px-2 py-3 text-ink-muted">
                         No explorer rows yet. Apply filters and run Explorer.
                       </td>
                     </tr>
@@ -485,11 +518,113 @@ export function SearchLeadsPage() {
                             .filter(Boolean)
                             .join(', ') || '—'}
                         </td>
+                        <td className="px-2 py-2">
+                          <button
+                            type="button"
+                            className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-2 py-1 text-[11px] font-semibold text-amber-900 dark:text-amber-200"
+                            onClick={async () => {
+                              const name = window.prompt('Decision maker name')
+                              if (!name) return
+                              const roleInput = window.prompt('Role (optional)') || ''
+                              const profileLink = window.prompt('LinkedIn profile URL (must include /in/)')
+                              if (!profileLink) return
+                              try {
+                                await createLeadFromCompanyLinkedin({
+                                  company_id: Number(row.id),
+                                  name,
+                                  role: roleInput,
+                                  profile_link: profileLink,
+                                  require_fresh_session: true,
+                                })
+                                toast.success('Lead created', { description: 'Decision maker saved to Leads.' })
+                                await loadRecent()
+                                setMode('linkedin')
+                              } catch (e) {
+                                const msg = getApiErrorMessage(e, 'Could not create lead from company')
+                                toast.error('Create lead failed', { description: msg })
+                              }
+                            }}
+                          >
+                            Find Decision Makers
+                          </button>
+                        </td>
                       </tr>
                     ))
                   )}
                 </tbody>
               </table>
+            </div>
+          </div>
+        ) : mode === 'directory' ? (
+          <div className="mt-4 space-y-3">
+            <div className="rounded-xl border border-surface-border bg-field/40 px-4 py-3 text-sm text-ink-muted">
+              Choose a directory source, enter keyword/location, then fetch leads directly into your Leads list.
+            </div>
+            <div className="grid gap-3 sm:grid-cols-3">
+              <select
+                value={directorySource}
+                onChange={(e) => setDirectorySource(e.target.value)}
+                className="field-input rounded-xl px-3 py-2 text-sm"
+              >
+                <option value="">Select source</option>
+                {allowedSources.map((src) => (
+                  <option key={src} value={src}>
+                    {titleizeSource(src)}
+                  </option>
+                ))}
+              </select>
+              <input
+                value={keyword}
+                onChange={(e) => setKeyword(e.target.value)}
+                placeholder="keyword"
+                className="field-input rounded-xl px-3 py-2 text-sm"
+              />
+              <input
+                value={location}
+                onChange={(e) => setLocation(e.target.value)}
+                placeholder="location"
+                className="field-input rounded-xl px-3 py-2 text-sm"
+              />
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                disabled={directoryBusy}
+                onClick={async () => {
+                  if (!directorySource) {
+                    setDirectoryMsg('Select one source.')
+                    return
+                  }
+                  if (!keyword.trim()) {
+                    setDirectoryMsg('Keyword is required.')
+                    return
+                  }
+                  setDirectoryBusy(true)
+                  setDirectoryMsg(`Fetching from ${titleizeSource(directorySource)}...`)
+                  try {
+                    const out = await directoryFetchLeads({
+                      source: directorySource,
+                      keyword: keyword.trim(),
+                      location: location.trim(),
+                    })
+                    await loadRecent()
+                    const created = Number(out.leads_saved?.created || 0)
+                    setDirectoryMsg(`Completed. ${created} leads added.`)
+                    toast.success('Directory fetch completed', { description: `${created} leads added.` })
+                  } catch (e) {
+                    const msg = getApiErrorMessage(e, 'Directory fetch failed')
+                    setDirectoryMsg(msg)
+                    toast.error('Directory fetch failed', { description: msg })
+                  } finally {
+                    setDirectoryBusy(false)
+                  }
+                }}
+                className="inline-flex items-center gap-2 rounded-xl border border-amber-500/40 bg-amber-500/10 px-4 py-2 text-xs font-semibold text-amber-900 disabled:opacity-50 dark:text-amber-200"
+              >
+                {directoryBusy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null}
+                Fetch Leads
+              </button>
+              {directoryMsg ? <span className="text-xs text-ink-muted">{directoryMsg}</span> : null}
             </div>
           </div>
         ) : (

@@ -1,9 +1,10 @@
 {
   "event": "config_updated",
   "changed_fields": [
-    "admin_config.signals_config.scaling_enabled",
+    "admin_config.plan_channel_access",
     "admin_config.sources.allowed_sources",
-    "admin_config.sources.local_listings"
+    "admin_config.targeting.preferred_keywords",
+    "admin_config.targeting.preferred_locations"
   ],
-  "timestamp": "2026-04-29T11:48:46+00:00"
+  "timestamp": "2026-04-29T13:26:34+00:00"
 }

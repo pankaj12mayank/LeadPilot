@@ -78,7 +78,9 @@ _CSV_FIELDS = [
 
 
 def _create_from_body(db: Session, body: LeadCreate, user_id: str) -> LeadResponse:
-    stored = lead_orm_service.create_lead(db, body.model_dump(exclude_none=True))
+    payload = body.model_dump(exclude_none=True)
+    payload["user_id"] = user_id
+    stored = lead_orm_service.create_lead(db, payload)
     db.commit()
     history_service.record_event(
         stored.id,
@@ -246,9 +248,10 @@ def _list_leads_paginated_core(
     tier: str | None,
     platform: str | None,
     sort: str,
+    user: dict,
 ) -> PaginatedLeadsResponse:
     total = lead_orm_service.count_leads_filtered(
-        db, search=search, status=status, tier=tier, platform=platform
+        db, search=search, status=status, tier=tier, platform=platform, viewer_user=user
     )
     offset = (page - 1) * page_size
     rows = lead_orm_service.list_leads_filtered(
@@ -260,6 +263,7 @@ def _list_leads_paginated_core(
         sort=sort,
         offset=offset,
         limit=page_size,
+        viewer_user=user,
     )
     pages = (total + page_size - 1) // page_size if page_size else 0
     return PaginatedLeadsResponse(
@@ -275,7 +279,7 @@ def _list_leads_paginated_core(
 @router.get("/", response_model=PaginatedLeadsResponse, include_in_schema=False)
 def list_leads(
     db: Session = Depends(get_db),
-    _user: dict = Depends(get_current_user),
+    user: dict = Depends(get_current_user),
     page: int = Query(1, ge=1),
     page_size: int = Query(25, ge=1, le=200),
     search: str | None = Query(None),
@@ -297,6 +301,7 @@ def list_leads(
         tier=tier,
         platform=platform,
         sort=sort,
+        user=user,
     )
 
 
@@ -325,6 +330,7 @@ def export_leads_csv(
         status=body.status,
         tier=body.tier,
         platform=body.platform,
+        viewer_user=user,
     )
     db.commit()
     history_service.record_event(
@@ -346,7 +352,7 @@ def bulk_delete_leads(
     db: Session = Depends(get_db),
     user: dict = Depends(get_current_user),
 ) -> BulkDeleteResponse:
-    n = lead_orm_service.bulk_delete_leads(db, body.ids)
+    n = lead_orm_service.bulk_delete_leads(db, body.ids, viewer_user=user)
     db.commit()
     history_service.record_event(
         None,
@@ -446,7 +452,7 @@ def lead_history(
     db: Session = Depends(get_db),
     _user: dict = Depends(get_current_user),
 ) -> List[Dict[str, Any]]:
-    if not lead_orm_service.get_lead(db, lead_id):
+    if not lead_orm_service.get_lead(db, lead_id, viewer_user=_user):
         raise HTTPException(status_code=404, detail="Lead not found")
     return history_service.list_for_lead(lead_id)
 
@@ -457,7 +463,7 @@ def lead_status_history(
     db: Session = Depends(get_db),
     _user: dict = Depends(get_current_user),
 ) -> List[Dict[str, Any]]:
-    if not lead_orm_service.get_lead(db, lead_id):
+    if not lead_orm_service.get_lead(db, lead_id, viewer_user=_user):
         raise HTTPException(status_code=404, detail="Lead not found")
     return status_history_service.list_for_lead(lead_id)
 
@@ -468,7 +474,7 @@ def lead_email_history(
     db: Session = Depends(get_db),
     _user: dict = Depends(get_current_user),
 ) -> List[Dict[str, Any]]:
-    if not lead_orm_service.get_lead(db, lead_id):
+    if not lead_orm_service.get_lead(db, lead_id, viewer_user=_user):
         raise HTTPException(status_code=404, detail="Lead not found")
     return email_history_service.list_for_lead(lead_id)
 
@@ -479,7 +485,7 @@ def get_lead(
     db: Session = Depends(get_db),
     _user: dict = Depends(get_current_user),
 ) -> LeadResponse:
-    row = lead_orm_service.get_lead(db, lead_id)
+    row = lead_orm_service.get_lead(db, lead_id, viewer_user=_user)
     if not row:
         raise HTTPException(status_code=404, detail="Lead not found")
     return LeadResponse.from_orm_lead(row)
@@ -496,7 +502,7 @@ def put_lead(
     patch = {k: v for k, v in body.model_dump(exclude_unset=True).items()}
     if "source_platform" in patch and patch["source_platform"] is not None:
         patch["source_platform"] = normalize_platform(str(patch["source_platform"]))
-    row = lead_orm_service.update_lead(db, lead_id, patch)
+    row = lead_orm_service.update_lead(db, lead_id, patch, viewer_user=user)
     if not row:
         raise HTTPException(status_code=404, detail="Lead not found")
     db.commit()
@@ -515,7 +521,7 @@ def patch_lead(
     patch = {k: v for k, v in body.model_dump(exclude_unset=True).items()}
     if "source_platform" in patch and patch["source_platform"] is not None:
         patch["source_platform"] = normalize_platform(str(patch["source_platform"]))
-    row = lead_orm_service.update_lead(db, lead_id, patch)
+    row = lead_orm_service.update_lead(db, lead_id, patch, viewer_user=user)
     if not row:
         raise HTTPException(status_code=404, detail="Lead not found")
     db.commit()
@@ -530,7 +536,7 @@ def remove_lead(
     db: Session = Depends(get_db),
     user: dict = Depends(get_current_user),
 ) -> dict:
-    ok = lead_orm_service.delete_lead(db, lead_id)
+    ok = lead_orm_service.delete_lead(db, lead_id, viewer_user=user)
     if not ok:
         raise HTTPException(status_code=404, detail="Lead not found")
     db.commit()
@@ -546,11 +552,11 @@ def patch_status(
     db: Session = Depends(get_db),
     user: dict = Depends(get_current_user),
 ) -> LeadResponse:
-    prev_row = lead_orm_service.get_lead(db, lead_id)
+    prev_row = lead_orm_service.get_lead(db, lead_id, viewer_user=user)
     if not prev_row:
         raise HTTPException(status_code=404, detail="Lead not found")
     old_status = str(prev_row.status or "")
-    row = lead_orm_service.update_status(db, lead_id, body.status)
+    row = lead_orm_service.update_status(db, lead_id, body.status, viewer_user=user)
     if not row:
         raise HTTPException(status_code=404, detail="Lead not found")
     db.commit()

@@ -148,6 +148,14 @@ Frontend:
 cd frontend && npm run test
 ```
 
+Release verification (proof report):
+
+```bash
+python scripts/verify_release.py --quick
+```
+
+Runbook: `docs/RELEASE_VERIFICATION_RUNBOOK.md`
+
 ---
 
 ## Production Notes

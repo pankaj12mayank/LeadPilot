@@ -29,6 +29,8 @@ export function AdminUsersPage() {
   const [busy, setBusy] = useState(false)
   const [newEmail, setNewEmail] = useState('')
   const [newPassword, setNewPassword] = useState('')
+  const [newRole, setNewRole] = useState<'admin' | 'user' | 'buyer'>('user')
+  const [newPlanId, setNewPlanId] = useState<'starter' | 'growth' | 'pro' | 'enterprise'>('starter')
   const [pwTarget, setPwTarget] = useState<AdminUserRow | null>(null)
   const [pwValue, setPwValue] = useState('')
   const [pwBusy, setPwBusy] = useState(false)
@@ -56,7 +58,7 @@ export function AdminUsersPage() {
 
   async function onToggleActive(u: AdminUserRow) {
     try {
-      const up = await adminSetUserActive(u.id, !u.is_active)
+      const up = await adminSetUserActive(u.id, !u.is_active, u.role, u.plan_id)
       setUsers((rows) => rows.map((r) => (r.id === up.id ? up : r)))
       setStats(await adminGetStats())
       toast.success(up.is_active ? 'User activated' : 'User marked inactive')
@@ -87,9 +89,11 @@ export function AdminUsersPage() {
   async function onCreate() {
     setBusy(true)
     try {
-      await adminCreateUser(newEmail.trim(), newPassword)
+      await adminCreateUser(newEmail.trim(), newPassword, newRole, newPlanId)
       setNewEmail('')
       setNewPassword('')
+      setNewRole('user')
+      setNewPlanId('starter')
       await load()
       toast.success('User created')
     } catch (e) {
@@ -152,6 +156,33 @@ export function AdminUsersPage() {
         <h2 className="text-sm font-semibold text-ink">Add user</h2>
         <p className="mt-1 text-xs text-ink-subtle">Share the temporary password securely; the user can change it after login when you add that flow.</p>
         <div className="mx-auto mt-4 max-w-2xl space-y-4">
+          <div className="grid gap-3 sm:grid-cols-2">
+            <label className="space-y-1 text-xs text-ink-muted">
+              <span>Role</span>
+              <select
+                value={newRole}
+                onChange={(e) => setNewRole(e.target.value as 'admin' | 'user' | 'buyer')}
+                className="field-input w-full rounded-lg px-2 py-1.5 text-sm"
+              >
+                <option value="user">User</option>
+                <option value="buyer">Buyer</option>
+                <option value="admin">Admin</option>
+              </select>
+            </label>
+            <label className="space-y-1 text-xs text-ink-muted">
+              <span>Plan</span>
+              <select
+                value={newPlanId}
+                onChange={(e) => setNewPlanId(e.target.value as 'starter' | 'growth' | 'pro' | 'enterprise')}
+                className="field-input w-full rounded-lg px-2 py-1.5 text-sm"
+              >
+                <option value="starter">Starter</option>
+                <option value="growth">Growth</option>
+                <option value="pro">Pro</option>
+                <option value="enterprise">Enterprise</option>
+              </select>
+            </label>
+          </div>
           <div>
             <label className="block text-xs font-semibold uppercase tracking-wider text-ink-muted" htmlFor="nu-email">
               Email
@@ -213,6 +244,8 @@ export function AdminUsersPage() {
               <tr className="border-b border-surface-border text-xs uppercase text-ink-muted">
                 <th className="py-2 pr-4">Email</th>
                 <th className="py-2 pr-4">Status</th>
+                <th className="py-2 pr-4">Role</th>
+                <th className="py-2 pr-4">Plan</th>
                 <th className="py-2 pr-4">Last login</th>
                 <th className="py-2 pr-4">Created</th>
                 <th className="py-2">Actions</th>
@@ -235,6 +268,32 @@ export function AdminUsersPage() {
                     >
                       {u.is_active ? 'Active' : 'Inactive'}
                     </button>
+                  </td>
+                  <td className="py-2 pr-4 align-middle text-xs text-ink-muted capitalize">{u.role || 'user'}</td>
+                  <td className="py-2 pr-4 align-middle">
+                    <select
+                      value={u.plan_id || 'starter'}
+                      onChange={async (e) => {
+                        try {
+                          const up = await adminSetUserActive(
+                            u.id,
+                            Boolean(u.is_active),
+                            (u.role || 'user') as 'admin' | 'user' | 'buyer',
+                            e.target.value as 'starter' | 'growth' | 'pro' | 'enterprise',
+                          )
+                          setUsers((rows) => rows.map((r) => (r.id === up.id ? up : r)))
+                          toast.success('Plan updated')
+                        } catch (err) {
+                          toast.error(getApiErrorMessage(err, 'Could not update plan'))
+                        }
+                      }}
+                      className="field-input rounded-lg px-2 py-1 text-xs"
+                    >
+                      <option value="starter">Starter</option>
+                      <option value="growth">Growth</option>
+                      <option value="pro">Pro</option>
+                      <option value="enterprise">Enterprise</option>
+                    </select>
                   </td>
                   <td className="py-2 pr-4 align-middle text-xs text-ink-muted tabular-nums">{fmtLogin(u.last_login_at)}</td>
                   <td className="py-2 pr-4 align-middle text-xs text-ink-muted tabular-nums">{fmtLogin(u.created_at)}</td>

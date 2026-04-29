@@ -22,19 +22,31 @@
   },
   "admin_controls": {
     "scoring_weights": {
-      "role_relevance": 20,
-      "company_size": 18,
-      "signals": 65,
-      "data_completeness": 15,
-      "base_factor_mix": 12
+      "role_relevance": 40,
+      "company_size": 20,
+      "signals": 35,
+      "data_completeness": 25,
+      "base_factor_mix": 10
     },
     "targeting_filters": {
       "allowed_sources": [
+        "linkedin",
         "yc",
+        "crunchbase",
+        "job_board",
         "local",
+        "builtwith",
+        "google_maps",
+        "indiamart",
+        "justdial",
+        "eworldtrade",
+        "global_sources",
+        "thomasnet",
+        "yelp",
+        "faire",
         "manual"
       ],
-      "min_company_score": 84,
+      "min_company_score": 70,
       "preferred_locations": [
         "dubai"
       ],

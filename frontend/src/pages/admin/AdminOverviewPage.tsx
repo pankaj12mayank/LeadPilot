@@ -51,6 +51,19 @@ export function AdminOverviewPage() {
     return text ? text.charAt(0).toUpperCase() + text.slice(1) : '—'
   }
 
+  const channelDisplay: Array<{ key: keyof AdminConfig['sources']; label: string }> = [
+    { key: 'linkedin', label: 'LinkedIn' },
+    { key: 'google_maps', label: 'Google Maps' },
+    { key: 'indiamart', label: 'IndiaMart' },
+    { key: 'justdial', label: 'Justdial' },
+    { key: 'eworldtrade', label: 'eWorldTrade' },
+    { key: 'global_sources', label: 'Global Sources' },
+    { key: 'thomasnet', label: 'ThomasNet' },
+    { key: 'yelp', label: 'Yelp' },
+    { key: 'faire', label: 'Faire' },
+    { key: 'public_db', label: 'Public DB' },
+  ]
+
   function explainCron(expr: string): string {
     const p = String(expr || '').trim().split(/\s+/)
     if (p.length !== 5) return 'Invalid format. Use: minute hour day month weekday'
@@ -142,7 +155,7 @@ export function AdminOverviewPage() {
       {err ? <p className="text-sm text-red-600 dark:text-red-400">{err}</p> : null}
 
       {stats ? (
-        <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <section id="dashboard" className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           <div className="rounded-2xl border border-surface-border bg-premium-card-light p-5 shadow-card dark:bg-premium-card-dark">
             <div className="text-xs font-semibold uppercase tracking-wider text-ink-muted">Registered users</div>
             <div className="mt-2 font-display text-3xl font-bold text-ink">{stats.registered_users}</div>
@@ -275,7 +288,7 @@ export function AdminOverviewPage() {
       ) : null}
 
       {adminConfig ? (
-        <section className="space-y-4 rounded-2xl border border-surface-border bg-premium-card-light p-5 shadow-card dark:bg-premium-card-dark">
+        <section id="channels" className="space-y-4 rounded-2xl border border-surface-border bg-premium-card-light p-5 shadow-card dark:bg-premium-card-dark">
           <div>
             <h2 className="font-display text-lg font-semibold text-ink">Admin control layer</h2>
             <p className="mt-1 text-xs text-ink-muted">
@@ -335,58 +348,110 @@ export function AdminOverviewPage() {
           </div>
 
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4 text-xs text-ink-muted">
-            {(
-              [
-                'job_boards',
-                'startup_directories',
-                'local_listings',
-                'manual_seeds',
-                'linkedin',
-                'public_db',
-                'google_maps',
-                'indiamart',
-                'justdial',
-                'eworldtrade',
-                'global_sources',
-                'thomasnet',
-                'yelp',
-                'faire',
-              ] as const
-            ).map((key) => (
-              <label key={key} className="flex items-center gap-2 rounded-lg border border-surface-border px-3 py-2">
-                <input
-                  type="checkbox"
-                  checked={Boolean(adminConfig.sources[key])}
-                  onChange={(e) =>
+            {channelDisplay.map(({ key, label }) => {
+              const enabled = Boolean(adminConfig.sources[key])
+              return (
+                <button
+                  key={String(key)}
+                  type="button"
+                  onClick={() =>
                     setAdminConfig((prev) =>
-                      prev ? { ...prev, sources: { ...prev.sources, [key]: e.target.checked } } : prev,
+                      prev ? { ...prev, sources: { ...prev.sources, [key]: !enabled } } : prev,
                     )
                   }
-                />
-                <span>{key.replaceAll('_', ' ')}</span>
-              </label>
-            ))}
+                  className="flex items-center justify-between rounded-lg border border-surface-border px-3 py-2 text-left"
+                >
+                  <span>{label}</span>
+                  <span
+                    className={`inline-flex h-5 w-10 items-center rounded-full transition ${enabled ? 'bg-emerald-500/80' : 'bg-zinc-400/50'}`}
+                  >
+                    <span
+                      className={`mx-0.5 h-4 w-4 rounded-full bg-white transition ${enabled ? 'translate-x-5' : 'translate-x-0'}`}
+                    />
+                  </span>
+                </button>
+              )
+            })}
+          </div>
+          <div>
+            <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-ink-muted">Plan Channel Access</h3>
+            <div className="grid gap-3 lg:grid-cols-2">
+              {Object.entries(adminConfig.plan_channel_access || {}).map(([planId, policy]) => (
+                <div key={planId} className="rounded-xl border border-surface-border px-3 py-3 text-xs text-ink-muted">
+                  <div className="mb-2 font-semibold text-ink capitalize">{planId}</div>
+                  <label className="block space-y-1">
+                    <span>Allowed channels</span>
+                    <input
+                      value={listToCsv(policy.channels || [])}
+                      onChange={(e) =>
+                        setAdminConfig((prev) =>
+                          prev
+                            ? {
+                                ...prev,
+                                plan_channel_access: {
+                                  ...prev.plan_channel_access,
+                                  [planId]: {
+                                    ...(prev.plan_channel_access?.[planId] || { channels: [], lead_limit: 100 }),
+                                    channels: csvToList(e.target.value),
+                                  },
+                                },
+                              }
+                            : prev,
+                        )
+                      }
+                      className="field-input w-full rounded-lg px-2 py-1.5 text-sm"
+                    />
+                  </label>
+                  <label className="mt-2 block space-y-1">
+                    <span>Lead limit</span>
+                    <input
+                      type="number"
+                      min={1}
+                      max={100000}
+                      value={Number(policy.lead_limit || 100)}
+                      onChange={(e) =>
+                        setAdminConfig((prev) =>
+                          prev
+                            ? {
+                                ...prev,
+                                plan_channel_access: {
+                                  ...prev.plan_channel_access,
+                                  [planId]: {
+                                    ...(prev.plan_channel_access?.[planId] || { channels: [], lead_limit: 100 }),
+                                    lead_limit: Number(e.target.value || 1),
+                                  },
+                                },
+                              }
+                            : prev,
+                        )
+                      }
+                      className="field-input w-full rounded-lg px-2 py-1.5 text-sm"
+                    />
+                  </label>
+                </div>
+              ))}
+            </div>
           </div>
           <div className="space-y-2">
             <div className="text-xs font-semibold uppercase tracking-wider text-ink-muted">Source registry</div>
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
               {adminConfig.source_registry.map((entry) => (
                 <label key={entry.source_name} className="rounded-xl border border-surface-border px-3 py-3 text-xs text-ink-muted">
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="checkbox"
-                      checked={Boolean(entry.enabled)}
-                      onChange={(e) =>
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="font-medium text-ink">{titleize(entry.source_name)}</span>
+                    <button
+                      type="button"
+                      onClick={() =>
                         setAdminConfig((prev) =>
                           prev
                             ? {
                                 ...prev,
                                 source_registry: prev.source_registry.map((item) =>
-                                  item.source_name === entry.source_name ? { ...item, enabled: e.target.checked } : item,
+                                  item.source_name === entry.source_name ? { ...item, enabled: !entry.enabled } : item,
                                 ),
                                 sources: {
                                   ...prev.sources,
-                                  allowed_sources: e.target.checked
+                                  allowed_sources: !entry.enabled
                                     ? prev.sources.allowed_sources.includes(entry.source_name)
                                       ? prev.sources.allowed_sources
                                       : [...prev.sources.allowed_sources, entry.source_name]
@@ -396,8 +461,12 @@ export function AdminOverviewPage() {
                             : prev,
                         )
                       }
-                    />
-                    <span className="font-medium text-ink">{titleize(entry.source_name)}</span>
+                      className={`inline-flex h-5 w-10 items-center rounded-full transition ${entry.enabled ? 'bg-emerald-500/80' : 'bg-zinc-400/50'}`}
+                    >
+                      <span
+                        className={`mx-0.5 h-4 w-4 rounded-full bg-white transition ${entry.enabled ? 'translate-x-5' : 'translate-x-0'}`}
+                      />
+                    </button>
                   </div>
                   <div className="mt-2 space-y-1 text-[11px] text-ink-subtle">
                     <div>Type: {titleize(entry.source_type)}</div>
@@ -436,22 +505,29 @@ export function AdminOverviewPage() {
               </label>
             ))}
           </div>
-          <div>
+          <div id="ai-settings">
             <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-ink-muted">AI Control</h3>
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4 text-xs text-ink-muted">
               {(['ollama_enabled', 'api_enabled'] as const).map((key) => (
-                <label key={key} className="flex items-center gap-2 rounded-lg border border-surface-border px-3 py-2">
-                  <input
-                    type="checkbox"
-                    checked={Boolean(adminConfig.ai_control[key])}
-                    onChange={(e) =>
-                      setAdminConfig((prev) =>
-                        prev ? { ...prev, ai_control: { ...prev.ai_control, [key]: e.target.checked } } : prev,
-                      )
-                    }
-                  />
+                <button
+                  key={key}
+                  type="button"
+                  onClick={() =>
+                    setAdminConfig((prev) =>
+                      prev ? { ...prev, ai_control: { ...prev.ai_control, [key]: !Boolean(prev.ai_control[key]) } } : prev,
+                    )
+                  }
+                  className="flex items-center justify-between rounded-lg border border-surface-border px-3 py-2"
+                >
                   <span>{key.replaceAll('_', ' ')}</span>
-                </label>
+                  <span
+                    className={`inline-flex h-5 w-10 items-center rounded-full transition ${adminConfig.ai_control[key] ? 'bg-emerald-500/80' : 'bg-zinc-400/50'}`}
+                  >
+                    <span
+                      className={`mx-0.5 h-4 w-4 rounded-full bg-white transition ${adminConfig.ai_control[key] ? 'translate-x-5' : 'translate-x-0'}`}
+                    />
+                  </span>
+                </button>
               ))}
             </div>
           </div>
@@ -796,7 +872,7 @@ export function AdminOverviewPage() {
 
       {saveMsg ? <p className="text-xs text-ink-muted">{saveMsg}</p> : null}
 
-      <section className="rounded-2xl border border-surface-border bg-premium-card-light p-5 shadow-card dark:bg-premium-card-dark">
+      <section id="logs" className="rounded-2xl border border-surface-border bg-premium-card-light p-5 shadow-card dark:bg-premium-card-dark">
         <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
           <div>
             <h2 className="font-display text-lg font-semibold text-ink">Job logs</h2>

@@ -80,3 +80,53 @@ def test_buyer_marketplace_pack_purchase_and_download(client):
 
     dl = client.get(_api(f"/exports/packs/{pack_id}/download"), headers={"Authorization": f"Bearer {buyer_token}"})
     assert dl.status_code == 200, dl.text
+
+
+def test_user_lead_isolation_and_plan_filtered_channels(client):
+    password = "pytest-password-9"
+    reg_a = client.post(
+        _api("/auth/register"),
+        json={"email": f"user_a_{uuid.uuid4().hex[:8]}@example.com", "password": password, "role": "user", "plan_id": "starter"},
+    )
+    reg_b = client.post(
+        _api("/auth/register"),
+        json={"email": f"user_b_{uuid.uuid4().hex[:8]}@example.com", "password": password, "role": "user", "plan_id": "starter"},
+    )
+    assert reg_a.status_code == 200, reg_a.text
+    assert reg_b.status_code == 200, reg_b.text
+    tok_a = reg_a.json()["access_token"]
+    tok_b = reg_b.json()["access_token"]
+
+    payload_a = {
+        "full_name": "Owner A",
+        "source_platform": "linkedin",
+        "linkedin_url": "https://www.linkedin.com/in/owner-a",
+        "company_name": "A Co",
+    }
+    payload_b = {
+        "full_name": "Owner B",
+        "source_platform": "linkedin",
+        "linkedin_url": "https://www.linkedin.com/in/owner-b",
+        "company_name": "B Co",
+    }
+    c_a = client.post(_api("/leads"), headers={"Authorization": f"Bearer {tok_a}"}, json=payload_a)
+    c_b = client.post(_api("/leads"), headers={"Authorization": f"Bearer {tok_b}"}, json=payload_b)
+    assert c_a.status_code == 200, c_a.text
+    assert c_b.status_code == 200, c_b.text
+
+    list_a = client.get(_api("/leads"), headers={"Authorization": f"Bearer {tok_a}"})
+    list_b = client.get(_api("/leads"), headers={"Authorization": f"Bearer {tok_b}"})
+    assert list_a.status_code == 200, list_a.text
+    assert list_b.status_code == 200, list_b.text
+    names_a = {str(x.get("full_name") or "") for x in list_a.json().get("items") or []}
+    names_b = {str(x.get("full_name") or "") for x in list_b.json().get("items") or []}
+    assert "Owner A" in names_a
+    assert "Owner B" not in names_a
+    assert "Owner B" in names_b
+    assert "Owner A" not in names_b
+
+    cfg = client.get(_api("/companies/user-config"), headers={"Authorization": f"Bearer {tok_a}"})
+    assert cfg.status_code == 200, cfg.text
+    allowed = set((cfg.json().get("admin_config") or {}).get("sources", {}).get("allowed_sources") or [])
+    assert "linkedin" in allowed
+    assert "global_sources" not in allowed

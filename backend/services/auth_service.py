@@ -25,6 +25,7 @@ def verify_password(plain: str, hashed: str) -> bool:
 
 
 ALLOWED_ROLES = frozenset({"admin", "user", "buyer"})
+ALLOWED_PLANS = frozenset({"starter", "growth", "pro", "enterprise"})
 
 
 def normalize_role(role: str | None) -> str:
@@ -32,7 +33,12 @@ def normalize_role(role: str | None) -> str:
     return r if r in ALLOWED_ROLES else "user"
 
 
-def create_user(email: str, password: str, *, role: str = "user") -> Dict[str, Any]:
+def normalize_plan_id(plan_id: str | None) -> str:
+    p = str(plan_id or "starter").strip().lower()
+    return p if p in ALLOWED_PLANS else "starter"
+
+
+def create_user(email: str, password: str, *, role: str = "user", plan_id: str = "starter") -> Dict[str, Any]:
     uid = str(uuid.uuid4())
     em = email.strip().lower()
     Session = get_session_factory()
@@ -47,6 +53,7 @@ def create_user(email: str, password: str, *, role: str = "user") -> Dict[str, A
             created_at=utc_now_iso(),
             is_active=1,
             role=normalize_role(role),
+            plan_id=normalize_plan_id(plan_id),
             last_login_at="",
         )
         db.add(u)
@@ -72,6 +79,7 @@ def get_user_by_id(user_id: str) -> Optional[Dict[str, Any]]:
             "created_at": u.created_at,
             "is_active": bool(int(getattr(u, "is_active", 1) or 0)),
             "role": normalize_role(getattr(u, "role", "user")),
+            "plan_id": normalize_plan_id(getattr(u, "plan_id", "starter")),
             "last_login_at": str(getattr(u, "last_login_at", "") or ""),
         }
     finally:
@@ -93,6 +101,7 @@ def get_user_by_email(email: str) -> Optional[Dict[str, Any]]:
             "created_at": u.created_at,
             "is_active": int(getattr(u, "is_active", 1) or 0),
             "role": normalize_role(getattr(u, "role", "user")),
+            "plan_id": normalize_plan_id(getattr(u, "plan_id", "starter")),
         }
     finally:
         db.close()
@@ -136,6 +145,7 @@ def list_users() -> List[Dict[str, Any]]:
                 "created_at": u.created_at,
                 "is_active": bool(int(getattr(u, "is_active", 1) or 0)),
                 "role": normalize_role(getattr(u, "role", "user")),
+                "plan_id": normalize_plan_id(getattr(u, "plan_id", "starter")),
                 "last_login_at": str(getattr(u, "last_login_at", "") or ""),
             }
             for u in rows
@@ -169,6 +179,23 @@ def set_user_role(user_id: str, role: str) -> Optional[Dict[str, Any]]:
         if not u:
             return None
         u.role = normalize_role(role)
+        db.commit()
+        return get_user_by_id(user_id)
+    except Exception:
+        db.rollback()
+        raise
+    finally:
+        db.close()
+
+
+def set_user_plan(user_id: str, plan_id: str) -> Optional[Dict[str, Any]]:
+    Session = get_session_factory()
+    db = Session()
+    try:
+        u = db.get(User, user_id)
+        if not u:
+            return None
+        u.plan_id = normalize_plan_id(plan_id)
         db.commit()
         return get_user_by_id(user_id)
     except Exception:

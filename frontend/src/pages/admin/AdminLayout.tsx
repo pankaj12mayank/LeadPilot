@@ -1,13 +1,17 @@
-import { LayoutDashboard, LogOut, Palette, Shield, Users } from 'lucide-react'
+import { Bot, LayoutDashboard, ListChecks, LogOut, Palette, Shield, Users } from 'lucide-react'
 import { Link, Navigate, NavLink, Outlet } from 'react-router-dom'
 
 import { useAdminStore } from '@/store/adminStore'
 import { cn } from '@/lib/utils/cn'
 
 const nav = [
-  { to: '/admin/overview', label: 'Overview', icon: LayoutDashboard },
+  { to: '/admin/overview#dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { to: '/admin/users', label: 'Users', icon: Users },
+  { to: '/admin/overview#channels', label: 'Channels', icon: ListChecks },
+  { to: '/admin/overview#ai-settings', label: 'AI Settings', icon: Bot },
+  { to: '/admin/overview#logs', label: 'Logs', icon: LayoutDashboard },
   { to: '/admin/branding', label: 'Branding', icon: Palette },
+  { to: '/admin/landing', label: 'Landing CMS', icon: Palette },
 ]
 
 export function AdminLayout() {

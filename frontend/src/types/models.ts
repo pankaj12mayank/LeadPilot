@@ -39,6 +39,7 @@ export type User = {
   email: string
   created_at: string
   role?: 'admin' | 'user' | 'buyer'
+  plan_id?: 'starter' | 'growth' | 'pro' | 'enterprise'
   is_active?: boolean
   last_login_at?: string
 }

@@ -18,6 +18,7 @@ const AdminLayout = lazy(() => import('@/pages/admin/AdminLayout').then((m) => (
 const AdminOverviewPage = lazy(() => import('@/pages/admin/AdminOverviewPage').then((m) => ({ default: m.AdminOverviewPage })))
 const AdminUsersPage = lazy(() => import('@/pages/admin/AdminUsersPage').then((m) => ({ default: m.AdminUsersPage })))
 const AdminBrandingPage = lazy(() => import('@/pages/admin/AdminBrandingPage').then((m) => ({ default: m.AdminBrandingPage })))
+const AdminLandingPage = lazy(() => import('@/pages/admin/AdminLandingPage').then((m) => ({ default: m.AdminLandingPage })))
 
 function PageFallback() {
   return (
@@ -57,6 +58,7 @@ export default function App() {
           <Route path="overview" element={<AdminOverviewPage />} />
           <Route path="users" element={<AdminUsersPage />} />
           <Route path="branding" element={<AdminBrandingPage />} />
+          <Route path="landing" element={<AdminLandingPage />} />
         </Route>
         <Route element={<RequireAuth />}>
           <Route path="/dashboard" element={<DashboardPage />} />

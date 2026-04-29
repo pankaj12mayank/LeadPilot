@@ -15,7 +15,7 @@ export const useModeStore = create<ModeState>((set) => ({
   hydrate: () => {
     try {
       const raw = sessionStorage.getItem(MODE_KEY)
-      if (raw === 'linkedin' || raw === 'explorer') {
+      if (raw === 'linkedin' || raw === 'explorer' || raw === 'directory') {
         set({ mode: raw })
       }
     } catch {

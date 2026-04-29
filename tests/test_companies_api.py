@@ -535,6 +535,53 @@ def test_ingest_real_response_includes_standardized_contract_fields(client):
     assert "errors" in body
 
 
+def test_directory_fetch_creates_user_scoped_leads_from_source(client):
+    from unittest.mock import patch
+
+    token = _token(client)
+    hdr = {"Authorization": f"Bearer {token}"}
+    _enable_ingestion_sources_for_test("google_maps")
+
+    mocked_flow = {
+        "sources": ["google_maps"],
+        "runs": [
+            {
+                "source": "google_maps",
+                "rows": [
+                    {"company_name": "Map Alpha", "website": "https://mapalpha.ai", "source": "google_maps"},
+                    {"company_name": "Map Beta", "website": "https://mapbeta.ai", "source": "google_maps"},
+                ],
+            }
+        ],
+        "saved_total": {"created": 2, "updated": 0, "skipped": 0},
+        "errors": [],
+    }
+    with patch("backend.app.routes.companies.company_ingestion_service.ingest_from_sources", return_value=mocked_flow):
+        r = client.post(
+            _api("/companies/directory/fetch"),
+            headers=hdr,
+            json={
+                "source": "google_maps",
+                "keyword": "software",
+                "location": "mumbai",
+                "batch_size": 10,
+                "delay_seconds": 0.2,
+                "max_companies": 20,
+            },
+        )
+    assert r.status_code == 200, r.text
+    body = r.json()
+    assert body["ok"] is True
+    assert body["source"] == "google_maps"
+    assert body["leads_saved"]["created"] == 2
+
+    leads = client.get(_api("/leads"), headers=hdr)
+    assert leads.status_code == 200, leads.text
+    items = leads.json()["items"]
+    assert any(x.get("company_name") == "Map Alpha" for x in items)
+    assert any(x.get("company_name") == "Map Beta" for x in items)
+
+
 def test_user_can_register_custom_source(client):
     token = _token(client)
     hdr = {"Authorization": f"Bearer {token}"}
@@ -842,6 +889,7 @@ def test_companies_explorer_search_triggers_ingest_when_low_results(client):
 
     token = _token(client)
     hdr = {"Authorization": f"Bearer {token}"}
+    _enable_ingestion_sources_for_test("yc")
 
     # ensure no direct DB hits for this keyword
     listed = client.get(_api("/companies"), headers=hdr)

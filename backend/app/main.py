@@ -13,6 +13,7 @@ from backend.app.logging_config import setup_logging
 from backend.app.middleware.error_handlers import register_exception_handlers
 from backend.app.routes import (
     admin,
+    admin_landing,
     ai_messages,
     analytics,
     auth,
@@ -128,6 +129,7 @@ _api_root = config.API_ROOT_PATH or ""
 app.include_router(health.router)
 app.include_router(public.router, prefix=_api_root)
 app.include_router(admin.router, prefix=_api_root)
+app.include_router(admin_landing.router, prefix=_api_root)
 app.include_router(auth.router, prefix=_api_root)
 app.include_router(companies.router, prefix=_api_root)
 app.include_router(leads.router, prefix=_api_root)

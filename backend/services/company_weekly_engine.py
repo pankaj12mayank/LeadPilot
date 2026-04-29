@@ -466,6 +466,7 @@ def _run_saturday(
     limit: int,
     manual_profiles: list[dict[str, Any]] | None = None,
     require_fresh_session: bool = True,
+    owner_user_id: str = "",
 ) -> dict[str, Any]:
     # Manual LinkedIn day: no auto login, no auto profile extraction.
     sess = session_info_dict()
@@ -515,7 +516,12 @@ def _run_saturday(
                 skipped += 1
                 continue
             dup = db.scalar(
-                select(Lead.id).where(func.lower(func.trim(Lead.linkedin_url)) == profile_link.strip().lower()).limit(1)
+                select(Lead.id)
+                .where(
+                    func.lower(func.trim(Lead.linkedin_url)) == profile_link.strip().lower(),
+                    Lead.user_id == str(owner_user_id or ""),
+                )
+                .limit(1)
             )
             if dup is not None:
                 skipped += 1
@@ -530,6 +536,7 @@ def _run_saturday(
                     "linkedin_url": profile_link,
                     "source_platform": "linkedin",
                     "notes": f"Created by Saturday LinkedIn expansion job (company_id={company.id}).",
+                    "user_id": str(owner_user_id or ""),
                 },
             )
             created += 1
@@ -836,6 +843,7 @@ def run_weekly_engine(
     saturday_limit: int = 30,
     saturday_manual_profiles: list[dict[str, Any]] | None = None,
     saturday_require_fresh_session: bool = True,
+    owner_user_id: str = "",
 ) -> dict[str, Any]:
     """
     Weekly automation orchestrator.
@@ -872,6 +880,7 @@ def run_weekly_engine(
                 limit=saturday_limit,
                 manual_profiles=saturday_manual_profiles,
                 require_fresh_session=saturday_require_fresh_session,
+                owner_user_id=owner_user_id,
             )
         else:
             out = _run_sunday(db)

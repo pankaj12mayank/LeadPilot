@@ -1,75 +1,130 @@
-import { ArrowRight, Database, Gauge, ShieldCheck, Sparkles } from 'lucide-react'
+import { ArrowRight } from 'lucide-react'
 import { Link } from 'react-router-dom'
-import { useEffect } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 
-import { APP_NAME, DEFAULT_META_DESCRIPTION } from '@/lib/copy/appCopy'
+import { publicGetLandingConfig, publicTrackLandingEvent, type LandingConfig, type LandingSection } from '@/lib/api/landing'
+import { APP_NAME } from '@/lib/copy/appCopy'
+import { ThemeToggle } from '@/components/layout/ThemeToggle'
+import { useThemeStore } from '@/store/themeStore'
+
+function sortedSections(cfg: LandingConfig | null) {
+  return [...(cfg?.sections || [])].filter((x) => x.enabled).sort((a, b) => (a.order || 0) - (b.order || 0))
+}
+
+function SectionBlock({ section }: { section: LandingSection }) {
+  return (
+    <section className="rounded-3xl border border-surface-border bg-premium-card-light p-6 shadow-card dark:bg-premium-card-dark sm:p-8">
+      <h2 className="font-display text-2xl font-semibold text-ink sm:text-3xl">{section.heading || section.label}</h2>
+      {section.subheading ? <p className="mt-2 text-sm text-ink-muted sm:text-base">{section.subheading}</p> : null}
+      {section.body ? <p className="mt-3 text-sm leading-6 text-ink-muted sm:text-base">{section.body}</p> : null}
+      {(section.items || []).length > 0 ? (
+        <ul className="mt-4 grid gap-2 text-sm text-ink-muted sm:grid-cols-2">
+          {(section.items || []).map((item, idx) => (
+            <li key={`${section.id}-${idx}`} className="rounded-xl border border-surface-border bg-field/40 px-3 py-2">
+              {item}
+            </li>
+          ))}
+        </ul>
+      ) : null}
+      {section.image_url ? <img src={section.image_url} alt={section.label} loading="lazy" className="mt-4 w-full rounded-2xl object-cover" /> : null}
+      {(section.cta_primary_text || section.cta_secondary_text) ? (
+        <div className="mt-6 flex flex-wrap gap-3">
+          {section.cta_primary_text ? (
+            <Link
+              to={section.cta_primary_link || '/login'}
+              onClick={() => void publicTrackLandingEvent('cta_click', section.id, section.cta_primary_link || '/login')}
+              className="inline-flex items-center gap-2 rounded-xl border border-amber-500/40 bg-amber-500/10 px-4 py-2 text-sm font-semibold text-amber-900 transition hover:bg-amber-500/15 dark:text-amber-200"
+            >
+              {section.cta_primary_text}
+              <ArrowRight className="h-4 w-4" />
+            </Link>
+          ) : null}
+          {section.cta_secondary_text ? (
+            <Link
+              to={section.cta_secondary_link || '/about'}
+              onClick={() => void publicTrackLandingEvent('cta_click', section.id, section.cta_secondary_link || '/about')}
+              className="inline-flex items-center gap-2 rounded-xl border border-surface-border px-4 py-2 text-sm font-medium text-ink-muted transition hover:bg-field/60 hover:text-ink"
+            >
+              {section.cta_secondary_text}
+            </Link>
+          ) : null}
+        </div>
+      ) : null}
+    </section>
+  )
+}
 
 export function LandingPage() {
+  const [cfg, setCfg] = useState<LandingConfig | null>(null)
+  const [loading, setLoading] = useState(true)
+  const preference = useThemeStore((s) => s.preference)
+  const setPreference = useThemeStore((s) => s.setPreference)
+  const sections = useMemo(() => sortedSections(cfg), [cfg])
+
   useEffect(() => {
-    document.title = `${APP_NAME} | AI Lead Growth System`
-    const el = document.querySelector('meta[name="description"]')
-    if (el) {
-      el.setAttribute(
-        'content',
-        `${DEFAULT_META_DESCRIPTION} Discover companies, qualify with AI, score by admin rules, and run queue-based outreach safely.`,
-      )
+    const run = async () => {
+      try {
+        const config = await publicGetLandingConfig()
+        setCfg(config)
+        if (preference === 'system' && config.theme.default_theme !== 'system') {
+          setPreference(config.theme.default_theme)
+        }
+      } finally {
+        setLoading(false)
+      }
     }
-  }, [])
+    void run()
+  }, [preference, setPreference])
+
+  useEffect(() => {
+    if (!cfg) return
+    document.title = cfg.seo.title || `${APP_NAME} | AI Lead Growth System`
+    const ensureMeta = (name: string, content: string, prop = false) => {
+      const selector = prop ? `meta[property="${name}"]` : `meta[name="${name}"]`
+      let el = document.querySelector(selector) as HTMLMetaElement | null
+      if (!el) {
+        el = document.createElement('meta')
+        if (prop) el.setAttribute('property', name)
+        else el.setAttribute('name', name)
+        document.head.appendChild(el)
+      }
+      el.setAttribute('content', content)
+    }
+    ensureMeta('description', cfg.seo.description || '')
+    ensureMeta('keywords', (cfg.seo.keywords || []).join(', '))
+    ensureMeta('og:title', cfg.seo.og_title || cfg.seo.title || '', true)
+    ensureMeta('og:description', cfg.seo.og_description || cfg.seo.description || '', true)
+    if (cfg.seo.og_image) ensureMeta('og:image', cfg.seo.og_image, true)
+    const scriptId = 'leadpilot-landing-jsonld'
+    const prev = document.getElementById(scriptId)
+    if (prev) prev.remove()
+    const script = document.createElement('script')
+    script.id = scriptId
+    script.type = 'application/ld+json'
+    script.text = JSON.stringify({
+      '@context': 'https://schema.org',
+      '@type': cfg.seo.structured_data_type || 'SoftwareApplication',
+      name: APP_NAME,
+      description: cfg.seo.description,
+    })
+    document.head.appendChild(script)
+    if (cfg.analytics.enabled && cfg.analytics.track_page_views) {
+      void publicTrackLandingEvent('page_view', 'landing', window.location.pathname)
+    }
+  }, [cfg])
 
   return (
     <div className="min-h-screen bg-surface text-ink">
       <main className="mx-auto flex w-full max-w-6xl flex-col gap-10 px-4 py-10 sm:px-6 lg:px-8">
-        <header className="rounded-3xl border border-surface-border bg-premium-card-light p-6 shadow-card dark:bg-premium-card-dark sm:p-8">
-          <div className="inline-flex items-center gap-2 rounded-full border border-amber-500/30 bg-amber-500/10 px-3 py-1 text-xs font-medium text-amber-800 dark:text-amber-200">
-            <Sparkles className="h-3.5 w-3.5" />
-            Human-first lead operations
-          </div>
-          <h1 className="mt-4 max-w-3xl font-display text-3xl font-bold tracking-tight text-ink sm:text-4xl">
-            Find better-fit companies, qualify with AI, and prioritize outreach in one fast workflow.
-          </h1>
-          <p className="mt-4 max-w-2xl text-sm leading-6 text-ink-muted sm:text-base">
-            {APP_NAME} gives your team a clean, responsive workspace for company discovery, lead qualification, scoring,
-            and queue-based execution. Built to stay stable even when AI or sources fail.
-          </p>
-          <div className="mt-6 flex flex-wrap items-center gap-3">
-            <Link
-              to="/login"
-              className="inline-flex items-center gap-2 rounded-xl border border-amber-500/40 bg-amber-500/10 px-4 py-2 text-sm font-semibold text-amber-900 transition hover:bg-amber-500/15 dark:text-amber-200"
-            >
-              Open workspace
-              <ArrowRight className="h-4 w-4" />
-            </Link>
-            <Link
-              to="/about"
-              className="inline-flex items-center gap-2 rounded-xl border border-surface-border px-4 py-2 text-sm font-medium text-ink-muted transition hover:bg-field/60 hover:text-ink"
-            >
-              Product overview
-            </Link>
-          </div>
-        </header>
-
-        <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <article className="rounded-2xl border border-surface-border bg-premium-card-light p-4 shadow-card dark:bg-premium-card-dark">
-            <Database className="h-5 w-5 text-emerald-600 dark:text-emerald-300" />
-            <h2 className="mt-3 text-sm font-semibold text-ink">Explorer Company DB</h2>
-            <p className="mt-1 text-xs text-ink-muted">Search, filter by source/date, and keep records deduped and inspectable.</p>
-          </article>
-          <article className="rounded-2xl border border-surface-border bg-premium-card-light p-4 shadow-card dark:bg-premium-card-dark">
-            <Sparkles className="h-5 w-5 text-amber-700 dark:text-amber-300" />
-            <h2 className="mt-3 text-sm font-semibold text-ink">AI Qualification</h2>
-            <p className="mt-1 text-xs text-ink-muted">Get summaries, problems, opportunity insight, and AI score with fallback safety.</p>
-          </article>
-          <article className="rounded-2xl border border-surface-border bg-premium-card-light p-4 shadow-card dark:bg-premium-card-dark">
-            <Gauge className="h-5 w-5 text-indigo-600 dark:text-indigo-300" />
-            <h2 className="mt-3 text-sm font-semibold text-ink">Admin-driven scoring</h2>
-            <p className="mt-1 text-xs text-ink-muted">Role, signals, data completeness, and AI score controlled from admin panel.</p>
-          </article>
-          <article className="rounded-2xl border border-surface-border bg-premium-card-light p-4 shadow-card dark:bg-premium-card-dark">
-            <ShieldCheck className="h-5 w-5 text-sky-600 dark:text-sky-300" />
-            <h2 className="mt-3 text-sm font-semibold text-ink">Queue + scheduler stability</h2>
-            <p className="mt-1 text-xs text-ink-muted">Priority queue, retries, worker limits, and weekly cleanup without overload.</p>
-          </article>
-        </section>
+        <div className="flex items-center justify-end">
+          <ThemeToggle />
+        </div>
+        {loading ? (
+          <section className="rounded-3xl border border-surface-border bg-premium-card-light p-8 dark:bg-premium-card-dark">Loading...</section>
+        ) : null}
+        {sections.map((section) => (
+          <SectionBlock key={section.id} section={section} />
+        ))}
       </main>
     </div>
   )

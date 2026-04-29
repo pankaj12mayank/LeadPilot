@@ -9,6 +9,7 @@ class UserCreate(BaseModel):
     email: str = Field(..., min_length=3, max_length=320)
     password: str = Field(..., min_length=6, max_length=128)
     role: str = Field(default="user")
+    plan_id: str = Field(default="starter")
 
 
 class UserLogin(BaseModel):
@@ -22,6 +23,7 @@ class UserResponse(BaseModel):
     created_at: str
     is_active: bool = True
     role: str = "user"
+    plan_id: str = "starter"
     last_login_at: str = ""
 
 

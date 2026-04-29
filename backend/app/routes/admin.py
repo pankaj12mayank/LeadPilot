@@ -127,12 +127,13 @@ class AdminCreateUserBody(BaseModel):
     email: str = Field(..., min_length=3, max_length=320)
     password: str = Field(..., min_length=8, max_length=128)
     role: str = Field(default="user")
+    plan_id: str = Field(default="starter")
 
 
 @router.post("/users")
 def admin_create_user(body: AdminCreateUserBody, _admin: dict = Depends(get_current_admin)) -> Dict[str, Any]:
     try:
-        user = auth_service.create_user(body.email.strip().lower(), body.password, role=body.role)
+        user = auth_service.create_user(body.email.strip().lower(), body.password, role=body.role, plan_id=body.plan_id)
     except ValueError as e:
         if str(e) == "email_taken":
             raise HTTPException(status_code=400, detail="Email already registered") from None
@@ -156,6 +157,7 @@ def admin_bulk_delete_users(
 class AdminUserActiveBody(BaseModel):
     is_active: bool
     role: str | None = None
+    plan_id: str | None = None
 
 
 @router.patch("/users/{user_id}")
@@ -167,6 +169,8 @@ def admin_patch_user(
     updated = auth_service.set_user_active(user_id, body.is_active)
     if updated and body.role is not None:
         updated = auth_service.set_user_role(user_id, body.role)
+    if updated and body.plan_id is not None:
+        updated = auth_service.set_user_plan(user_id, body.plan_id)
     if not updated:
         raise HTTPException(status_code=404, detail="User not found")
     return {"user": updated}
@@ -428,6 +432,21 @@ class AdminQueuePriority(BaseModel):
         return x
 
 
+class AdminPlanChannelPolicy(BaseModel):
+    channels: List[str] = Field(default_factory=list)
+    lead_limit: int = Field(default=100, ge=1, le=100000)
+
+    @field_validator("channels")
+    @classmethod
+    def v_channels(cls, vals: List[str]) -> List[str]:
+        out: list[str] = []
+        for v in vals:
+            x = (v or "").strip().lower().replace("-", "_")
+            if x and x not in out:
+                out.append(x)
+        return out
+
+
 class AdminConfigPatch(BaseModel):
     targeting: AdminTargetingConfig | None = None
     sources: AdminSourcesConfig | None = None
@@ -443,6 +462,7 @@ class AdminConfigPatch(BaseModel):
     scoring_control: AdminScoringControl | None = None
     safety_control: AdminSafetyControl | None = None
     queue_priority: AdminQueuePriority | None = None
+    plan_channel_access: Dict[str, AdminPlanChannelPolicy] | None = None
 
 
 def _job_logs_path() -> Path:
@@ -575,6 +595,8 @@ def admin_patch_config(
         nxt["safety_control"] = body.safety_control.model_dump()
     if body.queue_priority is not None:
         nxt["queue_priority"] = body.queue_priority.model_dump()
+    if body.plan_channel_access is not None:
+        nxt["plan_channel_access"] = {k: v.model_dump() for k, v in body.plan_channel_access.items()}
     settings_service.patch_settings({"admin_config": nxt})
     return runtime_settings.get_admin_config()
 

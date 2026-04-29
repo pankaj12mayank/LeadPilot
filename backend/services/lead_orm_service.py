@@ -17,6 +17,16 @@ from backend.services.scoring_service import score
 from backend.settings.lead_schema import utc_now_iso
 
 
+def _viewer_scope(viewer_user: Dict[str, Any] | None) -> str | None:
+    if not isinstance(viewer_user, dict):
+        return None
+    role = str(viewer_user.get("role") or "user").strip().lower()
+    if role == "admin":
+        return None
+    uid = str(viewer_user.get("id") or "").strip()
+    return uid or "__none__"
+
+
 def _score_input_from_dict(d: Dict[str, Any]) -> Dict[str, Any]:
     sp = normalize_platform(str(d.get("source_platform") or d.get("platform") or ""))
     out: Dict[str, Any] = {**d}
@@ -120,8 +130,12 @@ def count_leads_filtered(
     status: Optional[str] = None,
     tier: Optional[str] = None,
     platform: Optional[str] = None,
+    viewer_user: Dict[str, Any] | None = None,
 ) -> int:
     stmt = select(func.count(Lead.id))
+    scope = _viewer_scope(viewer_user)
+    if scope is not None:
+        stmt = stmt.where(Lead.user_id == scope)
     stmt = _apply_list_filters(stmt, search=search, status=status, tier=tier, platform=platform)
     return int(db.scalar(stmt) or 0)
 
@@ -136,8 +150,12 @@ def list_leads_filtered(
     sort: str = "created_at_desc",
     offset: int = 0,
     limit: int = 25,
+    viewer_user: Dict[str, Any] | None = None,
 ) -> List[Lead]:
     stmt = select(Lead)
+    scope = _viewer_scope(viewer_user)
+    if scope is not None:
+        stmt = stmt.where(Lead.user_id == scope)
     stmt = _apply_list_filters(stmt, search=search, status=status, tier=tier, platform=platform)
     if sort == "created_at_asc":
         stmt = stmt.order_by(Lead.created_at.asc())
@@ -151,12 +169,23 @@ def list_leads_filtered(
     return list(db.scalars(stmt))
 
 
-def list_leads(db: Session) -> List[Lead]:
-    return list(db.scalars(select(Lead).order_by(Lead.created_at.desc())))
+def list_leads(db: Session, *, viewer_user: Dict[str, Any] | None = None) -> List[Lead]:
+    stmt = select(Lead)
+    scope = _viewer_scope(viewer_user)
+    if scope is not None:
+        stmt = stmt.where(Lead.user_id == scope)
+    stmt = stmt.order_by(Lead.created_at.desc())
+    return list(db.scalars(stmt))
 
 
-def get_lead(db: Session, lead_id: str) -> Optional[Lead]:
-    return db.get(Lead, lead_id)
+def get_lead(db: Session, lead_id: str, *, viewer_user: Dict[str, Any] | None = None) -> Optional[Lead]:
+    row = db.get(Lead, lead_id)
+    if row is None:
+        return None
+    scope = _viewer_scope(viewer_user)
+    if scope is not None and str(getattr(row, "user_id", "") or "") != scope:
+        return None
+    return row
 
 
 def _norm_profile_url(url: str) -> str:
@@ -169,6 +198,7 @@ def ingest_scrape_rows_into_leads(
     *,
     platform: str,
     rows: List[Dict[str, Any]],
+    owner_user_id: str = "",
 ) -> Dict[str, int]:
     """
     Insert scraper output into the main ``leads`` table so the CRM list updates.
@@ -223,6 +253,7 @@ def ingest_scrape_rows_into_leads(
             "email": em,
             "phone": ph,
             "notes": note_body,
+            "user_id": str(owner_user_id or "").strip(),
         }
         create_lead(db, payload)
         created += 1
@@ -243,6 +274,8 @@ def _tier_from_leadpilot_priority(priority: str) -> str:
 def ingest_leadpilot_v3_scored_rows(
     db: Session,
     rows: List[Dict[str, Any]],
+    *,
+    owner_user_id: str = "",
 ) -> Dict[str, int]:
     """
     Insert rows from ``backend.leadpilot`` pipeline (Name, Profile Link, Role, Company, lead_score, priority, …)
@@ -323,6 +356,7 @@ def ingest_leadpilot_v3_scored_rows(
             else 0,
             signal_ads_gap=1 if str(r.get("signal_ads_gap") or "").strip().lower() in ("1", "true", "yes", "y") else 0,
             priority=tier_label(tier),
+            user_id=str(owner_user_id or "").strip(),
         )
         db.add(lead)
         created += 1
@@ -400,6 +434,7 @@ def create_lead(db: Session, data: Dict[str, Any]) -> Lead:
         else 0,
         signal_ads_gap=1 if str(row.get("signal_ads_gap") or "").strip().lower() in ("1", "true", "yes", "y") else 0,
         priority=tier_label(tr or assign_tier(fs)),
+        user_id=str(row.get("user_id") or "").strip(),
     )
     db.add(lead)
     db.flush()
@@ -407,8 +442,8 @@ def create_lead(db: Session, data: Dict[str, Any]) -> Lead:
     return lead
 
 
-def update_lead(db: Session, lead_id: str, patch: Dict[str, Any]) -> Optional[Lead]:
-    lead = db.get(Lead, lead_id)
+def update_lead(db: Session, lead_id: str, patch: Dict[str, Any], *, viewer_user: Dict[str, Any] | None = None) -> Optional[Lead]:
+    lead = get_lead(db, lead_id, viewer_user=viewer_user)
     if not lead:
         return None
     now = utc_now_iso()
@@ -450,8 +485,8 @@ def update_lead(db: Session, lead_id: str, patch: Dict[str, Any]) -> Optional[Le
     return lead
 
 
-def update_status(db: Session, lead_id: str, status: str) -> Optional[Lead]:
-    return update_lead(db, lead_id, {"status": status})
+def update_status(db: Session, lead_id: str, status: str, *, viewer_user: Dict[str, Any] | None = None) -> Optional[Lead]:
+    return update_lead(db, lead_id, {"status": status}, viewer_user=viewer_user)
 
 
 def rescore_all_leads(db: Session, *, limit: int = 5000) -> dict[str, int]:
@@ -474,8 +509,8 @@ def rescore_all_leads(db: Session, *, limit: int = 5000) -> dict[str, int]:
     return {"processed": processed}
 
 
-def delete_lead(db: Session, lead_id: str) -> bool:
-    lead = db.get(Lead, lead_id)
+def delete_lead(db: Session, lead_id: str, *, viewer_user: Dict[str, Any] | None = None) -> bool:
+    lead = get_lead(db, lead_id, viewer_user=viewer_user)
     if not lead:
         return False
     db.delete(lead)
@@ -483,24 +518,32 @@ def delete_lead(db: Session, lead_id: str) -> bool:
     return True
 
 
-def bulk_delete_leads(db: Session, lead_ids: List[str]) -> int:
+def bulk_delete_leads(db: Session, lead_ids: List[str], *, viewer_user: Dict[str, Any] | None = None) -> int:
     if not lead_ids:
         return 0
     clean = [str(x).strip() for x in lead_ids if str(x).strip()]
     if not clean:
         return 0
-    res = db.execute(delete(Lead).where(Lead.id.in_(clean)))
+    stmt = delete(Lead).where(Lead.id.in_(clean))
+    scope = _viewer_scope(viewer_user)
+    if scope is not None:
+        stmt = stmt.where(Lead.user_id == scope)
+    res = db.execute(stmt)
     db.flush()
     return int(res.rowcount or 0)
 
 
-def fetch_leads_by_ids(db: Session, lead_ids: List[str]) -> List[Lead]:
+def fetch_leads_by_ids(db: Session, lead_ids: List[str], *, viewer_user: Dict[str, Any] | None = None) -> List[Lead]:
     if not lead_ids:
         return []
     clean = [str(x).strip() for x in lead_ids if str(x).strip()]
     if not clean:
         return []
-    return list(db.scalars(select(Lead).where(Lead.id.in_(clean))))
+    stmt = select(Lead).where(Lead.id.in_(clean))
+    scope = _viewer_scope(viewer_user)
+    if scope is not None:
+        stmt = stmt.where(Lead.user_id == scope)
+    return list(db.scalars(stmt))
 
 
 def list_leads_for_export(
@@ -511,9 +554,10 @@ def list_leads_for_export(
     status: Optional[str] = None,
     tier: Optional[str] = None,
     platform: Optional[str] = None,
+    viewer_user: Dict[str, Any] | None = None,
 ) -> List[Lead]:
     if ids:
-        rows = fetch_leads_by_ids(db, ids)
+        rows = fetch_leads_by_ids(db, ids, viewer_user=viewer_user)
         return sorted(rows, key=lambda x: x.created_at or "", reverse=True)
     return list_leads_filtered(
         db,
@@ -524,4 +568,5 @@ def list_leads_for_export(
         sort="created_at_desc",
         offset=0,
         limit=50_000,
+        viewer_user=viewer_user,
     )

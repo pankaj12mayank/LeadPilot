@@ -315,6 +315,67 @@ def _normalize_source_registry(value: Any) -> list[dict[str, Any]]:
     return list(defaults.values())
 
 
+def _default_plan_channel_access() -> dict[str, dict[str, Any]]:
+    return {
+        "starter": {
+            "channels": ["linkedin", "public_db"],
+            "lead_limit": 100,
+        },
+        "growth": {
+            "channels": ["linkedin", "public_db", "google_maps", "indiamart", "justdial"],
+            "lead_limit": 500,
+        },
+        "pro": {
+            "channels": [
+                "linkedin",
+                "public_db",
+                "google_maps",
+                "indiamart",
+                "justdial",
+                "eworldtrade",
+                "global_sources",
+                "thomasnet",
+                "yelp",
+                "faire",
+            ],
+            "lead_limit": 2000,
+        },
+        "enterprise": {
+            "channels": [
+                "linkedin",
+                "public_db",
+                "google_maps",
+                "indiamart",
+                "justdial",
+                "eworldtrade",
+                "global_sources",
+                "thomasnet",
+                "yelp",
+                "faire",
+                "yc",
+                "crunchbase",
+                "job_board",
+                "local",
+                "builtwith",
+            ],
+            "lead_limit": 10000,
+        },
+    }
+
+
+def _normalize_plan_channel_access(value: Any) -> dict[str, dict[str, Any]]:
+    defaults = _default_plan_channel_access()
+    raw = value if isinstance(value, dict) else {}
+    out: dict[str, dict[str, Any]] = {}
+    for plan_id, base in defaults.items():
+        row = raw.get(plan_id) if isinstance(raw.get(plan_id), dict) else {}
+        out[plan_id] = {
+            "channels": _clean_lower_list(row.get("channels") or base.get("channels") or []),
+            "lead_limit": _safe_int(row.get("lead_limit"), int(base.get("lead_limit") or 100), min_value=1, max_value=100000),
+        }
+    return out
+
+
 def get_admin_controls() -> dict[str, Any]:
     cfg = get_admin_config()
     targeting = cfg.get("targeting") or {}
@@ -524,7 +585,51 @@ def get_admin_config() -> dict[str, Any]:
         "worker_config": {
             "worker_count": _safe_int(wc.get("worker_count"), 3, min_value=1, max_value=64),
         },
+        "plan_channel_access": _normalize_plan_channel_access(raw.get("plan_channel_access")),
     }
+
+
+def get_plan_channel_access(plan_id: str) -> dict[str, Any]:
+    cfg = get_admin_config()
+    mapping = cfg.get("plan_channel_access") or {}
+    pid = str(plan_id or "starter").strip().lower()
+    row = mapping.get(pid)
+    if not isinstance(row, dict):
+        row = mapping.get("starter")
+    if not isinstance(row, dict):
+        row = _default_plan_channel_access()["starter"]
+    return {
+        "channels": _clean_lower_list(row.get("channels")),
+        "lead_limit": _safe_int(row.get("lead_limit"), 100, min_value=1, max_value=100000),
+    }
+
+
+def apply_plan_access_to_admin_config(cfg: dict[str, Any], *, role: str, plan_id: str) -> dict[str, Any]:
+    if str(role or "user").strip().lower() == "admin":
+        return dict(cfg)
+    access = get_plan_channel_access(plan_id)
+    plan_channels = set(_clean_lower_list(access.get("channels")))
+    out = dict(cfg)
+    src = dict(out.get("sources") or {})
+    requested = _clean_lower_list(src.get("allowed_sources") or [])
+    if requested:
+        src["allowed_sources"] = [x for x in requested if x in plan_channels]
+    else:
+        src["allowed_sources"] = sorted(plan_channels)
+    # map source toggles to plan channels
+    for source_key in ("linkedin", "public_db", "google_maps", "indiamart", "justdial", "eworldtrade", "global_sources", "thomasnet", "yelp", "faire"):
+        src[source_key] = bool(src.get(source_key, True)) and source_key in plan_channels
+    out["sources"] = src
+    reg = []
+    for item in (out.get("source_registry") or []):
+        if not isinstance(item, dict):
+            continue
+        row = dict(item)
+        name = str(row.get("source_name") or "").strip().lower()
+        row["enabled"] = bool(row.get("enabled", True)) and (name in plan_channels or name in {"manual"})
+        reg.append(row)
+    out["source_registry"] = reg
+    return out
 
 
 def get_source_registry() -> list[dict[str, Any]]:

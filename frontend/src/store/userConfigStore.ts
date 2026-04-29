@@ -2,6 +2,7 @@ import { create } from 'zustand'
 
 import { fetchUserConfigSync, type UserConfigSyncPayload } from '@/lib/api/companies'
 import type { AdminConfig } from '@/lib/api/admin'
+import { useAuthStore } from '@/store/authStore'
 
 const CONFIG_KEY = 'leadpilot_user_admin_config'
 const EVENT_TS_KEY = 'leadpilot_user_admin_config_event_ts'
@@ -149,6 +150,18 @@ const DEFAULT_CONFIG: AdminConfig = {
   worker_config: {
     worker_count: 3,
   },
+  plan_channel_access: {
+    starter: { channels: ['linkedin', 'public_db'], lead_limit: 100 },
+    growth: { channels: ['linkedin', 'public_db', 'google_maps', 'indiamart', 'justdial'], lead_limit: 500 },
+    pro: {
+      channels: ['linkedin', 'public_db', 'google_maps', 'indiamart', 'justdial', 'eworldtrade', 'global_sources', 'thomasnet', 'yelp', 'faire'],
+      lead_limit: 2000,
+    },
+    enterprise: {
+      channels: ['linkedin', 'public_db', 'google_maps', 'indiamart', 'justdial', 'eworldtrade', 'global_sources', 'thomasnet', 'yelp', 'faire', 'yc', 'crunchbase', 'job_board', 'local', 'builtwith'],
+      lead_limit: 10000,
+    },
+  },
 }
 
 type UserConfigState = {
@@ -227,6 +240,11 @@ export const useUserConfigStore = create<UserConfigState>((set, get) => ({
     set(() => ({ hydrated: true }))
   },
   fetchLatest: async () => {
+    const token = useAuthStore.getState().token
+    if (!token) {
+      set(() => ({ loading: false, syncError: null }))
+      return
+    }
     set(() => ({ loading: true, syncError: null }))
     try {
       const payload = await fetchUserConfigSync()
@@ -238,8 +256,13 @@ export const useUserConfigStore = create<UserConfigState>((set, get) => ({
   startSync: async () => {
     get().hydrate()
     if (get().syncTimerId !== null) return
+    if (!useAuthStore.getState().token) return
     await get().fetchLatest()
     const timerId = window.setInterval(async () => {
+      if (!useAuthStore.getState().token) {
+        get().stopSync()
+        return
+      }
       try {
         const payload = await fetchUserConfigSync()
         const incomingTs = String(payload.config_event?.timestamp || '')

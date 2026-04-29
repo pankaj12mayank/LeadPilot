@@ -69,6 +69,7 @@ def _rows_for_export(user: dict[str, Any], body: ExportRequest) -> list[dict[str
             status=body.status,
             tier=body.tier,
             platform=body.platform,
+            viewer_user=user,
         )
         role = str(user.get("role") or "user").strip().lower()
         role_limit = ROLE_LIMITS.get(role, 1000)

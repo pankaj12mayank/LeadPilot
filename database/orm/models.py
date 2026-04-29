@@ -17,6 +17,7 @@ class User(Base):
     created_at: Mapped[str] = mapped_column(String(64), nullable=False)
     is_active: Mapped[int] = mapped_column(Integer, nullable=False, default=1, index=True)
     role: Mapped[str] = mapped_column(String(32), nullable=False, default="user", index=True)
+    plan_id: Mapped[str] = mapped_column(String(32), nullable=False, default="starter", index=True)
     last_login_at: Mapped[str] = mapped_column(String(64), nullable=False, default="")
 
 
@@ -57,6 +58,7 @@ class Lead(Base):
     signal_content_gap: Mapped[int] = mapped_column(Integer, nullable=False, default=0, index=True)
     signal_ads_gap: Mapped[int] = mapped_column(Integer, nullable=False, default=0, index=True)
     priority: Mapped[str] = mapped_column(String(16), default="Cold", index=True)
+    user_id: Mapped[str] = mapped_column(String(36), nullable=False, default="", index=True)
 
 
 class Company(Base):
@@ -134,6 +136,15 @@ class AppSetting(Base):
 
 class AdminConfigState(Base):
     __tablename__ = "admin_config"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    config_json: Mapped[str] = mapped_column(Text, nullable=False, default="{}")
+    version: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    updated_at: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+
+
+class LandingConfigState(Base):
+    __tablename__ = "landing_config"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     config_json: Mapped[str] = mapped_column(Text, nullable=False, default="{}")
