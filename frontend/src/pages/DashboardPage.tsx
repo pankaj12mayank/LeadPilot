@@ -3,10 +3,14 @@ import { useEffect, useState } from 'react'
 import { StatCard } from '@/components/dashboard/StatCard'
 import { ApiLoadError } from '@/components/ui/ApiLoadError'
 import { fetchDashboard } from '@/lib/api/analytics'
+import { getHighScoreThreshold } from '@/lib/config/userConfigRules'
 import { fetchSeleniumLeadpilotStatus, type SeleniumLeadpilotStatus } from '@/lib/api/seleniumLeadpilot'
+import { useUserConfigStore } from '@/store/userConfigStore'
 import type { DashboardData } from '@/types/models'
 
 export function DashboardPage() {
+  const adminConfig = useUserConfigStore((s) => s.adminConfig)
+  const highScoreThreshold = getHighScoreThreshold(adminConfig)
   const [dash, setDash] = useState<DashboardData | null>(null)
   const [runStatus, setRunStatus] = useState<SeleniumLeadpilotStatus | null>(null)
   const [loading, setLoading] = useState(true)
@@ -91,7 +95,7 @@ export function DashboardPage() {
         <StatCard
           title="Hot leads"
           value={hotLeads}
-          hint="High-priority leads with score above 70."
+          hint={`High-priority leads with score >= ${highScoreThreshold}.`}
         />
         <StatCard
           title="New leads"

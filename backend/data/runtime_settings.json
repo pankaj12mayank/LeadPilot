@@ -48,5 +48,189 @@
       "saturday_linkedin": "0 10 * * 6",
       "sunday_report": "0 18 * * 0"
     }
+  },
+  "admin_config": {
+    "targeting": {
+      "keywords": [
+        "ai agencies"
+      ],
+      "locations": [
+        "uae"
+      ],
+      "industries": [
+        "software"
+      ],
+      "company_types": [
+        "startup"
+      ],
+      "preferred_locations": [
+        "dubai"
+      ],
+      "preferred_keywords": [
+        "agency"
+      ],
+      "min_company_score": 84
+    },
+    "sources": {
+      "job_boards": true,
+      "startup_directories": true,
+      "local_listings": true,
+      "manual_seeds": true,
+      "allowed_sources": [
+        "yc",
+        "job_board",
+        "local",
+        "manual"
+      ]
+    },
+    "scoring_weights": {
+      "role_weight": 20,
+      "signal_weight": 65,
+      "data_weight": 15,
+      "company_size_weight": 18,
+      "base_factor_mix": 12
+    },
+    "signals_config": {
+      "hiring_enabled": true,
+      "scaling_enabled": true
+    },
+    "scheduler_config": {
+      "daily_time": "02:00",
+      "weekly_time": "03:00",
+      "linkedin_day": "sat",
+      "daily_auto": "0 2 * * *",
+      "friday_heavy": "0 3 * * 5",
+      "saturday_linkedin": "0 10 * * 6",
+      "sunday_report": "0 18 * * 0"
+    },
+    "session_policy": {
+      "expiry_days": 7
+    },
+    "retry_policy": {
+      "retry_count": 4
+    },
+    "task_priority": {
+      "linkedin": "medium",
+      "scoring": "low",
+      "enrichment": "high",
+      "ingestion": "medium"
+    },
+    "source_registry": [
+      {
+        "source_name": "yc",
+        "source_type": "directory",
+        "enabled": true,
+        "input_type": "url",
+        "adapter_function": "collect_companies_from_source_pages"
+      },
+      {
+        "source_name": "crunchbase",
+        "source_type": "directory",
+        "enabled": true,
+        "input_type": "url",
+        "adapter_function": "collect_companies_from_source_pages"
+      },
+      {
+        "source_name": "job_board",
+        "source_type": "job_board",
+        "enabled": false,
+        "input_type": "keyword",
+        "adapter_function": "collect_companies_from_source_pages"
+      },
+      {
+        "source_name": "local",
+        "source_type": "local",
+        "enabled": true,
+        "input_type": "keyword",
+        "adapter_function": "collect_companies_from_source_pages"
+      },
+      {
+        "source_name": "builtwith",
+        "source_type": "directory",
+        "enabled": true,
+        "input_type": "url",
+        "adapter_function": "collect_companies_from_source_pages"
+      },
+      {
+        "source_name": "manual",
+        "source_type": "manual",
+        "enabled": true,
+        "input_type": "file",
+        "adapter_function": "ingest_public_companies"
+      },
+      {
+        "source_name": "startup_watch",
+        "source_type": "directory",
+        "enabled": true,
+        "input_type": "url",
+        "adapter_function": "collect_companies_from_source_pages"
+      },
+      {
+        "source_name": "market_map",
+        "source_type": "directory",
+        "enabled": true,
+        "input_type": "keyword",
+        "adapter_function": "collect_companies_from_source_pages"
+      },
+      {
+        "source_name": "startup_watch_254fe1b5",
+        "source_type": "directory",
+        "enabled": true,
+        "input_type": "url",
+        "adapter_function": "collect_companies_from_source_pages"
+      },
+      {
+        "source_name": "market_map_a6386291",
+        "source_type": "directory",
+        "enabled": true,
+        "input_type": "keyword",
+        "adapter_function": "collect_companies_from_source_pages"
+      },
+      {
+        "source_name": "startup_watch_cbb9a0d3",
+        "source_type": "directory",
+        "enabled": true,
+        "input_type": "url",
+        "adapter_function": "collect_companies_from_source_pages"
+      },
+      {
+        "source_name": "market_map_a3ae1a0a",
+        "source_type": "directory",
+        "enabled": true,
+        "input_type": "keyword",
+        "adapter_function": "collect_companies_from_source_pages"
+      },
+      {
+        "source_name": "startup_watch_d2b2cecb",
+        "source_type": "directory",
+        "enabled": true,
+        "input_type": "url",
+        "adapter_function": "collect_companies_from_source_pages"
+      },
+      {
+        "source_name": "market_map_0030a23c",
+        "source_type": "directory",
+        "enabled": true,
+        "input_type": "keyword",
+        "adapter_function": "collect_companies_from_source_pages"
+      },
+      {
+        "source_name": "startup_watch_1d4ecc1f",
+        "source_type": "directory",
+        "enabled": true,
+        "input_type": "url",
+        "adapter_function": "collect_companies_from_source_pages"
+      },
+      {
+        "source_name": "market_map_04c58a06",
+        "source_type": "directory",
+        "enabled": true,
+        "input_type": "keyword",
+        "adapter_function": "collect_companies_from_source_pages"
+      }
+    ],
+    "worker_config": {
+      "worker_count": 4
+    }
   }
 }

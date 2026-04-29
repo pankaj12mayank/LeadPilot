@@ -75,28 +75,24 @@ def score_lead(
         bd.messages[attr] = msg
 
     raw = bd.raw_total
-    controls = runtime_settings.get_admin_controls()
-    w = controls.get("scoring_weights") or {}
-    role_w = max(1.0, float(w.get("role_relevance") or 30))
-    size_w = max(1.0, float(w.get("company_size") or 20))
-    sig_w = max(1.0, float(w.get("signals") or 25))
-    data_w = max(1.0, float(w.get("data_completeness") or 15))
-    base_w = max(1.0, float(w.get("base_factor_mix") or 10))
-    total_w = role_w + size_w + sig_w + data_w + base_w
+    cfg = runtime_settings.get_admin_config()
+    w = cfg.get("scoring_weights") or {}
+    role_w = max(1.0, float(w.get("role_weight") or 40))
+    sig_w = max(1.0, float(w.get("signal_weight") or 35))
+    data_w = max(1.0, float(w.get("data_weight") or 25))
+    total_w = role_w + sig_w + data_w
 
     role_component = 0.0
-    if "job_role" in bd.messages:
-        role_component = min(role_w, max(0.0, (float(getattr(bd, "job_role", 0.0)) / 15.0) * role_w))
-    size_component = 0.0
-    if "company_size" in bd.messages:
-        size_component = min(size_w, max(0.0, (float(getattr(bd, "company_size", 0.0)) / 12.0) * size_w))
+    role_norm = min(1.0, max(0.0, float(getattr(bd, "job_role", 0.0)) / 15.0))
+    size_norm = min(1.0, max(0.0, float(getattr(bd, "company_size", 0.0)) / 12.0))
+    # role_weight blends person role + company size relevance
+    role_component = min(role_w, ((role_norm * 0.7) + (size_norm * 0.3)) * role_w)
     data_component = 0.0
     if str(L.get("company_website") or "").strip():
         data_component += data_w * 0.5
     if str(L.get("email") or "").strip():
         data_component += data_w * 0.5
     data_component = min(data_w, data_component)
-    base_component = min(base_w, max(0.0, raw / 100.0 * base_w))
     # Step-5 extension: signal-based additive points (does not replace base scoring).
     signal_hiring = bool(lead.get("signal_hiring")) or bool(lead.get("has_careers"))
     signal_scaling = bool(lead.get("signal_scaling"))
@@ -121,7 +117,7 @@ def score_lead(
             f"Signals +{signal_component:.0f} (hiring={signal_hiring}, scaling={signal_scaling}, "
             f"content_gap={signal_content_gap}, ads_gap={signal_ads_gap})"
         )
-    raw = (role_component + size_component + signal_component + data_component + base_component) * (100.0 / total_w)
+    raw = (role_component + signal_component + data_component) * (100.0 / total_w)
 
     final = int(max(1, min(100, round(raw))))
     tier = assign_tier(final)

@@ -3,6 +3,7 @@ from __future__ import annotations
 import uuid
 
 import config
+from backend.services import company_ingestion_service, company_service
 
 
 def _api(subpath: str) -> str:
@@ -51,6 +52,212 @@ def test_companies_ingest_and_list(client):
     assert row["company_name"] == "Acme Refresh"
 
 
+def test_task_classification_returns_standard_task_object(client):
+    token = _token(client)
+    hdr = {"Authorization": f"Bearer {token}"}
+    r = client.get(_api("/companies/task-classification"), headers=hdr)
+    assert r.status_code == 200, r.text
+    body = r.json()
+    assert "items" in body and isinstance(body["items"], list) and body["items"]
+    row = body["items"][0]
+    assert "task_type" in row
+    assert "priority" in row
+    assert "requires_login" in row
+    assert "payload" in row
+
+
+def test_task_priority_can_be_overridden_from_admin_config(client):
+    from backend.app.middleware.jwt import create_access_token
+
+    admin_hdr = {"Authorization": f"Bearer {create_access_token('admin-test', {'admin': True})}"}
+    p = client.patch(
+        _api("/admin/config"),
+        headers=admin_hdr,
+        json={"task_priority": {"linkedin": "high", "scoring": "low", "enrichment": "medium", "ingestion": "low"}},
+    )
+    assert p.status_code == 200, p.text
+
+    token = _token(client)
+    hdr = {"Authorization": f"Bearer {token}"}
+    r = client.get(_api("/companies/task-classification"), headers=hdr)
+    assert r.status_code == 200, r.text
+    items = r.json()["items"]
+    scoring = next((x for x in items if x.get("task_name") == "scoring"), None)
+    assert scoring is not None
+    assert scoring["priority"] == "low"
+
+
+def test_user_config_sync_endpoint_returns_admin_config_and_event(client):
+    token = _token(client)
+    hdr = {"Authorization": f"Bearer {token}"}
+
+    r = client.get(_api("/companies/user-config"), headers=hdr)
+    assert r.status_code == 200, r.text
+    body = r.json()
+    assert "admin_config" in body
+    cfg = body["admin_config"]
+    assert "targeting" in cfg
+    assert "sources" in cfg
+    assert "scoring_weights" in cfg
+    assert "signals_config" in cfg
+    assert "scheduler_config" in cfg
+    assert "session_policy" in cfg
+    assert "retry_policy" in cfg
+    assert "task_priority" in cfg
+    assert "source_registry" in cfg
+    assert any(item.get("source_name") == "job_board" for item in cfg["source_registry"])
+
+
+def test_admin_config_change_propagates_to_queue_and_user_sync_payload(client):
+    from unittest.mock import patch
+
+    from backend.app.middleware.jwt import create_access_token
+
+    admin_hdr = {"Authorization": f"Bearer {create_access_token('admin-test', {'admin': True})}"}
+    token = _token(client)
+    user_hdr = {"Authorization": f"Bearer {token}"}
+
+    baseline = client.patch(
+        _api("/admin/config"),
+        headers=admin_hdr,
+        json={
+            "targeting": {
+                "keywords": ["baseline"],
+                "locations": ["india"],
+                "industries": ["services"],
+                "company_types": ["agency"],
+                "preferred_locations": ["mumbai"],
+                "preferred_keywords": ["baseline"],
+                "min_company_score": 61,
+            },
+            "scoring_weights": {
+                "role_weight": 40,
+                "signal_weight": 35,
+                "data_weight": 25,
+                "company_size_weight": 20,
+                "base_factor_mix": 10,
+            },
+            "task_priority": {
+                "linkedin": "high",
+                "scoring": "high",
+                "enrichment": "medium",
+                "ingestion": "low",
+            },
+        },
+    )
+    assert baseline.status_code == 200, baseline.text
+
+    with patch("backend.app.main.task_queue_service.enqueue") as mocked_enqueue:
+        mocked_enqueue.return_value = {
+            "task_type": "scoring",
+            "priority": "low",
+            "requires_login": False,
+            "payload": {"batch": "config_updated_scoring", "source_event": "config_updated"},
+        }
+        p = client.patch(
+            _api("/admin/config"),
+            headers=admin_hdr,
+            json={
+                "targeting": {
+                    "keywords": ["ai agencies"],
+                    "locations": ["uae"],
+                    "industries": ["software"],
+                    "company_types": ["startup"],
+                    "preferred_locations": ["dubai"],
+                    "preferred_keywords": ["agency"],
+                    "min_company_score": 84,
+                },
+                "scoring_weights": {
+                    "role_weight": 20,
+                    "signal_weight": 65,
+                    "data_weight": 15,
+                    "company_size_weight": 18,
+                    "base_factor_mix": 12,
+                },
+                "task_priority": {
+                    "linkedin": "medium",
+                    "scoring": "low",
+                    "enrichment": "high",
+                    "ingestion": "medium",
+                },
+            },
+        )
+    assert p.status_code == 200, p.text
+    mocked_enqueue.assert_called_once()
+    queued_task = mocked_enqueue.call_args.args[0]
+    assert queued_task["task_type"] == "scoring"
+    assert queued_task["priority"] == "low"
+    assert queued_task["payload"]["source_event"] == "config_updated"
+
+    synced = client.get(_api("/companies/user-config"), headers=user_hdr)
+    assert synced.status_code == 200, synced.text
+    body = synced.json()
+    cfg = body["admin_config"]
+    event = body["config_event"]
+
+    assert cfg["targeting"]["keywords"] == ["ai agencies"]
+    assert cfg["targeting"]["preferred_locations"] == ["dubai"]
+    assert cfg["targeting"]["min_company_score"] == 84
+    assert cfg["scoring_weights"]["signal_weight"] == 65
+    assert cfg["task_priority"]["scoring"] == "low"
+    assert cfg["task_priority"]["enrichment"] == "high"
+
+    assert event is not None
+    assert event["event"] == "config_updated"
+    assert event["timestamp"]
+    assert "admin_config.scoring_weights.signal_weight" in event["changed_fields"]
+    assert "admin_config.targeting.min_company_score" in event["changed_fields"]
+    assert "admin_config.task_priority.enrichment" in event["changed_fields"]
+
+
+def test_explorer_respects_admin_enabled_sources_and_signals(client):
+    from backend.app.middleware.jwt import create_access_token
+
+    admin_hdr = {"Authorization": f"Bearer {create_access_token('admin-test', {'admin': True})}"}
+    p = client.patch(
+        _api("/admin/config"),
+        headers=admin_hdr,
+        json={
+            "sources": {
+                "job_boards": True,
+                "startup_directories": True,
+                "local_listings": True,
+                "manual_seeds": True,
+                "allowed_sources": ["yc"],
+            },
+            "signals_config": {"hiring_enabled": True, "scaling_enabled": False},
+        },
+    )
+    assert p.status_code == 200, p.text
+
+    token = _token(client)
+    hdr = {"Authorization": f"Bearer {token}"}
+    r = client.post(
+        _api("/companies/explorer/search"),
+        headers=hdr,
+        json={
+            "mode": "explorer",
+            "keyword": "saas",
+            "source_filter": "job_board",
+            "signal_hiring": True,
+            "signal_scaling": True,
+            "min_results": 1,
+            "max_results": 10,
+            "sources": ["yc", "job_board", "local"],
+        },
+    )
+    assert r.status_code == 200, r.text
+    body = r.json()
+    eff = body.get("effective_filters") or {}
+    assert eff.get("source_filter") == "all"
+    assert eff.get("signal_hiring") is True
+    assert eff.get("signal_scaling") is False
+    assert "yc" in (eff.get("enabled_sources") or [])
+    assert "job_board" not in (eff.get("enabled_sources") or [])
+    ingest = body.get("ingestion") or {}
+    assert ingest.get("effective_sources") == ["yc"]
+
+
 def test_companies_ingest_real_sources(client):
     from unittest.mock import patch
 
@@ -61,10 +268,9 @@ def test_companies_ingest_real_sources(client):
         {"company_name": "Yc One", "website": "https://yc-one.com", "source": "yc"},
         {"company_name": "Yc Two", "website": "https://yc-two.dev", "source": "yc"},
     ]
-    fake_stats = {"pages_ok": 1, "pages_failed": 0, "candidates": 2}
     with patch(
-        "backend.app.routes.companies.company_ingestion_service.collect_companies_from_source_pages",
-        return_value=(fake_candidates, fake_stats),
+        "backend.app.routes.companies.company_ingestion_service.run_source",
+        return_value=fake_candidates,
     ):
         r = client.post(
             _api("/companies/ingest-real"),
@@ -84,6 +290,417 @@ def test_companies_ingest_real_sources(client):
     assert body["saved"]["created"] >= 2
 
 
+def test_ingest_real_connects_adapter_to_company_db_upsert_flow(client):
+    from unittest.mock import patch
+
+    token = _token(client)
+    hdr = {"Authorization": f"Bearer {token}"}
+
+    with patch(
+        "backend.app.routes.companies.company_ingestion_service.run_source",
+        return_value=[
+            {"company_name": "Flow Co", "website": "https://flowco.ai", "source": "job_board"},
+        ],
+    ):
+        first = client.post(
+            _api("/companies/ingest-real"),
+            headers=hdr,
+            json={
+                "source": "job_board",
+                "seed_urls": ["https://wellfound.com/discover/companies?query=flow"],
+                "batch_size": 10,
+                "delay_seconds": 0.2,
+                "max_companies": 50,
+                "enrich_after_ingest": False,
+            },
+        )
+    assert first.status_code == 200, first.text
+    first_body = first.json()
+    assert first_body["saved"]["created"] == 1
+    assert first_body["saved"]["updated"] == 0
+
+    with patch(
+        "backend.app.routes.companies.company_ingestion_service.run_source",
+        return_value=[
+            {"company_name": "Flow Co Updated", "website": "https://www.flowco.ai/about", "source": "job_board"},
+        ],
+    ):
+        second = client.post(
+            _api("/companies/ingest-real"),
+            headers=hdr,
+            json={
+                "source": "job_board",
+                "seed_urls": ["https://www.indeed.com/companies/search?q=flow"],
+                "batch_size": 10,
+                "delay_seconds": 0.2,
+                "max_companies": 50,
+                "enrich_after_ingest": False,
+            },
+        )
+    assert second.status_code == 200, second.text
+    second_body = second.json()
+    assert second_body["saved"]["created"] == 0
+    assert second_body["saved"]["updated"] == 1
+
+    row = client.get(_api("/companies/by-domain/flowco.ai"), headers=hdr)
+    assert row.status_code == 200, row.text
+    data = row.json()
+    assert data["company_name"] == "Flow Co Updated"
+    assert data["domain"] == "flowco.ai"
+    assert data["source"] == "job_board"
+
+
+def test_companies_ingest_real_multiple_sources_combines_runs(client):
+    from unittest.mock import patch
+
+    token = _token(client)
+    hdr = {"Authorization": f"Bearer {token}"}
+
+    with patch(
+        "backend.app.routes.companies.company_ingestion_service.ingest_from_sources",
+        return_value={
+            "sources": ["yc", "job_board"],
+            "runs": [
+                {
+                    "source": "yc",
+                    "fetched": {"pages_ok": 1, "pages_failed": 0, "candidates": 2},
+                    "saved": {"created": 2, "updated": 0, "skipped": 0},
+                },
+                {
+                    "source": "job_board",
+                    "fetched": {"pages_ok": 2, "pages_failed": 0, "candidates": 1},
+                    "saved": {"created": 1, "updated": 0, "skipped": 0},
+                },
+            ],
+            "fetched_total": {"pages_ok": 3, "pages_failed": 0, "candidates": 3},
+            "saved_total": {"created": 3, "updated": 0, "skipped": 0},
+        },
+    ) as mocked_ingest:
+        r = client.post(
+            _api("/companies/ingest-real"),
+            headers=hdr,
+            json={
+                "source": "yc",
+                "sources": ["yc", "job_board"],
+                "seed_urls": ["https://www.ycombinator.com/companies"],
+                "batch_size": 10,
+                "delay_seconds": 0.2,
+                "max_companies": 50,
+                "enrich_after_ingest": False,
+            },
+        )
+
+    assert r.status_code == 200, r.text
+    body = r.json()
+    assert body["sources"] == ["yc", "job_board"]
+    assert len(body["runs"]) == 2
+    assert body["fetched"]["candidates"] == 3
+    assert body["saved"]["created"] == 3
+    mocked_ingest.assert_called_once()
+
+
+def test_user_can_register_custom_source(client):
+    token = _token(client)
+    hdr = {"Authorization": f"Bearer {token}"}
+    source_name = f"startup_watch_{uuid.uuid4().hex[:8]}"
+
+    r = client.post(
+        _api("/companies/custom-sources"),
+        headers=hdr,
+        json={"source_name": source_name, "input_type": "url"},
+    )
+    assert r.status_code == 200, r.text
+    body = r.json()
+    assert body["ok"] is True
+    assert body["source"]["source_name"] == source_name
+    assert body["source"]["input_type"] == "url"
+    assert body["source"]["adapter_function"] == "collect_companies_from_source_pages"
+
+    cfg = client.get(_api("/companies/user-config"), headers=hdr)
+    assert cfg.status_code == 200, cfg.text
+    registry = (cfg.json().get("admin_config") or {}).get("source_registry") or []
+    names = {item["source_name"] for item in registry}
+    assert source_name in names
+
+
+def test_custom_source_registration_rejects_duplicate_name(client):
+    token = _token(client)
+    hdr = {"Authorization": f"Bearer {token}"}
+    source_name = f"market_map_{uuid.uuid4().hex[:8]}"
+
+    first = client.post(
+        _api("/companies/custom-sources"),
+        headers=hdr,
+        json={"source_name": source_name, "input_type": "keyword"},
+    )
+    assert first.status_code == 200, first.text
+
+    second = client.post(
+        _api("/companies/custom-sources"),
+        headers=hdr,
+        json={"source_name": source_name, "input_type": "keyword"},
+    )
+    assert second.status_code == 400, second.text
+    assert second.json()["detail"] == "Source already exists"
+
+
+def test_run_source_returns_standardized_rows():
+    html = """
+    <html>
+      <body>
+        <a href="https://www.acme.com/about">Acme Inc</a>
+        <a href="https://www.beta.io">Beta</a>
+        <a href="/relative">Relative only</a>
+        <a href="mailto:test@example.com">Email</a>
+      </body>
+    </html>
+    """
+
+    rows = company_ingestion_service.run_source(
+        "yc",
+        {
+            "seed_urls": ["https://example.com/list"],
+            "batch_size": 10,
+            "delay_seconds": 0.2,
+            "max_companies": 20,
+            "fetch_html": lambda _url: html,
+        },
+    )
+
+    assert rows[0]["company_name"] == "Acme Inc"
+    assert rows[0]["website"] == "https://acme.com"
+    assert rows[0]["source"] == "yc"
+    assert any(row["website"] == "https://beta.io" for row in rows)
+    assert all("website" in row and row["website"].startswith("https://") for row in rows)
+
+
+def test_run_source_skips_entries_without_valid_website():
+    rows = company_ingestion_service.run_source(
+        "local",
+        {
+            "seed_urls": ["https://example.com/search"],
+            "batch_size": 10,
+            "delay_seconds": 0.2,
+            "max_companies": 20,
+            "fetch_html": lambda _url: """
+                <html><body>
+                  <a href="javascript:void(0)">No Site</a>
+                  <a href="https://www.validco.ai/path">Valid Co</a>
+                  <a href="https://linkedin.com/company/not-valid">Social</a>
+                </body></html>
+            """,
+        },
+    )
+
+    assert rows == [
+        {
+            "company_name": "Valid Co",
+            "website": "https://validco.ai",
+            "source": "local",
+        }
+    ]
+
+
+def test_job_board_adapter_returns_hiring_companies_from_keyword_and_location():
+    pages = {
+        "https://wellfound.com/discover/companies?query=python+developer+Bangalore": """
+            <html><body>
+              <div class="company-name">Acme Hiring</div>
+              <div class="company-name">Beta Labs</div>
+            </body></html>
+        """,
+        "https://www.indeed.com/companies/search?q=python+developer+Bangalore": """
+            <html><body>
+              <div class="company-name">Acme Hiring</div>
+              <div class="company-name">Gamma Works</div>
+            </body></html>
+        """,
+        "https://www.google.com/search?q=Acme+Hiring+official+site": """
+            <html><body><a href="https://www.acmehiring.com">Acme Hiring</a></body></html>
+        """,
+        "https://www.google.com/search?q=Beta+Labs+official+site": """
+            <html><body><a href="https://betalabs.ai">Beta Labs</a></body></html>
+        """,
+        "https://www.google.com/search?q=Gamma+Works+official+site": """
+            <html><body><a href="https://gammaworks.io">Gamma Works</a></body></html>
+        """,
+    }
+
+    rows = company_ingestion_service.run_source(
+        "job_board",
+        {
+            "keyword": "python developer",
+            "location": "Bangalore",
+            "batch_size": 2,
+            "delay_seconds": 0.2,
+            "max_companies": 10,
+            "fetch_html": lambda url: pages[url],
+        },
+    )
+
+    assert [row["company_name"] for row in rows] == ["Acme Hiring", "Beta Labs", "Gamma Works"]
+    assert [row["website"] for row in rows] == ["https://acmehiring.com", "https://betalabs.ai", "https://gammaworks.io"]
+    assert all(row["source"] == "job_board" for row in rows)
+
+
+def test_job_board_adapter_skips_companies_without_website_lookup():
+    pages = {
+        "https://wellfound.com/discover/companies?query=designer+Remote": """
+            <html><body>
+              <div class="company-name">No Site Co</div>
+              <div class="company-name">Valid Site Co</div>
+            </body></html>
+        """,
+        "https://www.indeed.com/companies/search?q=designer+Remote": """
+            <html><body></body></html>
+        """,
+        "https://www.google.com/search?q=No+Site+Co+official+site": """
+            <html><body><a href="https://linkedin.com/company/no-site-co">Social</a></body></html>
+        """,
+        "https://www.google.com/search?q=Valid+Site+Co+official+site": """
+            <html><body><a href="https://www.validsite.co">Valid Site Co</a></body></html>
+        """,
+    }
+
+    rows = company_ingestion_service.run_source(
+        "job_board",
+        {
+            "keyword": "designer",
+            "location": "Remote",
+            "batch_size": 2,
+            "delay_seconds": 0.2,
+            "max_companies": 10,
+            "fetch_html": lambda url: pages[url],
+        },
+    )
+
+    assert rows == [
+        {
+            "company_name": "Valid Site Co",
+            "website": "https://validsite.co",
+            "source": "job_board",
+        }
+    ]
+
+
+def test_startup_directory_adapter_extracts_startup_companies():
+    rows = company_ingestion_service.run_source(
+        "yc",
+        {
+            "seed_urls": ["https://www.ycombinator.com/companies?query=ai"],
+            "batch_size": 2,
+            "delay_seconds": 0.2,
+            "max_companies": 10,
+            "fetch_html": lambda _url: """
+                <html><body>
+                  <div class="company-card"><a href="https://www.startalpha.com">Start Alpha</a></div>
+                  <div class="company-card"><a href="https://beta-startup.io/about">Beta Startup</a></div>
+                </body></html>
+            """,
+        },
+    )
+
+    assert rows == [
+        {"company_name": "Start Alpha", "website": "https://startalpha.com", "source": "yc"},
+        {"company_name": "Beta Startup", "website": "https://beta-startup.io", "source": "yc"},
+    ]
+
+
+def test_startup_directory_adapter_skips_entries_without_valid_website():
+    rows = company_ingestion_service.run_source(
+        "crunchbase",
+        {
+            "seed_urls": ["https://www.crunchbase.com/discover/organization.companies"],
+            "batch_size": 2,
+            "delay_seconds": 0.2,
+            "max_companies": 10,
+            "fetch_html": lambda _url: """
+                <html><body>
+                  <div class="startup-card"><a href="/company/internal-page">Internal Only</a></div>
+                  <div class="startup-card"><a href="https://www.validstartup.ai">Valid Startup</a></div>
+                  <div class="startup-card"><a href="https://linkedin.com/company/not-valid">Social Only</a></div>
+                </body></html>
+            """,
+        },
+    )
+
+    assert rows == [
+        {"company_name": "Valid Startup", "website": "https://validstartup.ai", "source": "crunchbase"}
+    ]
+
+
+def test_local_business_adapter_extracts_local_companies():
+    rows = company_ingestion_service.run_source(
+        "local",
+        {
+            "keyword": "dentist",
+            "location": "Mumbai",
+            "batch_size": 2,
+            "delay_seconds": 0.2,
+            "max_companies": 10,
+            "fetch_html": lambda _url: """
+                <html><body>
+                  <div class="business-card"><a href="https://www.citydental.in">City Dental</a></div>
+                  <div class="business-card"><a href="https://smilecareclinic.com/about">Smile Care Clinic</a></div>
+                </body></html>
+            """,
+        },
+    )
+
+    assert rows == [
+        {"company_name": "City Dental", "website": "https://citydental.in", "source": "local"},
+        {"company_name": "Smile Care Clinic", "website": "https://smilecareclinic.com", "source": "local"},
+    ]
+
+
+def test_local_business_adapter_limits_results_per_run():
+    rows = company_ingestion_service.run_source(
+        "local",
+        {
+            "keyword": "agency",
+            "location": "Delhi",
+            "batch_size": 2,
+            "delay_seconds": 0.2,
+            "max_companies": 2,
+            "fetch_html": lambda _url: """
+                <html><body>
+                  <div class="business-card"><a href="https://alphaagency.in">Alpha Agency</a></div>
+                  <div class="business-card"><a href="https://betaagency.in">Beta Agency</a></div>
+                  <div class="business-card"><a href="https://gammaagency.in">Gamma Agency</a></div>
+                </body></html>
+            """,
+        },
+    )
+
+    assert rows == [
+        {"company_name": "Alpha Agency", "website": "https://alphaagency.in", "source": "local"},
+        {"company_name": "Beta Agency", "website": "https://betaagency.in", "source": "local"},
+    ]
+
+
+def test_collect_companies_from_source_pages_uses_local_adapter():
+    rows, stats = company_ingestion_service.collect_companies_from_source_pages(
+        source="local",
+        seed_urls=["https://www.google.com/search?q=salon+Pune+company+official+site"],
+        batch_size=2,
+        delay_seconds=0.2,
+        max_companies=2,
+        fetch_html=lambda _url: """
+            <html><body>
+              <div class="business-card"><a href="https://stylehub.in">Style Hub</a></div>
+              <div class="business-card"><a href="https://trimzone.in">Trim Zone</a></div>
+              <div class="business-card"><a href="https://extrarow.in">Extra Row</a></div>
+            </body></html>
+        """,
+    )
+
+    assert rows == [
+        {"company_name": "Style Hub", "website": "https://stylehub.in", "source": "local"},
+        {"company_name": "Trim Zone", "website": "https://trimzone.in", "source": "local"},
+    ]
+    assert stats["candidates"] == 2
+
+
 def test_companies_explorer_search_triggers_ingest_when_low_results(client):
     from unittest.mock import patch
 
@@ -94,11 +711,28 @@ def test_companies_explorer_search_triggers_ingest_when_low_results(client):
     listed = client.get(_api("/companies"), headers=hdr)
     assert listed.status_code == 200, listed.text
 
-    fake_candidates = [{"company_name": "Cloud Nova", "website": "https://cloudnova.ai", "source": "yc"}]
-    fake_stats = {"pages_ok": 1, "pages_failed": 0, "candidates": 1}
+    def fake_ingest_from_sources(*, db, sources, **_kwargs):
+        saved = company_service.ingest_public_companies(
+            db,
+            [{"company_name": "Cloud Nova", "website": "https://cloudnova.ai", "source": "yc"}],
+            default_source="yc",
+        )
+        return {
+            "sources": list(sources),
+            "runs": [
+                {
+                    "source": "yc",
+                    "fetched": {"pages_ok": 1, "pages_failed": 0, "candidates": 1},
+                    "saved": saved,
+                }
+            ],
+            "fetched_total": {"pages_ok": 1, "pages_failed": 0, "candidates": 1},
+            "saved_total": saved,
+        }
+
     with patch(
-        "backend.app.routes.companies.company_ingestion_service.collect_companies_from_source_pages",
-        return_value=(fake_candidates, fake_stats),
+        "backend.app.routes.companies.company_ingestion_service.ingest_from_sources",
+        side_effect=fake_ingest_from_sources,
     ):
         r = client.post(
             _api("/companies/explorer/search"),
@@ -122,6 +756,24 @@ def test_companies_explorer_search_triggers_ingest_when_low_results(client):
 
 def test_companies_explorer_search_supports_filters_and_enriched_columns(client):
     from unittest.mock import patch
+    from backend.app.middleware.jwt import create_access_token
+
+    admin_hdr = {"Authorization": f"Bearer {create_access_token('admin-test', {'admin': True})}"}
+    cfg = client.patch(
+        _api("/admin/config"),
+        headers=admin_hdr,
+        json={
+            "sources": {
+                "job_boards": True,
+                "startup_directories": True,
+                "local_listings": True,
+                "manual_seeds": True,
+                "allowed_sources": ["yc", "job_board", "local", "manual"],
+            },
+            "signals_config": {"hiring_enabled": True, "scaling_enabled": True},
+        },
+    )
+    assert cfg.status_code == 200, cfg.text
 
     token = _token(client)
     hdr = {"Authorization": f"Bearer {token}"}
@@ -476,71 +1128,48 @@ def test_weekly_engine_sunday_report_includes_weekly_insights(client):
 
 
 def test_scheduler_entrypoint_runs_by_job_type(client):
-    from unittest.mock import patch
-
     token = _token(client)
     hdr = {"Authorization": f"Bearer {token}"}
-    with patch(
-        "backend.services.company_weekly_engine.run_scheduled_job",
-        return_value={"job_type": "daily_auto", "result": {"ok": True}},
-    ) as mocked:
-        r = client.post(
-            _api("/companies/scheduler/run"),
-            headers=hdr,
-            json={"job_type": "daily_auto"},
-        )
+    r = client.post(
+        _api("/companies/scheduler/run"),
+        headers=hdr,
+        json={"job_type": "daily_auto"},
+    )
     assert r.status_code == 200, r.text
     body = r.json()
     assert body["job_type"] == "daily_auto"
-    assert body["result"]["ok"] is True
-    mocked.assert_called_once()
+    assert body["mode"] == "queue_only"
+    assert body["enqueued_count"] >= 1
+    assert body["queue_size"] >= 1
 
 
 def test_scheduler_entrypoint_pauses_login_required_when_session_expired(client):
-    from unittest.mock import patch
-
     token = _token(client)
     hdr = {"Authorization": f"Bearer {token}"}
-    with patch(
-        "backend.services.company_weekly_engine.session_info_dict",
-        return_value={"has_cache": True, "within_policy": False, "policy_days": 7},
-    ), patch(
-        "backend.services.company_weekly_engine.run_weekly_engine",
-    ) as weekly_mock:
-        r = client.post(
-            _api("/companies/scheduler/run"),
-            headers=hdr,
-            json={"job_type": "saturday_linkedin"},
-        )
+    r = client.post(
+        _api("/companies/scheduler/run"),
+        headers=hdr,
+        json={"job_type": "saturday_linkedin"},
+    )
     assert r.status_code == 200, r.text
     body = r.json()
     assert body["job_type"] == "saturday_linkedin"
-    assert body["session_gate"]["paused"] is True
-    assert body["result"]["paused"] is True
-    assert body["result"]["requires_manual_login"] is True
-    weekly_mock.assert_not_called()
+    assert body["mode"] == "queue_only"
+    assert body["enqueued_count"] == 1
+    assert body["tasks"][0]["task_type"] == "linkedin"
+    assert body["tasks"][0]["requires_login"] is True
 
 
 def test_scheduler_entrypoint_skips_session_check_for_non_login_job(client):
-    from unittest.mock import patch
-
     token = _token(client)
     hdr = {"Authorization": f"Bearer {token}"}
-    with patch(
-        "backend.services.company_weekly_engine.session_info_dict",
-        side_effect=AssertionError("session check should not run for non-login jobs"),
-    ), patch(
-        "backend.services.company_weekly_engine.run_daily_auto_job",
-        return_value={"ok": True},
-    ) as daily_mock:
-        r = client.post(
-            _api("/companies/scheduler/run"),
-            headers=hdr,
-            json={"job_type": "daily_auto"},
-        )
+    r = client.post(
+        _api("/companies/scheduler/run"),
+        headers=hdr,
+        json={"job_type": "daily_auto"},
+    )
     assert r.status_code == 200, r.text
     body = r.json()
     assert body["job_type"] == "daily_auto"
-    assert body["session_gate"]["checked"] is False
-    assert body["result"]["ok"] is True
-    daily_mock.assert_called_once()
+    assert body["mode"] == "queue_only"
+    assert body["tasks"][0]["requires_login"] is False

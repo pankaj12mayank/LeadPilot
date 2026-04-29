@@ -10,10 +10,27 @@ from sqlalchemy.orm import Session
 from backend.app.api.deps import get_current_user, get_db
 from backend.leadpilot.linkedin_session_cache import session_info_dict
 from backend.services import lead_orm_service
-from backend.services import company_enrichment_service, company_ingestion_service, company_service, company_weekly_engine
+from backend.services import (
+    company_enrichment_service,
+    company_ingestion_service,
+    company_service,
+    company_weekly_engine,
+    runtime_settings,
+    settings_service,
+)
 from database.orm.models import Company, CompanyEnrichment
 
 router = APIRouter(prefix="/companies", tags=["companies"])
+
+
+@router.get("/user-config")
+def get_user_config(
+    _user: dict = Depends(get_current_user),
+) -> dict[str, Any]:
+    return {
+        "admin_config": runtime_settings.get_admin_config(),
+        "config_event": runtime_settings.get_last_config_event(),
+    }
 
 
 @router.get("/task-classification")
@@ -44,6 +61,7 @@ class CompanyIngestRequest(BaseModel):
 
 class CompanyRealIngestRequest(BaseModel):
     source: str = Field(default="manual")
+    sources: List[str] = Field(default_factory=list)
     seed_urls: List[str] = Field(default_factory=list)
     batch_size: int = Field(default=10, ge=10, le=20)
     delay_seconds: float = Field(default=1.0, ge=0.2, le=8.0)
@@ -56,10 +74,29 @@ class CompanyRealIngestRequest(BaseModel):
     @classmethod
     def v_source(cls, v: str) -> str:
         x = (v or "").strip().lower().replace("-", "_")
-        if x not in company_ingestion_service.SUPPORTED_REAL_SOURCES:
-            allowed = ", ".join(sorted(company_ingestion_service.SUPPORTED_REAL_SOURCES))
+        available_sources = set(runtime_settings.get_real_ingestion_source_names()) or (
+            set(company_ingestion_service.SUPPORTED_REAL_SOURCES) - {"manual"}
+        )
+        if x not in available_sources:
+            allowed = ", ".join(sorted(available_sources))
             raise ValueError(f"Unsupported source {v!r}; expected one of: {allowed}")
         return x
+
+    @field_validator("sources")
+    @classmethod
+    def v_sources(cls, vals: List[str]) -> List[str]:
+        available_sources = set(runtime_settings.get_real_ingestion_source_names()) or (
+            set(company_ingestion_service.SUPPORTED_REAL_SOURCES) - {"manual"}
+        )
+        out: list[str] = []
+        seen: set[str] = set()
+        for raw in vals:
+            x = (raw or "").strip().lower().replace("-", "_")
+            if not x or x == "manual" or x not in available_sources or x in seen:
+                continue
+            seen.add(x)
+            out.append(x)
+        return out
 
 
 class ExplorerSearchRequest(BaseModel):
@@ -72,7 +109,7 @@ class ExplorerSearchRequest(BaseModel):
     signal_scaling: bool = False
     min_results: int = Field(default=10, ge=1, le=200)
     max_results: int = Field(default=50, ge=1, le=500)
-    sources: List[str] = Field(default_factory=lambda: ["yc", "job_board", "local", "crunchbase"])
+    sources: List[str] = Field(default_factory=lambda: ["yc", "job_board", "local", "crunchbase", "builtwith"])
     batch_size: int = Field(default=10, ge=10, le=20)
     delay_seconds: float = Field(default=1.0, ge=0.2, le=8.0)
     max_companies_per_source: int = Field(default=80, ge=1, le=500)
@@ -94,20 +131,49 @@ class ExplorerSearchRequest(BaseModel):
         x = (v or "all").strip().lower().replace("-", "_")
         if x == "all":
             return x
-        if x not in company_ingestion_service.SUPPORTED_REAL_SOURCES:
-            allowed = ", ".join(["all", *sorted(company_ingestion_service.SUPPORTED_REAL_SOURCES)])
+        available_sources = set(runtime_settings.get_real_ingestion_source_names()) or (
+            set(company_ingestion_service.SUPPORTED_REAL_SOURCES) - {"manual"}
+        )
+        if x not in available_sources:
+            allowed = ", ".join(["all", *sorted(available_sources)])
             raise ValueError(f"source_filter must be one of: {allowed}")
         return x
 
     @field_validator("sources")
     @classmethod
     def v_sources(cls, vals: List[str]) -> List[str]:
+        available_sources = set(runtime_settings.get_real_ingestion_source_names()) or (
+            set(company_ingestion_service.SUPPORTED_REAL_SOURCES) - {"manual"}
+        )
         out: list[str] = []
         for raw in vals:
             x = (raw or "").strip().lower().replace("-", "_")
-            if x in company_ingestion_service.SUPPORTED_REAL_SOURCES and x != "manual":
+            if x in available_sources and x != "manual":
                 out.append(x)
         return out
+
+
+class CustomSourceCreateRequest(BaseModel):
+    source_name: str = Field(..., min_length=1, max_length=64)
+    input_type: str = Field(..., min_length=1)
+
+    @field_validator("source_name")
+    @classmethod
+    def v_source_name(cls, v: str) -> str:
+        x = (v or "").strip().lower().replace("-", "_")
+        if not x:
+            raise ValueError("source_name is required")
+        if not all(ch.isalnum() or ch == "_" for ch in x):
+            raise ValueError("source_name must use letters, numbers, or underscores")
+        return x
+
+    @field_validator("input_type")
+    @classmethod
+    def v_input_type(cls, v: str) -> str:
+        x = (v or "").strip().lower()
+        if x not in {"url", "keyword", "csv"}:
+            raise ValueError("input_type must be url/keyword/csv")
+        return x
 
 
 @router.get("")
@@ -129,6 +195,47 @@ def get_company(
     if row is None:
         raise HTTPException(status_code=404, detail="Company not found")
     return company_service.company_to_dict(row)
+
+
+@router.post("/custom-sources")
+def create_custom_source(
+    body: CustomSourceCreateRequest,
+    user: dict = Depends(get_current_user),
+) -> dict[str, Any]:
+    source_name = body.source_name
+    if runtime_settings.get_source_registry_entry(source_name) is not None:
+        raise HTTPException(status_code=400, detail="Source already exists")
+
+    current = runtime_settings.get_admin_config()
+    source_registry = list(current.get("source_registry") or [])
+    source_registry.append(
+        {
+            "source_name": source_name,
+            "source_type": "manual" if body.input_type == "csv" else "directory",
+            "enabled": True,
+            "input_type": body.input_type,
+            "adapter_function": "ingest_public_companies" if body.input_type == "csv" else "collect_companies_from_source_pages",
+        }
+    )
+    sources_cfg = dict(current.get("sources") or {})
+    allowed_sources = list(sources_cfg.get("allowed_sources") or [])
+    if source_name not in allowed_sources:
+        allowed_sources.append(source_name)
+    sources_cfg["allowed_sources"] = allowed_sources
+    settings_service.patch_settings(
+        {
+            "admin_config": {
+                **current,
+                "sources": sources_cfg,
+                "source_registry": source_registry,
+            }
+        }
+    )
+    return {
+        "ok": True,
+        "source": runtime_settings.get_source_registry_entry(source_name),
+        "registered_by": str(user.get("email") or user.get("sub") or "user"),
+    }
 
 
 @router.post("/ingest")
@@ -159,24 +266,25 @@ def ingest_companies_real_sources(
     - Extract website/domain candidates from source pages
     - Upsert into Company DB
     """
-    if body.source == "manual":
+    requested_sources = body.sources or [body.source]
+    if not requested_sources or any(src == "manual" for src in requested_sources):
         raise HTTPException(
             status_code=400,
             detail="For manual seeds use /companies/ingest. /ingest-real expects source pages.",
         )
-    candidates, fetch_stats = company_ingestion_service.collect_companies_from_source_pages(
-        source=body.source,
-        seed_urls=body.seed_urls,
-        batch_size=body.batch_size,
-        delay_seconds=body.delay_seconds,
-        max_companies=body.max_companies,
+    ingest_flow = company_ingestion_service.ingest_from_sources(
+        db=db,
+        sources=requested_sources,
+        shared_source_input={
+            "seed_urls": body.seed_urls,
+            "batch_size": body.batch_size,
+            "delay_seconds": body.delay_seconds,
+            "max_companies": body.max_companies,
+        },
+        delay_between_sources=body.delay_seconds,
     )
-    # Website mandatory + domain dedupe/upsert happens in service.
-    save_stats = company_service.ingest_public_companies(
-        db,
-        candidates,
-        default_source=body.source,
-    )
+    fetch_stats = ingest_flow.get("fetched_total") or {"pages_ok": 0, "pages_failed": 0, "candidates": 0}
+    save_stats = ingest_flow.get("saved_total") or {"created": 0, "updated": 0, "skipped": 0}
     enrich_stats: dict[str, Any] | None = None
     if body.enrich_after_ingest:
         enrich_stats = company_enrichment_service.enrich_companies_batch(
@@ -188,8 +296,10 @@ def ingest_companies_real_sources(
     db.commit()
     return {
         "source": body.source,
+        "sources": ingest_flow.get("sources") or requested_sources,
         "fetched": fetch_stats,
         "saved": save_stats,
+        "runs": ingest_flow.get("runs") or [],
         "enrichment": enrich_stats,
     }
 
@@ -216,8 +326,33 @@ def explorer_search_companies(
             "note": "LinkedIn mode uses existing LinkedIn capture flow.",
         }
 
+    cfg = runtime_settings.get_admin_config()
+    tgt = cfg.get("targeting") or {}
+    sig_cfg = cfg.get("signals_config") or {}
+    resolved_keyword = str(body.keyword or "").strip()
+    if not resolved_keyword:
+        ks = [str(x).strip() for x in (tgt.get("keywords") or []) if str(x).strip()]
+        inds = [str(x).strip() for x in (tgt.get("industries") or []) if str(x).strip()]
+        ctypes = [str(x).strip() for x in (tgt.get("company_types") or []) if str(x).strip()]
+        resolved_keyword = " ".join((ks + inds + ctypes)[:3]).strip()
+    resolved_location = str(body.location or "").strip()
+    if not resolved_location:
+        locs = [str(x).strip() for x in (tgt.get("locations") or []) if str(x).strip()]
+        if locs:
+            resolved_location = locs[0]
+
     kw = str(body.keyword or "").strip().lower()
     loc = str(body.location or "").strip().lower()
+    enabled_sources = [s for s in runtime_settings.get_enabled_ingestion_sources() if s != "manual"]
+    chosen_sources = [s for s in body.sources if s in enabled_sources]
+    if not chosen_sources:
+        chosen_sources = [s for s in ["yc", "job_board", "local"] if s in enabled_sources]
+    requested_source_filter = str(body.source_filter or "all").strip().lower().replace("-", "_")
+    effective_source_filter = requested_source_filter if requested_source_filter in enabled_sources else "all"
+    allow_hiring_filter = bool(sig_cfg.get("hiring_enabled", True))
+    allow_scaling_filter = bool(sig_cfg.get("scaling_enabled", True))
+    effective_signal_hiring = bool(body.signal_hiring) and allow_hiring_filter
+    effective_signal_scaling = bool(body.signal_scaling) and allow_scaling_filter
 
     def _search_rows(limit: int) -> list[dict[str, Any]]:
         stmt = (
@@ -238,13 +373,13 @@ def explorer_search_companies(
                 | func.lower(Company.domain).like(loc_term)
                 | func.lower(Company.website).like(loc_term)
             )
-        if body.source_filter != "all":
-            stmt = stmt.where(Company.source == body.source_filter)
+        if effective_source_filter != "all":
+            stmt = stmt.where(Company.source == effective_source_filter)
         if float(body.min_score or 0) > 0:
             stmt = stmt.where(func.coalesce(CompanyEnrichment.score, 0.0) >= float(body.min_score))
-        if body.signal_hiring:
+        if effective_signal_hiring:
             stmt = stmt.where(func.coalesce(CompanyEnrichment.signal_hiring, 0) >= 1)
-        if body.signal_scaling:
+        if effective_signal_scaling:
             stmt = stmt.where(func.coalesce(CompanyEnrichment.signal_scaling, 0) >= 1)
         stmt = stmt.order_by(
             func.coalesce(CompanyEnrichment.score, 0.0).desc(),
@@ -272,32 +407,24 @@ def explorer_search_companies(
     fetch_runs: list[dict[str, Any]] = []
     saved_total = {"created": 0, "updated": 0, "skipped": 0}
 
-    if len(existing) < body.min_results and body.sources:
-        for src in body.sources:
-            seeds = company_ingestion_service.default_seed_urls_for_source(
-                source=src,
-                keyword=body.keyword,
-                location=body.location,
-            )
-            if not seeds:
-                fetch_runs.append({"source": src, "fetched": {"pages_ok": 0, "pages_failed": 0, "candidates": 0}})
-                continue
-            candidates, fetched = company_ingestion_service.collect_companies_from_source_pages(
-                source=src,
-                seed_urls=seeds,
-                batch_size=body.batch_size,
-                delay_seconds=body.delay_seconds,
-                max_companies=body.max_companies_per_source,
-            )
-            saved = company_service.ingest_public_companies(db, candidates, default_source=src)
-            saved_total["created"] += int(saved.get("created") or 0)
-            saved_total["updated"] += int(saved.get("updated") or 0)
-            saved_total["skipped"] += int(saved.get("skipped") or 0)
-            fetch_runs.append({"source": src, "fetched": fetched, "saved": saved})
-            # stop early once enough candidates were generated
-            retry_now = _search_rows(body.max_results)
-            if len(retry_now) >= body.min_results:
-                break
+    if len(existing) < body.min_results and chosen_sources:
+        ingest_flow = company_ingestion_service.ingest_from_sources(
+            db=db,
+            sources=chosen_sources,
+            source_input_factory=lambda src: {
+                "seed_urls": company_ingestion_service.default_seed_urls_for_source(
+                    source=src,
+                    keyword=resolved_keyword,
+                    location=resolved_location,
+                ),
+                "batch_size": body.batch_size,
+                "delay_seconds": body.delay_seconds,
+                "max_companies": body.max_companies_per_source,
+            },
+            delay_between_sources=body.delay_seconds,
+        )
+        fetch_runs = list(ingest_flow.get("runs") or [])
+        saved_total = ingest_flow.get("saved_total") or saved_total
         enrich_stats: dict[str, Any] | None = None
         if body.enrich_after_ingest:
             enrich_stats = company_enrichment_service.enrich_companies_batch(
@@ -313,8 +440,8 @@ def explorer_search_companies(
     final_rows = _search_rows(body.max_results)
     return {
         "mode": "explorer",
-        "keyword": body.keyword,
-        "location": body.location,
+        "keyword": resolved_keyword,
+        "location": resolved_location,
         "count": len(final_rows),
         "results": final_rows,
         "ingestion": {
@@ -322,6 +449,17 @@ def explorer_search_companies(
             "runs": fetch_runs,
             "saved_total": saved_total,
             "enrichment": enrich_stats,
+            "effective_sources": chosen_sources,
+        },
+        "effective_filters": {
+            "source_filter": effective_source_filter,
+            "signal_hiring": effective_signal_hiring,
+            "signal_scaling": effective_signal_scaling,
+            "enabled_signal_filters": {
+                "hiring": allow_hiring_filter,
+                "scaling": allow_scaling_filter,
+            },
+            "enabled_sources": enabled_sources,
         },
     }
 
@@ -536,6 +674,7 @@ class ScheduledJobRunRequest(BaseModel):
     location: str = ""
     batch_size: int = Field(default=10, ge=10, le=20)
     delay_seconds: float = Field(default=1.0, ge=0.2, le=8.0)
+    enqueue_only: bool = True
 
     @field_validator("job_type")
     @classmethod
@@ -584,6 +723,7 @@ def run_scheduled_job(
         location=body.location,
         batch_size=body.batch_size,
         delay_seconds=body.delay_seconds,
+        enqueue_only=body.enqueue_only,
     )
 
 

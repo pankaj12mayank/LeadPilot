@@ -30,9 +30,37 @@ from backend.app.routes import (
 )
 from database.meta_db import init_meta_schema
 from database.orm.bootstrap import init_sa_tables
-from backend.services import lead_service
+from backend.services import lead_service, runtime_settings, settings_service, task_queue_service
 
 _startup_log = logging.getLogger("leadpilot.startup")
+
+
+def _log_config_update(event: dict) -> None:
+    changed = [str(x) for x in (event.get("changed_fields") or [])]
+    _startup_log.info(
+        "Received %s event at %s for fields=%s",
+        event.get("event"),
+        event.get("timestamp"),
+        changed,
+    )
+    requires_rescore = any(
+        f.startswith("admin_config.scoring_weights") or f.startswith("admin_config.signals_config") for f in changed
+    )
+    if not requires_rescore:
+        return
+    cfg = runtime_settings.get_admin_config()
+    pri = str((cfg.get("task_priority") or {}).get("scoring") or "high").strip().lower()
+    if pri not in {"high", "medium", "low"}:
+        pri = "high"
+    queued = task_queue_service.enqueue(
+        {
+            "task_type": "scoring",
+            "priority": pri,
+            "requires_login": False,
+            "payload": {"batch": "config_updated_scoring", "source_event": "config_updated"},
+        }
+    )
+    _startup_log.info("Queued scoring refresh after config update: %s", queued)
 
 
 @asynccontextmanager
@@ -48,8 +76,16 @@ async def lifespan(app: FastAPI):
     _startup_log.info("SQLAlchemy tables OK (ORM / leads schema).")
     lead_service.init_storage()
     _startup_log.info("Lead storage initialized (STORAGE_MODE=%s).", getattr(config, "STORAGE_MODE", ""))
+    cfg = runtime_settings.get_admin_config()
+    _startup_log.info(
+        "Admin config loaded (session expiry=%s day(s), retry_count=%s).",
+        cfg.get("session_policy", {}).get("expiry_days"),
+        cfg.get("retry_policy", {}).get("retry_count"),
+    )
+    settings_service.subscribe_config_updates(_log_config_update)
     _startup_log.info("LeadPilot API — ready to accept requests.")
     yield
+    settings_service.unsubscribe_config_updates(_log_config_update)
     _startup_log.info("LeadPilot API — shutdown.")
 
 

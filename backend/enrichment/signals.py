@@ -5,6 +5,8 @@ from __future__ import annotations
 import re
 from typing import Any, Dict
 
+from backend.services import runtime_settings
+
 from .website import WebsiteEnrichmentResult
 
 # Growth / scale language (also used when site fetch failed but LinkedIn fields exist)
@@ -39,6 +41,9 @@ def build_signals(ws: WebsiteEnrichmentResult, lead: Dict[str, Any]) -> Dict[str
     """
     text = (ws.text_sample or "") if ws and ws.ok else ""
     b = _blob(lead, text)
+    cfg = runtime_settings.get_admin_config()
+    sig_cfg = cfg.get("signals_config") or {}
+
     scaling = bool(_SCALING_RE.search(b))
 
     hiring = bool(ws and ws.ok and ws.is_hiring)
@@ -47,6 +52,11 @@ def build_signals(ws: WebsiteEnrichmentResult, lead: Dict[str, Any]) -> Dict[str
 
     content_gap = not (ws and ws.ok and ws.has_blog)
     ads_gap = not (ws and ws.ok and ws.ads_presence)
+
+    if not bool(sig_cfg.get("hiring_enabled", True)):
+        hiring = False
+    if not bool(sig_cfg.get("scaling_enabled", True)):
+        scaling = False
 
     return {
         "scaling": scaling,

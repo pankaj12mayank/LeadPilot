@@ -54,6 +54,14 @@ def normalize_company_source(value: str | None) -> str:
     s = (value or "").strip().lower().replace("-", "_").replace(" ", "_")
     if s in ALLOWED_COMPANY_SOURCES:
         return s
+    if s:
+        try:
+            from backend.services import runtime_settings
+
+            if runtime_settings.get_source_registry_entry(s) is not None:
+                return s
+        except Exception:
+            pass
     return "manual"
 
 

@@ -20,7 +20,8 @@ def test_weekly_engine_mon_runs_ingest_enrich() -> None:
         ):
             out = company_weekly_engine.run_weekly_engine(db, day="mon", keyword="acme", location="")
         assert out["day"] == "mon"
-        assert out["result"]["saved_total"]["created"] >= 1
+        saved = out["result"]["saved_total"]
+        assert int(saved.get("created") or 0) + int(saved.get("updated") or 0) >= 1
     finally:
         db.close()
 

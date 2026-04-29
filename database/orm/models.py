@@ -137,3 +137,17 @@ class RawScrapeRecord(Base):
     raw_json: Mapped[str] = mapped_column(Text, nullable=False)
     source_url: Mapped[str] = mapped_column(Text, default="")
     created_at: Mapped[str] = mapped_column(String(64), nullable=False)
+
+
+class TaskQueueItem(Base):
+    __tablename__ = "task_queue_items"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    task_type: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    priority: Mapped[str] = mapped_column(String(16), nullable=False, default="medium", index=True)
+    requires_login: Mapped[int] = mapped_column(Integer, nullable=False, default=0, index=True)
+    payload_json: Mapped[str] = mapped_column(Text, nullable=False, default="{}")
+    queue_state: Mapped[str] = mapped_column(String(24), nullable=False, default="queued", index=True)  # queued|waiting|failed
+    waiting_reason: Mapped[str] = mapped_column(String(64), nullable=False, default="")
+    created_at: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    updated_at: Mapped[str] = mapped_column(String(64), nullable=False, index=True)

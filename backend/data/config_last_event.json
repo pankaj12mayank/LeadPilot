@@ -1,0 +1,8 @@
+{
+  "event": "config_updated",
+  "changed_fields": [
+    "admin_config.signals_config.scaling_enabled",
+    "admin_config.sources.allowed_sources"
+  ],
+  "timestamp": "2026-04-29T08:13:25+00:00"
+}

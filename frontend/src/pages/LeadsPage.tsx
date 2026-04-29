@@ -44,9 +44,11 @@ import {
 import { getApiErrorMessage } from '@/lib/api/client'
 import { generateLeadMessage as genMsg } from '@/lib/api/messages'
 import { leadStatusLabel } from '@/lib/copy/appCopy'
+import { getPriorityTierFromScore, scoreToneClass } from '@/lib/config/userConfigRules'
 import { useDebouncedValue } from '@/hooks/useDebouncedValue'
 import { cn } from '@/lib/utils/cn'
 import { useLeadsUiStore } from '@/store/leadsUiStore'
+import { useUserConfigStore } from '@/store/userConfigStore'
 import type { Lead } from '@/types/models'
 
 const LEAD_STATUSES = [
@@ -78,12 +80,6 @@ function tierLabel(tier: string) {
   return tier || '—'
 }
 
-function scoreTone(score: number) {
-  if (score >= 80) return 'text-emerald-700 dark:text-emerald-300'
-  if (score >= 50) return 'text-amber-700 dark:text-amber-200'
-  return 'text-slate-600 dark:text-slate-300'
-}
-
 function fmtShort(iso: string) {
   if (!iso) return '—'
   return iso.length >= 10 ? iso.slice(0, 16).replace('T', ' ') : iso
@@ -108,6 +104,20 @@ function fallbackOutreachTemplate(lead: Lead) {
   const name = (lead.full_name || 'there').trim()
   const company = (lead.company_name || 'your company').trim()
   return `Hi ${name}, I noticed ${company} may have room to improve outreach consistency. If helpful, I can share a quick, practical plan.`
+}
+
+function leadEnrichmentHints(lead: Lead): string[] {
+  const hints: string[] = []
+  if ((lead.problem_seen || '').trim()) hints.push('problem insight')
+  if ((lead.solution_text || '').trim()) hints.push('solution angle')
+  if ((lead.industry || '').trim()) hints.push(`industry: ${lead.industry}`)
+  if ((lead.location || '').trim()) hints.push(`location: ${lead.location}`)
+  if ((lead.company_website || '').trim()) hints.push('website')
+  if (Number(lead.signal_hiring || 0) > 0) hints.push('hiring signal')
+  if (Number(lead.signal_scaling || 0) > 0) hints.push('scaling signal')
+  if (Number(lead.signal_content_gap || 0) > 0) hints.push('content gap')
+  if (Number(lead.signal_ads_gap || 0) > 0) hints.push('ads gap')
+  return hints
 }
 
 /** Short heading for modals when ``full_name`` contains scraped LinkedIn noise. */
@@ -214,6 +224,9 @@ function buildOutreachTimeline(
 }
 
 export function LeadsPage() {
+  const adminConfig = useUserConfigStore((s) => s.adminConfig)
+  const lastConfigEventTs = useUserConfigStore((s) => s.lastEventTs)
+  const lastChangedFields = useUserConfigStore((s) => s.lastChangedFields)
   const [rows, setRows] = useState<Lead[]>([])
   const [total, setTotal] = useState(0)
   const [pages, setPages] = useState(0)
@@ -275,6 +288,7 @@ export function LeadsPage() {
     () => [10, 25, 50, 100, 200].map((n) => ({ value: String(n), label: `${n} / page` })),
     [],
   )
+  const highScoreThreshold = Number(adminConfig.targeting?.min_company_score || 70)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -301,6 +315,17 @@ export function LeadsPage() {
   useEffect(() => {
     void load()
   }, [load])
+
+  useEffect(() => {
+    if (!lastConfigEventTs) return
+    const affectsLeadScores = lastChangedFields.some((field) =>
+      field.startsWith('admin_config.scoring_weights') ||
+      field.startsWith('admin_config.signals_config') ||
+      field.startsWith('admin_config.targeting'),
+    )
+    if (!affectsLeadScores) return
+    void load()
+  }, [lastChangedFields, lastConfigEventTs, load])
 
   const activeFilterCount = useMemo(() => {
     let n = 0
@@ -478,14 +503,15 @@ export function LeadsPage() {
         header: 'Lead score',
         cell: (i) => {
           const v = Number(i.getValue() ?? 0)
-          return <span className={cn('tabular-nums text-sm font-semibold', scoreTone(v))}>{Math.round(v)}</span>
+          return <span className={cn('tabular-nums text-sm font-semibold', scoreToneClass(v, adminConfig))}>{Math.round(v)}</span>
         },
       }),
       columnHelper.accessor('tier', {
         header: 'Qualification tier',
-        cell: (i) => {
-          const t = String(i.getValue() || '')
-          return <Badge variant={tierVariant(t)}>{tierLabel(t)}</Badge>
+        cell: ({ row }) => {
+          const score = Number(row.original.score ?? 0)
+          const dynamicTier = getPriorityTierFromScore(score, adminConfig)
+          return <Badge variant={tierVariant(dynamicTier)}>{tierLabel(dynamicTier)}</Badge>
         },
       }),
       columnHelper.accessor('status', {
@@ -550,7 +576,7 @@ export function LeadsPage() {
                 }
               }}
               disabled={genBusyLeadId === row.original.id}
-              title="Generate a draft outreach message (does not send email)"
+              title="Generate a draft outreach message using enriched lead data (does not send email)"
               aria-label="Generate outreach message"
               className="inline-flex items-center justify-center gap-1.5 whitespace-nowrap rounded-lg bg-gradient-to-r from-amber-600 to-amber-700 px-3 py-2 text-xs font-semibold text-white shadow-sm ring-1 ring-amber-500/25 transition hover:from-amber-500 hover:to-amber-600 disabled:opacity-50 dark:from-amber-500 dark:to-amber-600"
             >
@@ -561,7 +587,7 @@ export function LeadsPage() {
         ),
       }),
     ],
-    [genBusyLeadId, load, onStatusChange, openModal, patchLocal],
+    [adminConfig, genBusyLeadId, load, onStatusChange, openModal, patchLocal],
   )
 
   const table = useReactTable({
@@ -732,6 +758,8 @@ export function LeadsPage() {
     }
   }
 
+  const modalEnrichmentHints = useMemo(() => (modalLead ? leadEnrichmentHints(modalLead) : []), [modalLead])
+
   if (loading && rows.length === 0) {
     return (
       <div className="mx-auto max-w-[1680px] space-y-6">
@@ -772,6 +800,10 @@ export function LeadsPage() {
               ) : (
                 <span>No filters applied.</span>
               )}
+            </p>
+            <p className="mt-1 text-[11px] text-ink-subtle">
+              Workflow sync: review leads with the latest scoring, prioritize Hot leads at {highScoreThreshold}+,
+              generate outreach from enriched data, then update status here.
             </p>
           </div>
           <button
@@ -1080,6 +1112,9 @@ export function LeadsPage() {
                     {(messageDraft || modalLead.personalized_message || fallbackOutreachTemplate(modalLead)).trim()}
                   </div>
                   <p className="mt-2 text-[11px] text-ink-muted">
+                    Message context: {modalEnrichmentHints.length ? modalEnrichmentHints.join(', ') : 'basic lead profile only'}.
+                  </p>
+                  <p className="mt-2 text-[11px] text-ink-muted">
                     Manual outreach only: copy the message and paste it in LinkedIn or Email. No auto sending.
                   </p>
                 </div>
@@ -1087,8 +1122,15 @@ export function LeadsPage() {
             </section>
 
             <div className="flex flex-wrap items-center gap-2">
-              <Badge variant={tierVariant(modalLead.tier)}>Qualification tier: {tierLabel(modalLead.tier)}</Badge>
-              <span className={cn('rounded-full border border-surface-border px-2 py-0.5 text-xs tabular-nums', scoreTone(Number(modalLead.score)))}>
+              <Badge variant={tierVariant(getPriorityTierFromScore(Number(modalLead.score ?? 0), adminConfig))}>
+                Qualification tier: {tierLabel(getPriorityTierFromScore(Number(modalLead.score ?? 0), adminConfig))}
+              </Badge>
+              <span
+                className={cn(
+                  'rounded-full border border-surface-border px-2 py-0.5 text-xs tabular-nums',
+                  scoreToneClass(Number(modalLead.score), adminConfig),
+                )}
+              >
                 Lead score {Math.round(Number(modalLead.score ?? 0))}
               </span>
               <FilterSelect
@@ -1104,6 +1146,9 @@ export function LeadsPage() {
                 aria-label="Pipeline status — click to change"
               />
             </div>
+            <p className="text-[11px] text-ink-muted">
+              Status changes update the synced workflow immediately, so queue order and follow-up tracking stay current.
+            </p>
             <div className="grid gap-3 sm:grid-cols-2">
               <div className="rounded-xl border border-surface-border bg-field/60 px-3 py-2 dark:bg-zinc-900/40">
                 <div className="text-[10px] font-semibold uppercase tracking-wider text-ink-subtle">Lead source</div>

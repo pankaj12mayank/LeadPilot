@@ -20,6 +20,7 @@ def _parser() -> argparse.ArgumentParser:
     p.add_argument("--location", default="")
     p.add_argument("--batch-size", type=int, default=10)
     p.add_argument("--delay-seconds", type=float, default=1.0)
+    p.add_argument("--execute-now", action="store_true", help="Run immediately instead of enqueue-only mode.")
     return p
 
 
@@ -36,6 +37,7 @@ def main() -> dict[str, Any]:
             location=args.location,
             batch_size=args.batch_size,
             delay_seconds=args.delay_seconds,
+            enqueue_only=not bool(args.execute_now),
         )
         print(json.dumps(out, ensure_ascii=True, default=str))
         return out

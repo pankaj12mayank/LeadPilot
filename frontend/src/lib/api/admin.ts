@@ -65,6 +65,67 @@ export type AdminJobLogRow = {
   retry_next_scheduled_run?: boolean
 }
 
+export type AdminConfig = {
+  targeting: {
+    keywords: string[]
+    locations: string[]
+    industries: string[]
+    company_types: string[]
+    preferred_locations: string[]
+    preferred_keywords: string[]
+    min_company_score: number
+  }
+  sources: {
+    job_boards: boolean
+    startup_directories: boolean
+    local_listings: boolean
+    manual_seeds: boolean
+    allowed_sources: string[]
+  }
+  scoring_weights: {
+    role_weight: number
+    signal_weight: number
+    data_weight: number
+    company_size_weight: number
+    base_factor_mix: number
+  }
+  signals_config: {
+    hiring_enabled: boolean
+    scaling_enabled: boolean
+  }
+  scheduler_config: {
+    daily_time: string
+    weekly_time: string
+    linkedin_day: string
+    daily_auto: string
+    friday_heavy: string
+    saturday_linkedin: string
+    sunday_report: string
+  }
+  session_policy: {
+    expiry_days: number
+  }
+  retry_policy: {
+    retry_count: number
+  }
+  task_priority: {
+    linkedin: 'high' | 'medium' | 'low'
+    scoring: 'high' | 'medium' | 'low'
+    enrichment: 'high' | 'medium' | 'low'
+    ingestion: 'high' | 'medium' | 'low'
+  }
+  source_registry: Array<{
+    source_name: string
+    source_type: 'job_board' | 'directory' | 'local' | 'manual'
+    enabled: boolean
+    input_type: 'url' | 'keyword' | 'file'
+    adapter_function: string
+  }>
+  worker_config: {
+    worker_count: number
+  }
+}
+
 export async function adminGetControls() {
   const { data } = await adminClient.get<AdminControls>('/admin/controls')
   return data
@@ -72,6 +133,16 @@ export async function adminGetControls() {
 
 export async function adminPatchControls(patch: Partial<AdminControls>) {
   const { data } = await adminClient.patch<AdminControls>('/admin/controls', patch)
+  return data
+}
+
+export async function adminGetConfig() {
+  const { data } = await adminClient.get<AdminConfig>('/admin/config')
+  return data
+}
+
+export async function adminPatchConfig(patch: Partial<AdminConfig>) {
+  const { data } = await adminClient.patch<AdminConfig>('/admin/config', patch)
   return data
 }
 

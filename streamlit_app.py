@@ -174,16 +174,17 @@ def _render_admin():
     stats = _admin_stats()
     st.write({"total_companies": stats["total_companies"], "total_leads": stats["total_leads"], "hot_leads": stats["hot_leads"]})
 
-    controls = runtime_settings.get_admin_controls()
-    sw = controls.get("scoring_weights") or {}
-    tf = controls.get("targeting_filters") or {}
+    cfg = runtime_settings.get_admin_config()
+    sw = cfg.get("scoring_weights") or {}
+    tf = cfg.get("targeting") or {}
+    src_cfg = cfg.get("sources") or {}
     with st.form("admin_controls_form"):
         st.markdown("#### Scoring Config")
         c1, c2, c3, c4, c5 = st.columns(5)
-        role = c1.number_input("role_relevance", min_value=1, max_value=100, value=int(sw.get("role_relevance") or 30))
-        size = c2.number_input("company_size", min_value=1, max_value=100, value=int(sw.get("company_size") or 20))
-        sig = c3.number_input("signals", min_value=1, max_value=100, value=int(sw.get("signals") or 25))
-        data = c4.number_input("data_completeness", min_value=1, max_value=100, value=int(sw.get("data_completeness") or 15))
+        role = c1.number_input("role_relevance", min_value=1, max_value=100, value=int(sw.get("role_weight") or 40))
+        size = c2.number_input("company_size", min_value=1, max_value=100, value=int(sw.get("company_size_weight") or 20))
+        sig = c3.number_input("signals", min_value=1, max_value=100, value=int(sw.get("signal_weight") or 35))
+        data = c4.number_input("data_completeness", min_value=1, max_value=100, value=int(sw.get("data_weight") or 25))
         base = c5.number_input("base_factor_mix", min_value=1, max_value=100, value=int(sw.get("base_factor_mix") or 10))
 
         st.markdown("#### Targeting Filters")
@@ -191,7 +192,7 @@ def _render_admin():
         allowed_sources = st.multiselect(
             "allowed_sources",
             options=["manual", "yc", "job_board", "local", "crunchbase", "builtwith"],
-            default=list(tf.get("allowed_sources") or ["manual"]),
+            default=list(src_cfg.get("allowed_sources") or runtime_settings.get_enabled_ingestion_sources()),
         )
         pref_locations = st.text_input("preferred_locations (comma-separated)", value=",".join(tf.get("preferred_locations") or []))
         pref_keywords = st.text_input("preferred_keywords (comma-separated)", value=",".join(tf.get("preferred_keywords") or []))
@@ -200,19 +201,22 @@ def _render_admin():
         if ok:
             settings_service.patch_settings(
                 {
-                    "admin_controls": {
+                    "admin_config": {
                         "scoring_weights": {
-                            "role_relevance": int(role),
-                            "company_size": int(size),
-                            "signals": int(sig),
-                            "data_completeness": int(data),
+                            "role_weight": int(role),
+                            "company_size_weight": int(size),
+                            "signal_weight": int(sig),
+                            "data_weight": int(data),
                             "base_factor_mix": int(base),
                         },
-                        "targeting_filters": {
-                            "allowed_sources": list(allowed_sources),
+                        "targeting": {
                             "min_company_score": int(min_company_score),
                             "preferred_locations": [x.strip() for x in pref_locations.split(",") if x.strip()],
                             "preferred_keywords": [x.strip() for x in pref_keywords.split(",") if x.strip()],
+                        },
+                        "sources": {
+                            **src_cfg,
+                            "allowed_sources": list(allowed_sources),
                         },
                     }
                 }

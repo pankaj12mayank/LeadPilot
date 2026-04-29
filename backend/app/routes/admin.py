@@ -162,6 +162,143 @@ class AdminControlPatch(BaseModel):
     schedule_timing: dict[str, str] | None = None
 
 
+class AdminTargetingConfig(BaseModel):
+    keywords: List[str] = Field(default_factory=list)
+    locations: List[str] = Field(default_factory=list)
+    industries: List[str] = Field(default_factory=list)
+    company_types: List[str] = Field(default_factory=list)
+    preferred_locations: List[str] = Field(default_factory=list)
+    preferred_keywords: List[str] = Field(default_factory=list)
+    min_company_score: int = Field(default=70, ge=0, le=100)
+
+
+class AdminSourcesConfig(BaseModel):
+    job_boards: bool = True
+    startup_directories: bool = True
+    local_listings: bool = True
+    manual_seeds: bool = True
+    allowed_sources: List[str] = Field(default_factory=lambda: ["yc", "job_board", "local", "crunchbase", "builtwith", "manual"])
+
+    @field_validator("allowed_sources")
+    @classmethod
+    def v_allowed_sources(cls, vals: List[str]) -> List[str]:
+        out: list[str] = []
+        for v in vals:
+            x = (v or "").strip().lower().replace("-", "_")
+            if x and x not in out:
+                out.append(x)
+        return out
+
+
+class AdminScoringConfig(BaseModel):
+    role_weight: int = Field(default=40, ge=1, le=100)
+    signal_weight: int = Field(default=35, ge=1, le=100)
+    data_weight: int = Field(default=25, ge=1, le=100)
+    company_size_weight: int = Field(default=20, ge=1, le=100)
+    base_factor_mix: int = Field(default=10, ge=1, le=100)
+
+
+class AdminSignalsConfig(BaseModel):
+    hiring_enabled: bool = True
+    scaling_enabled: bool = True
+
+
+class AdminSchedulerConfig(BaseModel):
+    daily_time: str = "02:00"
+    weekly_time: str = "03:00"
+    linkedin_day: str = "sat"
+    daily_auto: str = "0 2 * * *"
+    friday_heavy: str = "0 3 * * 5"
+    saturday_linkedin: str = "0 10 * * 6"
+    sunday_report: str = "0 18 * * 0"
+
+    @field_validator("linkedin_day")
+    @classmethod
+    def v_day(cls, v: str) -> str:
+        x = (v or "sat").strip().lower()[:3]
+        return x if x in {"mon", "tue", "wed", "thu", "fri", "sat", "sun"} else "sat"
+
+
+class AdminSessionPolicy(BaseModel):
+    expiry_days: int = Field(default=7, ge=1, le=365)
+
+
+class AdminRetryPolicy(BaseModel):
+    retry_count: int = Field(default=3, ge=1, le=10)
+
+
+class AdminTaskPriority(BaseModel):
+    linkedin: str = Field(default="high")
+    scoring: str = Field(default="high")
+    enrichment: str = Field(default="medium")
+    ingestion: str = Field(default="low")
+
+    @field_validator("linkedin", "scoring", "enrichment", "ingestion")
+    @classmethod
+    def v_priority(cls, v: str) -> str:
+        x = (v or "").strip().lower()
+        if x not in {"high", "medium", "low"}:
+            raise ValueError("priority must be high/medium/low")
+        return x
+
+
+class AdminSourceRegistryEntry(BaseModel):
+    source_name: str = Field(..., min_length=1)
+    source_type: str = Field(default="directory")
+    enabled: bool = True
+    input_type: str = Field(default="url")
+    adapter_function: str = Field(default="collect_companies_from_source_pages", min_length=1)
+
+    @field_validator("source_name")
+    @classmethod
+    def v_source_name(cls, v: str) -> str:
+        x = (v or "").strip().lower().replace("-", "_")
+        if not x:
+            raise ValueError("source_name is required")
+        return x
+
+    @field_validator("source_type")
+    @classmethod
+    def v_source_type(cls, v: str) -> str:
+        x = (v or "").strip().lower().replace("-", "_")
+        if x not in {"job_board", "directory", "local", "manual"}:
+            raise ValueError("source_type must be job_board/directory/local/manual")
+        return x
+
+    @field_validator("input_type")
+    @classmethod
+    def v_input_type(cls, v: str) -> str:
+        x = (v or "").strip().lower()
+        if x not in {"url", "keyword", "file", "csv"}:
+            raise ValueError("input_type must be url/keyword/file/csv")
+        return x
+
+    @field_validator("adapter_function")
+    @classmethod
+    def v_adapter_function(cls, v: str) -> str:
+        x = (v or "").strip()
+        if not x:
+            raise ValueError("adapter_function is required")
+        return x
+
+
+class AdminWorkerConfig(BaseModel):
+    worker_count: int = Field(default=3, ge=1, le=64)
+
+
+class AdminConfigPatch(BaseModel):
+    targeting: AdminTargetingConfig | None = None
+    sources: AdminSourcesConfig | None = None
+    scoring_weights: AdminScoringConfig | None = None
+    signals_config: AdminSignalsConfig | None = None
+    scheduler_config: AdminSchedulerConfig | None = None
+    session_policy: AdminSessionPolicy | None = None
+    retry_policy: AdminRetryPolicy | None = None
+    task_priority: AdminTaskPriority | None = None
+    source_registry: List[AdminSourceRegistryEntry] | None = None
+    worker_config: AdminWorkerConfig | None = None
+
+
 def _job_logs_path() -> Path:
     root = Path(config.SESSIONS_DIR) / "job_logs"
     root.mkdir(parents=True, exist_ok=True)
@@ -199,13 +336,44 @@ def admin_patch_controls(
     body: AdminControlPatch,
     _admin: dict = Depends(get_current_admin),
 ) -> Dict[str, Any]:
-    updates: Dict[str, Any] = {"admin_controls": runtime_settings.get_admin_controls()}
+    current = runtime_settings.get_admin_config()
+    updates: Dict[str, Any] = {"admin_config": dict(current)}
     if body.scoring_weights is not None:
-        updates["admin_controls"]["scoring_weights"] = body.scoring_weights.model_dump()
+        scoring = dict(current.get("scoring_weights") or {})
+        scoring.update(
+            {
+                "role_weight": body.scoring_weights.role_relevance,
+                "company_size_weight": body.scoring_weights.company_size,
+                "signal_weight": body.scoring_weights.signals,
+                "data_weight": body.scoring_weights.data_completeness,
+                "base_factor_mix": body.scoring_weights.base_factor_mix,
+            }
+        )
+        updates["admin_config"]["scoring_weights"] = scoring
     if body.targeting_filters is not None:
-        updates["admin_controls"]["targeting_filters"] = body.targeting_filters.model_dump()
+        targeting = dict(current.get("targeting") or {})
+        targeting.update(
+            {
+                "preferred_locations": body.targeting_filters.preferred_locations,
+                "preferred_keywords": body.targeting_filters.preferred_keywords,
+                "min_company_score": body.targeting_filters.min_company_score,
+            }
+        )
+        updates["admin_config"]["targeting"] = targeting
+        sources = dict(current.get("sources") or {})
+        sources["allowed_sources"] = body.targeting_filters.allowed_sources
+        updates["admin_config"]["sources"] = sources
+        allowed = set(body.targeting_filters.allowed_sources)
+        registry = []
+        for item in runtime_settings.get_source_registry():
+            entry = dict(item)
+            name = str(entry.get("source_name") or "").strip().lower()
+            if name:
+                entry["enabled"] = name in allowed
+            registry.append(entry)
+        updates["admin_config"]["source_registry"] = registry
     if body.schedule_timing is not None:
-        cur = updates["admin_controls"].get("schedule_timing") or {}
+        cur = current.get("scheduler_config") or {}
         merged = {
             "daily_auto": str(body.schedule_timing.get("daily_auto") or cur.get("daily_auto") or "0 2 * * *"),
             "friday_heavy": str(body.schedule_timing.get("friday_heavy") or cur.get("friday_heavy") or "0 3 * * 5"),
@@ -214,9 +382,47 @@ def admin_patch_controls(
             ),
             "sunday_report": str(body.schedule_timing.get("sunday_report") or cur.get("sunday_report") or "0 18 * * 0"),
         }
-        updates["admin_controls"]["schedule_timing"] = merged
+        scheduler = dict(cur)
+        scheduler.update(merged)
+        updates["admin_config"]["scheduler_config"] = scheduler
     settings_service.patch_settings(updates)
     return runtime_settings.get_admin_controls()
+
+
+@router.get("/config")
+def admin_get_config(_admin: dict = Depends(get_current_admin)) -> Dict[str, Any]:
+    return runtime_settings.get_admin_config()
+
+
+@router.patch("/config")
+def admin_patch_config(
+    body: AdminConfigPatch,
+    _admin: dict = Depends(get_current_admin),
+) -> Dict[str, Any]:
+    cur = runtime_settings.get_admin_config()
+    nxt = dict(cur)
+    if body.targeting is not None:
+        nxt["targeting"] = body.targeting.model_dump()
+    if body.sources is not None:
+        nxt["sources"] = body.sources.model_dump()
+    if body.scoring_weights is not None:
+        nxt["scoring_weights"] = body.scoring_weights.model_dump()
+    if body.signals_config is not None:
+        nxt["signals_config"] = body.signals_config.model_dump()
+    if body.scheduler_config is not None:
+        nxt["scheduler_config"] = body.scheduler_config.model_dump()
+    if body.session_policy is not None:
+        nxt["session_policy"] = body.session_policy.model_dump()
+    if body.retry_policy is not None:
+        nxt["retry_policy"] = body.retry_policy.model_dump()
+    if body.task_priority is not None:
+        nxt["task_priority"] = body.task_priority.model_dump()
+    if body.source_registry is not None:
+        nxt["source_registry"] = [item.model_dump() for item in body.source_registry]
+    if body.worker_config is not None:
+        nxt["worker_config"] = body.worker_config.model_dump()
+    settings_service.patch_settings({"admin_config": nxt})
+    return runtime_settings.get_admin_config()
 
 
 @router.get("/branding")

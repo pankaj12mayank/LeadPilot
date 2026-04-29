@@ -42,15 +42,12 @@ def get_company_enrichment(db: Session, company_id: int) -> CompanyEnrichment | 
 
 
 def _company_signal_score(*, signals: dict[str, bool], has_content: bool, website_present: bool, fetch_ok: bool) -> tuple[float, str]:
-    controls = runtime_settings.get_admin_controls()
-    w = controls.get("scoring_weights") or {}
-    sig_w = max(1.0, float(w.get("signals") or 25))
-    data_w = max(1.0, float(w.get("data_completeness") or 15))
-    base_w = max(1.0, float(w.get("base_factor_mix") or 10))
-    role_w = max(1.0, float(w.get("role_relevance") or 30))
-    size_w = max(1.0, float(w.get("company_size") or 20))
-    # Companies don't have role/size direct yet; fold them into base bucket proportionally.
-    total_w = sig_w + data_w + base_w + role_w + size_w
+    cfg = runtime_settings.get_admin_config()
+    w = cfg.get("scoring_weights") or {}
+    role_w = max(1.0, float(w.get("role_weight") or 40))
+    sig_w = max(1.0, float(w.get("signal_weight") or 35))
+    data_w = max(1.0, float(w.get("data_weight") or 25))
+    total_w = role_w + sig_w + data_w
     sig_pts = 0.0
     if signals.get("hiring"):
         sig_pts += sig_w * 0.4
@@ -69,8 +66,9 @@ def _company_signal_score(*, signals: dict[str, bool], has_content: bool, websit
     if has_content:
         data_pts += data_w * 0.20
     data_pts = min(data_w, data_pts)
-    base_pts = base_w + role_w * 0.5 + size_w * 0.5
-    score = max(0.0, min(100.0, (sig_pts + data_pts + base_pts) * (100.0 / total_w)))
+    # Company-level scoring has no person-role input, so role_weight acts as baseline confidence.
+    role_pts = role_w
+    score = max(0.0, min(100.0, (sig_pts + data_pts + role_pts) * (100.0 / total_w)))
     return score, tier_label(assign_tier(score))
 
 

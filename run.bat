@@ -101,6 +101,16 @@ if not exist "%ROOT%\scraper.env" (
   echo [OK] scraper.env already present.
 )
 
+REM ----- Runtime settings auto-update (keeps new config keys in sync) -----
+echo.
+echo [..] Syncing runtime settings ^(admin config / controls^) ...
+"%PY%" -c "from backend.services import runtime_settings, settings_service; ac=runtime_settings.get_admin_config(); ctl=runtime_settings.get_admin_controls(); settings_service.patch_settings({'admin_config': ac, 'admin_controls': ctl}); print('[OK] runtime settings synced')"
+if errorlevel 1 (
+  echo [WARN] Runtime settings sync failed ^(continuing with existing settings^).
+) else (
+  echo [OK] Runtime settings updated for current build.
+)
+
 REM ----- Backend dependencies -----
 echo.
 echo [..] Installing Python dependencies ^(requirements.txt^) ...

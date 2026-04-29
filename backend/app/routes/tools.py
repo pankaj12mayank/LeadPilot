@@ -2,18 +2,19 @@
 
 from __future__ import annotations
 
-from typing import Optional
+from typing import Any, Optional
 
 import os
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
-from backend.app.api.deps import get_current_user
+from backend.app.api.deps import get_current_user, get_db
 from backend.lead_cleaning.engine import run_cleaning_pipeline
 from backend.lead_cleaning.summary import CleaningSummary
 from database.migrate_from_csv import migrate as migrate_csv_to_sqlite
-from backend.services import bulk_message_service
+from sqlalchemy.orm import Session
+from backend.services import bulk_message_service, task_queue_service, task_worker_service
 
 router = APIRouter(prefix="/tools", tags=["tools"])
 
@@ -46,6 +47,18 @@ class CleanLeadsCsvBody(BaseModel):
     input_csv_path: str
 
 
+class QueueTaskBody(BaseModel):
+    task_type: str
+    priority: str = "medium"
+    requires_login: bool = False
+    payload: dict[str, Any] = {}
+
+
+class ParallelWorkerBody(BaseModel):
+    worker_count: int = 3
+    max_tasks_per_worker: int = 20
+
+
 @router.post("/clean-leads-csv")
 def clean_leads_csv_endpoint(
     body: CleanLeadsCsvBody,
@@ -58,3 +71,70 @@ def clean_leads_csv_endpoint(
     except FileNotFoundError as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
     return {"summary": summary.to_dict()}
+
+
+@router.post("/task-queue/enqueue")
+def enqueue_task(
+    body: QueueTaskBody,
+    db: Session = Depends(get_db),
+    _user: dict = Depends(get_current_user),
+) -> dict[str, Any]:
+    task = task_queue_service.enqueue(
+        {
+            "task_type": body.task_type,
+            "priority": body.priority,
+            "requires_login": body.requires_login,
+            "payload": body.payload,
+        }
+    )
+    return {
+        "enqueued": task,
+        "queue_size": task_queue_service.size(db=db),
+        "waiting_queue_size": task_queue_service.waiting_size(db=db),
+        "failed_queue_size": task_queue_service.failed_size(db=db),
+    }
+
+
+@router.post("/task-queue/dequeue")
+def dequeue_task(
+    db: Session = Depends(get_db),
+    _user: dict = Depends(get_current_user),
+) -> dict[str, Any]:
+    task = task_queue_service.dequeue(db=db)
+    return {
+        "task": task,
+        "queue_size": task_queue_service.size(db=db),
+        "waiting_queue_size": task_queue_service.waiting_size(db=db),
+        "failed_queue_size": task_queue_service.failed_size(db=db),
+    }
+
+
+@router.get("/task-queue/status")
+def task_queue_status(
+    db: Session = Depends(get_db),
+    _user: dict = Depends(get_current_user),
+) -> dict[str, int]:
+    return {
+        "queue_size": task_queue_service.size(db=db),
+        "waiting_queue_size": task_queue_service.waiting_size(db=db),
+        "failed_queue_size": task_queue_service.failed_size(db=db),
+    }
+
+
+@router.post("/task-worker/run-once")
+def run_task_worker_once(
+    db: Session = Depends(get_db),
+    _user: dict = Depends(get_current_user),
+) -> dict[str, Any]:
+    return task_worker_service.execute_next_task(db)
+
+
+@router.post("/task-worker/run-parallel")
+def run_task_worker_parallel(
+    body: ParallelWorkerBody,
+    _user: dict = Depends(get_current_user),
+) -> dict[str, Any]:
+    return task_worker_service.run_parallel_workers(
+        worker_count=body.worker_count,
+        max_tasks=body.max_tasks_per_worker,
+    )

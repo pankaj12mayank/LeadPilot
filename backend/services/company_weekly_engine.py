@@ -13,7 +13,14 @@ from sqlalchemy.orm import Session
 
 import config
 from backend.leadpilot.linkedin_session_cache import session_info_dict
-from backend.services import company_enrichment_service, company_ingestion_service, company_service, lead_orm_service
+from backend.services import (
+    company_enrichment_service,
+    company_ingestion_service,
+    company_service,
+    lead_orm_service,
+    runtime_settings,
+    task_queue_service,
+)
 from backend.utils.logger import get_logger
 from database.orm.models import Company, CompanyEnrichment, Lead
 
@@ -35,10 +42,37 @@ TASK_CLASSIFICATION: dict[str, dict[str, Any]] = {
 }
 
 
-def classify_task(task_name: str) -> dict[str, Any]:
+TASK_META: dict[str, dict[str, str]] = {
+    "public_ingestion": {"task_type": "ingestion"},
+    "company_db_update": {"task_type": "ingestion"},
+    "enrichment": {"task_type": "enrichment"},
+    "ai_enrichment": {"task_type": "enrichment"},
+    "scoring": {"task_type": "scoring"},
+    "dedupe": {"task_type": "ingestion"},
+    "db_normalization": {"task_type": "ingestion"},
+    "linkedin_expansion": {"task_type": "linkedin"},
+    "cleanup_reporting": {"task_type": "enrichment"},
+}
+
+
+def classify_task(task_name: str, *, payload: dict[str, Any] | None = None) -> dict[str, Any]:
     key = str(task_name or "").strip().lower()
     row = TASK_CLASSIFICATION.get(key, {"requires_login": False})
-    return {"task_name": key, "requires_login": bool(row.get("requires_login"))}
+    meta = TASK_META.get(key, {"task_type": "ingestion"})
+    task_type = str(meta.get("task_type") or "ingestion")
+    cfg = runtime_settings.get_admin_config()
+    pri_map = cfg.get("task_priority") or {}
+    priority = str(pri_map.get(task_type) or "medium").strip().lower()
+    if priority not in {"high", "medium", "low"}:
+        priority = "medium"
+    pl = payload if isinstance(payload, dict) else {"batch": "default"}
+    return {
+        "task_name": key,  # backward compatibility
+        "task_type": task_type,
+        "priority": priority,
+        "requires_login": bool(row.get("requires_login")),
+        "payload": pl,
+    }
 
 
 SCHEDULED_JOB_TYPES = frozenset(
@@ -161,6 +195,11 @@ def _retry_call(
     base_delay: float = 0.8,
     label: str = "task",
 ) -> Any:
+    if attempts == 3:
+        try:
+            attempts = int((runtime_settings.get_admin_config().get("retry_policy") or {}).get("retry_count") or attempts)
+        except Exception:
+            attempts = 3
     last_err: Exception | None = None
     for i in range(1, max(1, attempts) + 1):
         try:
@@ -185,36 +224,57 @@ def _normalize_day(day: str) -> str:
     return d
 
 
+def _resolve_targeting_inputs(keyword: str, location: str) -> tuple[str, str]:
+    cfg = runtime_settings.get_admin_config()
+    tgt = cfg.get("targeting") or {}
+    kw_in = str(keyword or "").strip()
+    loc_in = str(location or "").strip()
+    if not kw_in:
+        kws = [str(x).strip() for x in (tgt.get("keywords") or []) if str(x).strip()]
+        inds = [str(x).strip() for x in (tgt.get("industries") or []) if str(x).strip()]
+        ctypes = [str(x).strip() for x in (tgt.get("company_types") or []) if str(x).strip()]
+        pieces = (kws + inds + ctypes)[:3]
+        kw_in = " ".join(pieces).strip()
+    if not loc_in:
+        locs = [str(x).strip() for x in (tgt.get("locations") or []) if str(x).strip()]
+        if locs:
+            loc_in = locs[0]
+    return kw_in, loc_in
+
+
 def _weekday_plan(day: str) -> dict[str, Any]:
     d = _normalize_day(day)
+    enabled = runtime_settings.get_enabled_ingestion_sources()
+    def _flt(xs: list[str]) -> list[str]:
+        return [x for x in xs if x in enabled]
     plans: dict[str, dict[str, Any]] = {
         "mon": {
             "label": "Startup ingestion",
-            "sources": ["yc", "job_board"],
+            "sources": _flt(["yc", "job_board"]),
             "keyword_hint": "startup",
         },
         "tue": {
             "label": "Hiring signals",
-            "sources": ["job_board"],
+            "sources": _flt(["job_board"]),
             "keyword_hint": "hiring",
         },
         "wed": {
             "label": "Local businesses",
-            "sources": ["local"],
+            "sources": _flt(["local"]),
             "keyword_hint": "local business",
         },
         "thu": {
             "label": "Website + tech enrichment",
-            "sources": ["builtwith", "crunchbase"],
+            "sources": _flt(["builtwith", "crunchbase"]),
             "keyword_hint": "technology",
         },
         "fri": {
             "label": "Full enrichment + scoring",
-            "sources": ["yc", "job_board", "local", "crunchbase", "builtwith"],
+            "sources": _flt(["yc", "job_board", "local", "crunchbase", "builtwith"]),
             "keyword_hint": "growth",
         },
     }
-    return plans.get(d, {"label": "General", "sources": ["yc", "job_board"], "keyword_hint": ""})
+    return plans.get(d, {"label": "General", "sources": _flt(["yc", "job_board"]), "keyword_hint": ""})
 
 
 def _run_mon_to_fri(
@@ -229,6 +289,7 @@ def _run_mon_to_fri(
     enrich_limit: int,
     enrich_timeout_seconds: float,
 ) -> dict[str, Any]:
+    keyword, location = _resolve_targeting_inputs(keyword, location)
     plan = _weekday_plan(day)
     day_label = str(plan.get("label") or "")
     sources = list(plan.get("sources") or [])
@@ -288,9 +349,9 @@ def _run_mon_to_fri(
         "failed_items": failed_items,
         "enrichment": enrich_stats,
         "tasks": [
-            classify_task("public_ingestion"),
-            classify_task("enrichment"),
-            classify_task("scoring"),
+            classify_task("public_ingestion", payload={"batch": "sources"}),
+            classify_task("enrichment", payload={"batch": "enrich_limit"}),
+            classify_task("scoring", payload={"batch": "enrich_limit"}),
         ],
     }
 
@@ -381,10 +442,10 @@ def _run_friday_heavy(
     return {
         "schedule_label": "Weekly Heavy Refresh",
         "tasks": [
-            classify_task("enrichment"),
-            classify_task("scoring"),
-            classify_task("dedupe"),
-            classify_task("db_normalization"),
+            classify_task("enrichment", payload={"batch": "all_companies"}),
+            classify_task("scoring", payload={"batch": "all_companies"}),
+            classify_task("dedupe", payload={"batch": "domain"}),
+            classify_task("db_normalization", payload={"batch": "all_companies"}),
         ],
         "normalization": {
             "updated_rows": normalization_updates,
@@ -413,7 +474,7 @@ def _run_saturday(
             "session": sess,
             "requires_manual_login": True,
             "paused": True,
-            "task": classify_task("linkedin_expansion"),
+            "task": classify_task("linkedin_expansion", payload={"batch": "manual_profiles"}),
             "instructions": "Session expired. Complete manual LinkedIn login, refresh session, then re-run Saturday job.",
             "candidates": [],
             "conversion": {"created": 0, "skipped": 0, "errors": []},
@@ -480,7 +541,7 @@ def _run_saturday(
         "session": sess,
         "requires_manual_login": not bool(sess.get("within_policy")),
         "paused": False,
-        "task": classify_task("linkedin_expansion"),
+        "task": classify_task("linkedin_expansion", payload={"batch": "manual_profiles"}),
         "instructions": "Open LinkedIn manually, search each query, and use /companies/linkedin/create-lead.",
         "candidates": candidates,
         "conversion": {"created": created, "skipped": skipped, "errors": errors},
@@ -511,7 +572,7 @@ def _run_sunday(db: Session) -> dict[str, Any]:
     db.commit()
     logger.info("weekly_engine sunday cleanup/report: %s", report)
     return {
-        "task": classify_task("cleanup_reporting"),
+        "task": classify_task("cleanup_reporting", payload={"batch": "weekly"}),
         **report,
     }
 
@@ -674,7 +735,10 @@ def run_daily_auto_job(
     bs = max(10, min(int(batch_size or 10), 20))
     dly = max(0.2, min(float(delay_seconds or 1.0), 8.0))
     max_per_source = max(1, min(int(max_companies_per_source or 80), 500))
-    ingest_sources = ["yc", "job_board", "local", "crunchbase", "builtwith"]
+    keyword, location = _resolve_targeting_inputs(keyword, location)
+    ingest_sources = [s for s in runtime_settings.get_enabled_ingestion_sources() if s != "manual"]
+    if not ingest_sources:
+        ingest_sources = ["yc"]
 
     runs: list[dict[str, Any]] = []
     saved_total = {"created": 0, "updated": 0, "skipped": 0}
@@ -736,11 +800,11 @@ def run_daily_auto_job(
     )
     out = {
         "tasks": [
-            classify_task("public_ingestion"),
-            classify_task("company_db_update"),
-            classify_task("enrichment"),
-            classify_task("ai_enrichment"),
-            classify_task("scoring"),
+            classify_task("public_ingestion", payload={"batch": "sources"}),
+            classify_task("company_db_update", payload={"batch": "upsert"}),
+            classify_task("enrichment", payload={"batch": "enrich_limit"}),
+            classify_task("ai_enrichment", payload={"batch": "preview"}),
+            classify_task("scoring", payload={"batch": "enrich_limit"}),
         ],
         "runs": runs,
         "saved_total": saved_total,
@@ -830,6 +894,7 @@ def run_scheduled_job(
     location: str = "",
     batch_size: int = 10,
     delay_seconds: float = 1.0,
+    enqueue_only: bool = True,
 ) -> dict[str, Any]:
     """
     STEP W11 system entry point for cron-based scheduler.
@@ -838,6 +903,85 @@ def run_scheduled_job(
     jt = str(job_type or "").strip().lower()
     if jt not in SCHEDULED_JOB_TYPES:
         raise ValueError(f"Unsupported job_type {job_type!r}; expected one of: {', '.join(sorted(SCHEDULED_JOB_TYPES))}")
+    if enqueue_only:
+        queued: list[dict[str, Any]] = []
+        if jt == "daily_auto":
+            queued.append(
+                task_queue_service.enqueue(
+                    {
+                        "task_type": "ingestion",
+                        "priority": _priority_for_task_type("ingestion"),
+                        "requires_login": False,
+                        "payload": {
+                            "batch": "daily_auto",
+                            "keyword": keyword,
+                            "location": location,
+                            "batch_size": batch_size,
+                            "delay_seconds": delay_seconds,
+                        },
+                    },
+                    db=db,
+                )
+            )
+        elif jt == "friday_heavy":
+            queued.append(
+                task_queue_service.enqueue(
+                    {
+                        "task_type": "enrichment",
+                        "priority": _priority_for_task_type("enrichment"),
+                        "requires_login": False,
+                        "payload": {"batch": "friday_heavy"},
+                    },
+                    db=db,
+                )
+            )
+            queued.append(
+                task_queue_service.enqueue(
+                    {
+                        "task_type": "scoring",
+                        "priority": _priority_for_task_type("scoring"),
+                        "requires_login": False,
+                        "payload": {"batch": "friday_heavy"},
+                    },
+                    db=db,
+                )
+            )
+        elif jt == "saturday_linkedin":
+            cfg = runtime_settings.get_admin_config()
+            day_for_linkedin = str((cfg.get("scheduler_config") or {}).get("linkedin_day") or "sat").strip().lower()[:3] or "sat"
+            queued.append(
+                task_queue_service.enqueue(
+                    {
+                        "task_type": "linkedin",
+                        "priority": _priority_for_task_type("linkedin"),
+                        "requires_login": True,
+                        "payload": {"batch": "saturday_linkedin", "day": day_for_linkedin},
+                    },
+                    db=db,
+                )
+            )
+        else:
+            queued.append(
+                task_queue_service.enqueue(
+                    {
+                        "task_type": "scoring",
+                        "priority": _priority_for_task_type("scoring"),
+                        "requires_login": False,
+                        "payload": {"batch": "sunday_report"},
+                    },
+                    db=db,
+                )
+            )
+        return {
+            "job_type": jt,
+            "mode": "queue_only",
+            "enqueued_count": len(queued),
+            "tasks": queued,
+            "queue_size": task_queue_service.size(db=db),
+            "waiting_queue_size": task_queue_service.waiting_size(db=db),
+            "scheduler_config": runtime_settings.get_admin_config().get("scheduler_config"),
+        }
+
     gate = _precheck_session_for_task(SCHEDULED_JOB_TASK.get(jt, ""))
     if gate.get("paused"):
         paused_result = {
@@ -867,9 +1011,11 @@ def run_scheduled_job(
             delay_seconds=delay_seconds,
         )
     elif jt == "saturday_linkedin":
+        cfg = runtime_settings.get_admin_config()
+        day_for_linkedin = str((cfg.get("scheduler_config") or {}).get("linkedin_day") or "sat").strip().lower()[:3] or "sat"
         out = run_weekly_engine(
             db,
-            day="sat",
+            day=day_for_linkedin,
             keyword=keyword,
             location=location,
             batch_size=batch_size,
@@ -885,4 +1031,15 @@ def run_scheduled_job(
             batch_size=batch_size,
             delay_seconds=delay_seconds,
         )
-    return {"job_type": jt, "session_gate": gate, "result": out}
+    return {
+        "job_type": jt,
+        "session_gate": gate,
+        "scheduler_config": runtime_settings.get_admin_config().get("scheduler_config"),
+        "result": out,
+    }
+
+
+def _priority_for_task_type(task_type: str) -> str:
+    cfg = runtime_settings.get_admin_config()
+    p = str((cfg.get("task_priority") or {}).get(task_type) or "medium").strip().lower()
+    return p if p in {"high", "medium", "low"} else "medium"

@@ -1,10 +1,12 @@
 import { Loader2, RefreshCw } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 
-import { StatusBadge } from '@/components/ui/Badge'
+import { Badge, StatusBadge } from '@/components/ui/Badge'
 import { FilterSelect } from '@/components/ui/FilterSelect'
 import { fetchLeads } from '@/lib/api/leads'
+import { getHighScoreThreshold, getPriorityTierFromScore } from '@/lib/config/userConfigRules'
 import { leadStatusLabel } from '@/lib/copy/appCopy'
+import { useUserConfigStore } from '@/store/userConfigStore'
 import type { Lead } from '@/types/models'
 
 function isClosedStatus(status: string) {
@@ -17,6 +19,30 @@ function fmtShort(iso: string) {
   return iso.length >= 10 ? iso.slice(0, 16).replace('T', ' ') : iso
 }
 
+function priorityVariant(priority: string): 'hot' | 'warm' | 'cold' | 'muted' {
+  const p = String(priority || '').trim().toLowerCase()
+  if (p === 'hot') return 'hot'
+  if (p === 'warm') return 'warm'
+  if (p === 'cold') return 'cold'
+  return 'muted'
+}
+
+function priorityLabel(priority: string): string {
+  const p = String(priority || '').trim().toLowerCase()
+  if (p === 'hot' || p === 'warm' || p === 'cold') {
+    return p.charAt(0).toUpperCase() + p.slice(1)
+  }
+  return 'Unranked'
+}
+
+function priorityWeight(level: string | undefined): number {
+  const normalized = String(level || '').trim().toLowerCase()
+  if (normalized === 'high') return 18
+  if (normalized === 'medium') return 9
+  if (normalized === 'low') return 3
+  return 0
+}
+
 const STATUS_OPTIONS = [
   { value: '', label: 'All active statuses' },
   { value: 'new', label: 'New' },
@@ -26,6 +52,9 @@ const STATUS_OPTIONS = [
 ]
 
 export function OutreachQueuePage() {
+  const adminConfig = useUserConfigStore((s) => s.adminConfig)
+  const lastConfigEventTs = useUserConfigStore((s) => s.lastEventTs)
+  const highScoreThreshold = getHighScoreThreshold(adminConfig)
   const [rows, setRows] = useState<Lead[]>([])
   const [loading, setLoading] = useState(true)
   const [statusFilter, setStatusFilter] = useState('')
@@ -35,6 +64,42 @@ export function OutreachQueuePage() {
   const [highlightReady, setHighlightReady] = useState(false)
   const [skippedBrokenRows, setSkippedBrokenRows] = useState(0)
   const [err, setErr] = useState<string | null>(null)
+  const preferredKeywords = useMemo(
+    () =>
+      (adminConfig.targeting?.preferred_keywords || [])
+        .map((x) => String(x || '').trim().toLowerCase())
+        .filter(Boolean),
+    [adminConfig.targeting?.preferred_keywords],
+  )
+  const preferredLocations = useMemo(
+    () =>
+      (adminConfig.targeting?.preferred_locations || [])
+        .map((x) => String(x || '').trim().toLowerCase())
+        .filter(Boolean),
+    [adminConfig.targeting?.preferred_locations],
+  )
+  const preferredIndustries = useMemo(
+    () =>
+      (adminConfig.targeting?.industries || [])
+        .map((x) => String(x || '').trim().toLowerCase())
+        .filter(Boolean),
+    [adminConfig.targeting?.industries],
+  )
+  const workflowHints = useMemo(() => {
+    const hints: string[] = []
+    hints.push(`Explorer filters auto-start from score ${highScoreThreshold}`)
+    if (preferredKeywords.length) hints.push(`focus on keywords like ${preferredKeywords.slice(0, 2).join(', ')}`)
+    if (preferredLocations.length) hints.push(`prioritize locations like ${preferredLocations.slice(0, 2).join(', ')}`)
+    if (adminConfig.signals_config?.hiring_enabled) hints.push('use hiring signal for fast-moving accounts')
+    if (adminConfig.signals_config?.scaling_enabled) hints.push('use scaling signal for expansion-ready accounts')
+    return hints
+  }, [
+    adminConfig.signals_config?.hiring_enabled,
+    adminConfig.signals_config?.scaling_enabled,
+    highScoreThreshold,
+    preferredKeywords,
+    preferredLocations,
+  ])
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -63,6 +128,53 @@ export function OutreachQueuePage() {
   }, [load])
 
   const queueRows = useMemo(() => {
+    const roleWeight = Number(adminConfig.scoring_weights?.role_weight || 40)
+    const signalWeight = Number(adminConfig.scoring_weights?.signal_weight || 35)
+    const dataWeight = Number(adminConfig.scoring_weights?.data_weight || 25)
+    const totalWeight = Math.max(1, roleWeight + signalWeight + dataWeight)
+    const signalBoostFactor = signalWeight / totalWeight
+    const roleBoostFactor = roleWeight / totalWeight
+
+    function targetFitBoost(lead: Lead): number {
+      const title = String(lead.title || '').toLowerCase()
+      const company = String(lead.company_name || '').toLowerCase()
+      const industry = String(lead.industry || '').toLowerCase()
+      const location = String(lead.location || '').toLowerCase()
+      const keywordHit = preferredKeywords.some((k) => title.includes(k) || company.includes(k))
+      const locationHit = preferredLocations.some((loc) => location.includes(loc))
+      const industryHit = preferredIndustries.some((ind) => industry.includes(ind))
+      let boost = 0
+      if (keywordHit) boost += 8
+      if (locationHit) boost += 6
+      if (industryHit) boost += 6
+      return boost * roleBoostFactor
+    }
+
+    function scoringBoost(lead: Lead): number {
+      const sig = Number(lead.signal_hiring || 0) + Number(lead.signal_scaling || 0)
+      const contentGap = Number(lead.signal_content_gap || 0)
+      const adsGap = Number(lead.signal_ads_gap || 0)
+      const raw = sig * 8 + contentGap * 3 + adsGap * 3
+      return raw * signalBoostFactor
+    }
+
+    function taskPriorityBoost(lead: Lead): number {
+      const sourcePlatform = String(lead.source_platform || '').trim().toLowerCase()
+      let boost = 0
+      if (sourcePlatform === 'linkedin') {
+        boost += priorityWeight(adminConfig.task_priority?.linkedin)
+      } else {
+        boost += priorityWeight(adminConfig.task_priority?.ingestion)
+      }
+      if (Number(lead.score || 0) >= highScoreThreshold) {
+        boost += priorityWeight(adminConfig.task_priority?.scoring)
+      }
+      if (!String(lead.personalized_message || '').trim()) {
+        boost += priorityWeight(adminConfig.task_priority?.enrichment)
+      }
+      return boost
+    }
+
     return (rows || [])
       .filter((x) => !isClosedStatus(x.status || ''))
       .filter((x) => Number(x.score || 0) >= Number(minScore || 0))
@@ -72,12 +184,32 @@ export function OutreachQueuePage() {
         if (preset === 'growth') return Number(x.signal_scaling || 0) >= 1
         return true
       })
-      .sort((a, b) => Number(b.score || 0) - Number(a.score || 0))
-  }, [rows, minScore, preset])
+      .sort((a, b) => {
+        const aPriority = Number(a.score || 0) + scoringBoost(a) + targetFitBoost(a) + taskPriorityBoost(a)
+        const bPriority = Number(b.score || 0) + scoringBoost(b) + targetFitBoost(b) + taskPriorityBoost(b)
+        if (bPriority !== aPriority) return bPriority - aPriority
+        return Number(b.score || 0) - Number(a.score || 0)
+      })
+  }, [
+    adminConfig.scoring_weights?.data_weight,
+    adminConfig.scoring_weights?.role_weight,
+    adminConfig.scoring_weights?.signal_weight,
+    adminConfig.task_priority?.enrichment,
+    adminConfig.task_priority?.ingestion,
+    adminConfig.task_priority?.linkedin,
+    adminConfig.task_priority?.scoring,
+    highScoreThreshold,
+    minScore,
+    preferredIndustries,
+    preferredKeywords,
+    preferredLocations,
+    preset,
+    rows,
+  ])
 
   function applyPreset(p: 'hot' | 'hiring' | 'quick_wins' | 'growth') {
     if (p === 'hot') {
-      setMinScore(70)
+      setMinScore(highScoreThreshold)
       setPreset('hot')
       return
     }
@@ -87,8 +219,19 @@ export function OutreachQueuePage() {
 
   function isReadyForOutreach(lead: Lead) {
     const st = (lead.status || '').toLowerCase()
-    return !isClosedStatus(st) && Number(lead.score || 0) >= 70 && Boolean((lead.personalized_message || '').trim())
+    return !isClosedStatus(st) && Number(lead.score || 0) >= highScoreThreshold && Boolean((lead.personalized_message || '').trim())
   }
+
+  useEffect(() => {
+    if (preset === 'hot' && Number(minScore || 0) !== highScoreThreshold) {
+      setMinScore(highScoreThreshold)
+    }
+  }, [highScoreThreshold, minScore, preset])
+
+  useEffect(() => {
+    if (!lastConfigEventTs) return
+    void load()
+  }, [lastConfigEventTs, load])
 
   return (
     <div className="mx-auto max-w-[1400px] space-y-6">
@@ -122,12 +265,13 @@ export function OutreachQueuePage() {
           <div className="mt-4 rounded-xl border border-surface-border bg-field/40 p-4">
             <h3 className="text-xs font-semibold uppercase tracking-wider text-ink-subtle">Daily Workflow Guide</h3>
             <ol className="mt-2 list-decimal space-y-1 pl-4 text-sm text-ink-muted">
-              <li>Open Explorer</li>
-              <li>Filter Hot Leads</li>
-              <li>Select top 10</li>
-              <li>Send messages (manual paste in LinkedIn/Email)</li>
-              <li>Update status</li>
+              <li>Open Explorer with the latest synced admin defaults.</li>
+              <li>Review Hot leads first using the current score floor of {highScoreThreshold}.</li>
+              <li>Select the top leads ranked by updated scoring and targeting boosts.</li>
+              <li>Use enriched lead context to generate or refine the outreach message.</li>
+              <li>Update status after outreach so the queue stays accurate.</li>
             </ol>
+            <p className="mt-2 text-xs text-ink-muted">{workflowHints.join(' · ')}.</p>
             <label className="mt-3 inline-flex items-center gap-2 text-xs text-ink-muted">
               <input
                 type="checkbox"
@@ -244,6 +388,7 @@ export function OutreachQueuePage() {
               <tr className="border-b border-surface-border">
                 <th className="px-3 py-2">Name</th>
                 <th className="px-3 py-2">Company</th>
+                <th className="px-3 py-2">Priority</th>
                 <th className="px-3 py-2">Status</th>
                 <th className="px-3 py-2">Last contacted</th>
                 <th className="px-3 py-2">Score</th>
@@ -252,13 +397,13 @@ export function OutreachQueuePage() {
             <tbody>
               {loading && queueRows.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="px-3 py-12 text-center text-ink-muted">
+                  <td colSpan={6} className="px-3 py-12 text-center text-ink-muted">
                     <Loader2 className="mx-auto h-5 w-5 animate-spin" />
                   </td>
                 </tr>
               ) : queueRows.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="px-3 py-10 text-center text-ink-muted">
+                  <td colSpan={6} className="px-3 py-10 text-center text-ink-muted">
                     No active leads found for current filters.
                   </td>
                 </tr>
@@ -267,16 +412,26 @@ export function OutreachQueuePage() {
                   <tr
                     key={row.id}
                     className={`border-b border-surface-border/80 text-ink-muted last:border-0 hover:bg-amber-500/[0.04] dark:hover:bg-amber-400/[0.03] ${
-                      highlightReady && isReadyForOutreach(row)
-                        ? 'bg-emerald-500/[0.08] dark:bg-emerald-400/[0.08]'
+                      Number(row.score || 0) >= highScoreThreshold
+                        ? 'bg-amber-500/[0.05] dark:bg-amber-400/[0.06]'
                         : ''
-                    }`}
+                    } ${highlightReady && isReadyForOutreach(row) ? 'ring-1 ring-emerald-500/30' : ''}`}
                   >
                     <td className="max-w-[16rem] truncate px-3 py-2.5 text-ink" title={row.full_name}>
                       {row.full_name || '—'}
                     </td>
                     <td className="max-w-[14rem] truncate px-3 py-2.5" title={row.company_name}>
                       {row.company_name || '—'}
+                    </td>
+                    <td className="px-3 py-2.5">
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        <Badge variant={priorityVariant(getPriorityTierFromScore(Number(row.score || 0), adminConfig))}>
+                          {priorityLabel(getPriorityTierFromScore(Number(row.score || 0), adminConfig))}
+                        </Badge>
+                        {String(row.source_platform || '').trim().toLowerCase() === 'linkedin' ? (
+                          <Badge variant="platform">LinkedIn</Badge>
+                        ) : null}
+                      </div>
                     </td>
                     <td className="px-3 py-2.5">
                       <StatusBadge status={row.status || 'new'} title={leadStatusLabel(row.status || 'new')} />

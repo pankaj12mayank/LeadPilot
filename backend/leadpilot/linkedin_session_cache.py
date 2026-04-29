@@ -23,9 +23,14 @@ _CACHE_NAME = "linkedin_session_cache.json"
 
 def _policy_days() -> int:
     try:
-        import config
+        from backend.services import runtime_settings
 
-        d = int(getattr(config, "LEADPILOT_LINKEDIN_SESSION_DAYS", 7) or 7)
+        cfg = runtime_settings.get_admin_config()
+        d = int((cfg.get("session_policy") or {}).get("expiry_days") or 0)
+        if d <= 0:
+            import config
+
+            d = int(getattr(config, "LEADPILOT_LINKEDIN_SESSION_DAYS", 7) or 7)
     except Exception:
         d = int(os.environ.get("LEADPILOT_LINKEDIN_SESSION_DAYS", "7") or "7")
     return max(1, min(d, 365))

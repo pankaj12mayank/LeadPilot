@@ -20,6 +20,7 @@ import { cn } from '@/lib/utils/cn'
 import { useAuthStore } from '@/store/authStore'
 import { useBrandingStore } from '@/store/brandingStore'
 import { useSidebarStore } from '@/store/sidebarStore'
+import { useUserConfigStore } from '@/store/userConfigStore'
 
 const nav = [
   { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
@@ -67,6 +68,12 @@ export function AppShell() {
   const logoUrl = useBrandingStore((s) => s.branding.logo_url)
   const mediaRevision = useBrandingStore((s) => s.mediaRevision)
   const { user, logout } = useAuthStore()
+  const startUserConfigSync = useUserConfigStore((s) => s.startSync)
+  const stopUserConfigSync = useUserConfigStore((s) => s.stopSync)
+  const clearUserConfig = useUserConfigStore((s) => s.clear)
+  const configLoading = useUserConfigStore((s) => s.loading)
+  const configSyncError = useUserConfigStore((s) => s.syncError)
+  const lastConfigEventTs = useUserConfigStore((s) => s.lastEventTs)
   const mobileOpen = useSidebarStore((s) => s.mobileOpen)
   const setMobileOpen = useSidebarStore((s) => s.setMobileOpen)
   const key = pathKey(pathname)
@@ -79,6 +86,21 @@ export function AppShell() {
       el.setAttribute('content', documentDescription ?? DEFAULT_META_DESCRIPTION)
     }
   }, [title, documentDescription, productName])
+
+  useEffect(() => {
+    void startUserConfigSync()
+    return () => {
+      stopUserConfigSync()
+    }
+  }, [startUserConfigSync, stopUserConfigSync])
+
+  const configStatusLabel = configSyncError
+    ? 'Config sync issue'
+    : configLoading
+      ? 'Syncing admin rules'
+      : lastConfigEventTs
+        ? `Rules synced ${new Date(lastConfigEventTs).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
+        : 'Rules sync ready'
 
   return (
     <div className="flex min-h-screen bg-surface text-ink">
@@ -126,6 +148,19 @@ export function AppShell() {
           headerActions={
             <div className="flex items-center gap-2">
               <span
+                className={cn(
+                  'hidden rounded-full border px-2.5 py-1 text-[11px] font-medium lg:inline',
+                  configSyncError
+                    ? 'border-red-500/30 bg-red-500/10 text-red-700 dark:text-red-300'
+                    : configLoading
+                      ? 'border-amber-500/30 bg-amber-500/10 text-amber-800 dark:text-amber-200'
+                      : 'border-emerald-500/25 bg-emerald-500/10 text-emerald-800 dark:text-emerald-200',
+                )}
+                title={configSyncError || configStatusLabel}
+              >
+                {configStatusLabel}
+              </span>
+              <span
                 className="hidden max-w-[200px] truncate text-xs text-ink-subtle lg:inline"
                 title={user?.email}
               >
@@ -133,7 +168,11 @@ export function AppShell() {
               </span>
               <button
                 type="button"
-                onClick={() => logout()}
+                onClick={() => {
+                  stopUserConfigSync()
+                  clearUserConfig()
+                  logout()
+                }}
                 className="inline-flex items-center gap-1.5 rounded-lg border border-surface-border px-3 py-2 text-xs font-medium text-ink-muted transition hover:border-amber-500/25 hover:text-ink dark:hover:border-emerald-500/20"
               >
                 <LogOut className="h-3.5 w-3.5" strokeWidth={1.5} />

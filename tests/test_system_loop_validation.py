@@ -4,6 +4,7 @@ import uuid
 from unittest.mock import patch
 
 import config
+from backend.services import task_queue_service
 
 
 def _api(subpath: str) -> str:
@@ -53,7 +54,8 @@ def test_full_system_loop_validation(client):
     assert daily.status_code == 200, daily.text
     daily_body = daily.json()
     assert daily_body["job_type"] == "daily_auto"
-    assert "result" in daily_body
+    assert daily_body["mode"] == "queue_only"
+    assert daily_body["enqueued_count"] >= 1
 
     # Prepare company enrichment row so Saturday high-score candidate flow is connected.
     from backend.enrichment.website import WebsiteEnrichmentResult
@@ -81,7 +83,10 @@ def test_full_system_loop_validation(client):
             json={"job_type": "saturday_linkedin"},
         )
     assert sat_blocked.status_code == 200, sat_blocked.text
-    assert sat_blocked.json()["result"]["paused"] is True
+    sb = sat_blocked.json()
+    assert sb["mode"] == "queue_only"
+    assert sb["tasks"][0]["task_type"] == "linkedin"
+    assert sb["tasks"][0]["requires_login"] is True
 
     # User login done -> manual profile conversion -> lead DB write.
     with patch(
@@ -141,3 +146,71 @@ def test_full_system_loop_validation(client):
         )
     assert next_cycle.status_code == 200, next_cycle.text
     assert next_cycle.json()["job_type"] == "daily_auto"
+
+
+def test_e2e_cron_queue_worker_db_output_flow(client):
+    task_queue_service.clear_all_for_tests()
+    token = _token(client)
+    hdr = {"Authorization": f"Bearer {token}"}
+
+    # 1) Cron creates tasks in queue.
+    cron = client.post(_api("/companies/scheduler/run"), headers=hdr, json={"job_type": "daily_auto"})
+    assert cron.status_code == 200, cron.text
+    cron_body = cron.json()
+    assert cron_body["mode"] == "queue_only"
+    assert int(cron_body.get("enqueued_count") or 0) >= 1
+
+    q1 = client.get(_api("/tools/task-queue/status"), headers=hdr)
+    assert q1.status_code == 200, q1.text
+    assert int(q1.json().get("queue_size") or 0) >= 1
+
+    # 2) Worker executes queued task and produces output + chaining.
+    with patch(
+        "backend.services.task_worker_service.company_weekly_engine.run_daily_auto_job",
+        return_value={"saved_total": {"created": 1, "updated": 0}, "enrichment": {"selected": 1}, "errors": []},
+    ):
+        w1 = client.post(_api("/tools/task-worker/run-once"), headers=hdr)
+    assert w1.status_code == 200, w1.text
+    w1_body = w1.json()
+    assert w1_body["status"] == "success"
+    assert (w1_body.get("log") or {}).get("records_processed", 0) >= 1
+    chained = w1_body.get("chained_tasks") or []
+    assert any(str(x.get("task_type") or "") == "enrichment" for x in chained)
+
+    # 3) LinkedIn safe flow: session expired pauses task, no risky execution.
+    sat = client.post(_api("/companies/scheduler/run"), headers=hdr, json={"job_type": "saturday_linkedin"})
+    assert sat.status_code == 200, sat.text
+    assert sat.json()["mode"] == "queue_only"
+
+    with patch(
+        "backend.services.task_worker_service.session_info_dict",
+        return_value={"has_cache": True, "within_policy": False, "policy_days": 7},
+    ):
+        wp = client.post(_api("/tools/task-worker/run-once"), headers=hdr)
+    assert wp.status_code == 200, wp.text
+    wp_body = wp.json()
+    assert wp_body["status"] in {"paused", "success", "retrying"}
+    if wp_body["status"] == "paused":
+        assert "notify_user" in (wp_body.get("result") or {})
+
+    # 4) Session valid -> queued work can continue and output stays connected.
+    with patch(
+        "backend.services.task_worker_service.session_info_dict",
+        return_value={"has_cache": True, "within_policy": True, "policy_days": 7},
+    ), patch(
+        "backend.services.task_worker_service.company_weekly_engine.run_weekly_engine",
+        return_value={"result": {"paused": False, "conversion": {"created": 1}}},
+    ), patch(
+        "backend.services.task_worker_service.company_enrichment_service.enrich_companies_batch",
+        return_value={"selected": 1, "ok": 1, "failed": 0, "skipped": 0},
+    ):
+        # run a few cycles to drain available tasks safely
+        for _ in range(3):
+            client.post(_api("/tools/task-worker/run-once"), headers=hdr)
+
+    q2 = client.get(_api("/tools/task-queue/status"), headers=hdr)
+    assert q2.status_code == 200, q2.text
+    body2 = q2.json()
+    assert "queue_size" in body2
+    assert "waiting_queue_size" in body2
+    assert "failed_queue_size" in body2

@@ -13,7 +13,9 @@ import {
 } from '@/lib/api/companies'
 import { getApiErrorMessage } from '@/lib/api/client'
 import { fetchLeads } from '@/lib/api/leads'
+import { getEnabledExplorerSources, getEnabledSignalFilters, getHighScoreThreshold } from '@/lib/config/userConfigRules'
 import { useModeStore } from '@/store/modeStore'
+import { useUserConfigStore } from '@/store/userConfigStore'
 import type { Lead } from '@/types/models'
 
 function clip(s: string, n: number) {
@@ -22,13 +24,24 @@ function clip(s: string, n: number) {
   return t.length > n ? `${t.slice(0, n)}…` : t
 }
 
+function titleizeSource(source: string) {
+  const text = (source || '').trim()
+  if (!text) return 'Manual'
+  return text
+    .split('_')
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(' ')
+}
+
 export function SearchLeadsPage() {
   const [recent, setRecent] = useState<Lead[]>([])
   const [loading, setLoading] = useState(true)
   const [pollRunning, setPollRunning] = useState(false)
   const [keyword, setKeyword] = useState('')
   const [location, setLocation] = useState('')
-  const [sourceFilter, setSourceFilter] = useState<'job_board' | 'yc' | 'local' | 'all'>('all')
+  const [sourceFilter, setSourceFilter] = useState<string>('all')
+  const [selectedSources, setSelectedSources] = useState<string[]>([])
   const [minScore, setMinScore] = useState(0)
   const [signalHiring, setSignalHiring] = useState(false)
   const [signalScaling, setSignalScaling] = useState(false)
@@ -44,7 +57,15 @@ export function SearchLeadsPage() {
   const mode = useModeStore((s) => s.mode)
   const setMode = useModeStore((s) => s.setMode)
   const hydrateMode = useModeStore((s) => s.hydrate)
+  const adminConfig = useUserConfigStore((s) => s.adminConfig)
+  const lastConfigEventTs = useUserConfigStore((s) => s.lastEventTs)
+  const lastChangedFields = useUserConfigStore((s) => s.lastChangedFields)
   const isSaturday = new Date().getDay() === 6
+  const allowedSources = getEnabledExplorerSources(adminConfig)
+  const enabledSignals = getEnabledSignalFilters(adminConfig)
+  const defaultKeyword = String((adminConfig.targeting?.keywords || [])[0] || '').trim()
+  const defaultLocation = String((adminConfig.targeting?.locations || [])[0] || '').trim()
+  const defaultMinScore = getHighScoreThreshold(adminConfig)
 
   const loadRecent = useCallback(async () => {
     try {
@@ -64,6 +85,39 @@ export function SearchLeadsPage() {
   useEffect(() => {
     void loadRecent()
   }, [loadRecent])
+
+  useEffect(() => {
+    if (selectedSources.length === 0 && allowedSources.length > 0) {
+      setSelectedSources(allowedSources)
+    }
+    if (selectedSources.length > 0) {
+      const nextSelected = selectedSources.filter((src) => allowedSources.includes(src))
+      if (nextSelected.length !== selectedSources.length) {
+        setSelectedSources(nextSelected)
+      }
+    }
+    if (!keyword.trim()) {
+      const firstKeyword = String((adminConfig.targeting?.keywords || [])[0] || '').trim()
+      if (firstKeyword) setKeyword(firstKeyword)
+    }
+    if (!location.trim()) {
+      const firstLocation = String((adminConfig.targeting?.locations || [])[0] || '').trim()
+      if (firstLocation) setLocation(firstLocation)
+    }
+    if (Number(minScore || 0) <= 0) {
+      const minCompanyScore = getHighScoreThreshold(adminConfig)
+      if (minCompanyScore > 0) setMinScore(minCompanyScore)
+    }
+    if (sourceFilter !== 'all' && !allowedSources.includes(sourceFilter)) {
+      setSourceFilter('all')
+    }
+    if (!enabledSignals.hiring && signalHiring) {
+      setSignalHiring(false)
+    }
+    if (!enabledSignals.scaling && signalScaling) {
+      setSignalScaling(false)
+    }
+  }, [adminConfig, allowedSources, enabledSignals, keyword, location, minScore, selectedSources, sourceFilter, signalHiring, signalScaling])
 
   useEffect(() => {
     if (mode !== 'linkedin') return
@@ -86,6 +140,63 @@ export function SearchLeadsPage() {
     const id = window.setInterval(() => void loadRecent(), 4000)
     return () => window.clearInterval(id)
   }, [pollRunning, loadRecent])
+
+  const runExplorer = useCallback(async () => {
+    setExplorerBusy(true)
+    setExplorerErr(null)
+    try {
+      const r = await explorerSearchCompanies({
+        mode: 'explorer',
+        keyword: keyword.trim() || undefined,
+        location: location.trim() || undefined,
+        source_filter: sourceFilter,
+        min_score: minScore || 0,
+        signal_hiring: enabledSignals.hiring ? signalHiring : false,
+        signal_scaling: enabledSignals.scaling ? signalScaling : false,
+        min_results: 10,
+        max_results: 50,
+        sources: selectedSources,
+      })
+      setExplorerRows(r.results || [])
+      const info =
+        (r.results || []).length === 0 && r.ingestion?.triggered
+          ? 'Fetching more data'
+          : r.ingestion?.triggered
+            ? `Low DB results detected -> ingestion triggered. Saved: +${r.ingestion.saved_total.created} new, ${r.ingestion.saved_total.updated} updated.`
+            : `Results found directly from Company DB. ${r.count || 0} rows matched.`
+      const metaHints: string[] = []
+      if (r.effective_filters && r.effective_filters.source_filter !== sourceFilter && sourceFilter !== 'all') {
+        metaHints.push('source filter adjusted by admin policy')
+      }
+      if (signalHiring && !r.effective_filters?.signal_hiring) {
+        metaHints.push('hiring signal filter disabled by admin')
+      }
+      if (signalScaling && !r.effective_filters?.signal_scaling) {
+        metaHints.push('scaling signal filter disabled by admin')
+      }
+      setExplorerInfo(metaHints.length ? `${info} (${metaHints.join(', ')})` : info)
+    } catch (e) {
+      setExplorerRows([])
+      setExplorerErr(getApiErrorMessage(e, 'Explorer search failed'))
+    } finally {
+      setExplorerBusy(false)
+    }
+  }, [enabledSignals.hiring, enabledSignals.scaling, keyword, location, minScore, selectedSources, signalHiring, signalScaling, sourceFilter])
+
+  useEffect(() => {
+    if (!lastConfigEventTs || mode !== 'explorer') return
+    const affectsExplorer = lastChangedFields.some((field) =>
+      field.startsWith('admin_config.targeting') ||
+      field.startsWith('admin_config.sources') ||
+      field.startsWith('admin_config.signals_config') ||
+      field.startsWith('admin_config.scoring_weights'),
+    )
+    if (!affectsExplorer) return
+    void loadRecent()
+    if (explorerRows.length > 0 || explorerInfo) {
+      void runExplorer()
+    }
+  }, [explorerInfo, explorerRows.length, lastChangedFields, lastConfigEventTs, loadRecent, mode, runExplorer])
 
   return (
     <div className="mx-auto max-w-[1200px] space-y-8">
@@ -129,6 +240,13 @@ export function SearchLeadsPage() {
 
         {mode === 'explorer' ? (
           <div className="mt-4 space-y-3">
+            <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/10 px-4 py-3 text-xs text-emerald-900 dark:text-emerald-200">
+              Explorer is synced to the latest admin config.
+              {defaultKeyword ? ` Keyword default: ${defaultKeyword}.` : ''}
+              {defaultLocation ? ` Location default: ${defaultLocation}.` : ''}
+              {defaultMinScore > 0 ? ` Score floor: ${defaultMinScore}.` : ''}
+              {allowedSources.length ? ` Sources: ${allowedSources.join(', ')}.` : ''}
+            </div>
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
               <input
                 value={keyword}
@@ -144,14 +262,20 @@ export function SearchLeadsPage() {
               />
               <select
                 value={sourceFilter}
-                onChange={(e) => setSourceFilter(e.target.value as 'job_board' | 'yc' | 'local' | 'all')}
+                onChange={(e) => setSourceFilter(e.target.value)}
                 className="field-input rounded-xl px-3 py-2 text-sm"
               >
                 <option value="all">Source: all</option>
-                <option value="job_board">Source: job_board</option>
-                <option value="yc">Source: yc</option>
-                <option value="local">Source: local</option>
+                {allowedSources.map((src) => (
+                  <option key={src} value={src}>
+                    Source: {src}
+                  </option>
+                ))}
               </select>
+            </div>
+            <div className="text-xs text-ink-muted">
+              Source filter controls which origin is shown in Explorer results. Each result includes the source that produced
+              the company row.
             </div>
             <div className="grid gap-3 sm:grid-cols-3">
               <input
@@ -163,24 +287,61 @@ export function SearchLeadsPage() {
                 placeholder="min score"
                 className="field-input rounded-xl px-3 py-2 text-sm"
               />
-              <label className="flex items-center gap-2 rounded-xl border border-surface-border px-3 py-2 text-xs text-ink-muted">
-                <input
-                  type="checkbox"
-                  checked={signalHiring}
-                  onChange={(e) => setSignalHiring(e.target.checked)}
-                  className="h-4 w-4 rounded border-surface-border accent-amber-600"
-                />
-                Hiring signal
-              </label>
-              <label className="flex items-center gap-2 rounded-xl border border-surface-border px-3 py-2 text-xs text-ink-muted">
-                <input
-                  type="checkbox"
-                  checked={signalScaling}
-                  onChange={(e) => setSignalScaling(e.target.checked)}
-                  className="h-4 w-4 rounded border-surface-border accent-amber-600"
-                />
-                Scaling signal
-              </label>
+              {enabledSignals.hiring ? (
+                <label className="flex items-center gap-2 rounded-xl border border-surface-border px-3 py-2 text-xs text-ink-muted">
+                  <input
+                    type="checkbox"
+                    checked={signalHiring}
+                    onChange={(e) => setSignalHiring(e.target.checked)}
+                    className="h-4 w-4 rounded border-surface-border accent-amber-600"
+                  />
+                  Hiring signal
+                </label>
+              ) : (
+                <div className="rounded-xl border border-surface-border/70 px-3 py-2 text-xs text-ink-subtle">Hiring signal disabled by admin</div>
+              )}
+              {enabledSignals.scaling ? (
+                <label className="flex items-center gap-2 rounded-xl border border-surface-border px-3 py-2 text-xs text-ink-muted">
+                  <input
+                    type="checkbox"
+                    checked={signalScaling}
+                    onChange={(e) => setSignalScaling(e.target.checked)}
+                    className="h-4 w-4 rounded border-surface-border accent-amber-600"
+                  />
+                  Scaling signal
+                </label>
+              ) : (
+                <div className="rounded-xl border border-surface-border/70 px-3 py-2 text-xs text-ink-subtle">Scaling signal disabled by admin</div>
+              )}
+            </div>
+            <div className="rounded-xl border border-surface-border bg-field/30 px-3 py-3">
+              <div className="text-[10px] font-semibold uppercase tracking-wider text-ink-muted">Active sources before run</div>
+              <div className="mt-2 flex flex-wrap gap-2">
+                {allowedSources.map((src) => {
+                  const checked = selectedSources.includes(src)
+                  return (
+                    <label key={src} className="inline-flex items-center gap-2 rounded-xl border border-surface-border px-3 py-2 text-xs text-ink-muted">
+                      <input
+                        type="checkbox"
+                        checked={checked}
+                        onChange={(e) => {
+                          setSelectedSources((prev) => {
+                            if (e.target.checked) {
+                              return prev.includes(src) ? prev : [...prev, src]
+                            }
+                            return prev.filter((item) => item !== src)
+                          })
+                        }}
+                        className="h-4 w-4 rounded border-surface-border accent-amber-600"
+                      />
+                      {src}
+                    </label>
+                  )
+                })}
+              </div>
+              <p className="mt-2 text-xs text-ink-subtle">
+                Only admin-enabled sources are shown here. Explorer will run against the selected active sources.
+              </p>
             </div>
             <div className="flex items-center gap-2">
               <button
@@ -191,45 +352,25 @@ export function SearchLeadsPage() {
                     Boolean(keyword.trim()) ||
                     Boolean(location.trim()) ||
                     sourceFilter !== 'all' ||
+                    selectedSources.length > 0 ||
                     Number(minScore || 0) > 0 ||
-                    signalHiring ||
-                    signalScaling
+                    (enabledSignals.hiring && signalHiring) ||
+                    (enabledSignals.scaling && signalScaling)
                   if (!hasAnyFilter) {
                     setExplorerErr('Add at least one filter before running Explorer.')
                     setExplorerRows([])
                     setExplorerInfo('')
                     return
                   }
-                  setExplorerBusy(true)
-                  setExplorerErr(null)
+                  if (selectedSources.length === 0) {
+                    setExplorerErr('Select at least one active source before running Explorer.')
+                    setExplorerRows([])
+                    setExplorerInfo('')
+                    return
+                  }
                   setExplorerInfo('')
                   setExplorerRows([])
-                  try {
-                    const r = await explorerSearchCompanies({
-                      mode: 'explorer',
-                      keyword: keyword.trim() || undefined,
-                      location: location.trim() || undefined,
-                      source_filter: sourceFilter,
-                      min_score: minScore || 0,
-                      signal_hiring: signalHiring,
-                      signal_scaling: signalScaling,
-                      min_results: 10,
-                      max_results: 50,
-                    })
-                    setExplorerRows(r.results || [])
-                    const info =
-                      (r.results || []).length === 0 && r.ingestion?.triggered
-                        ? 'Fetching more data'
-                        : r.ingestion?.triggered
-                          ? `Low DB results detected -> ingestion triggered. Saved: +${r.ingestion.saved_total.created} new, ${r.ingestion.saved_total.updated} updated.`
-                          : `Results found directly from Company DB. ${r.count || 0} rows matched.`
-                    setExplorerInfo(info)
-                  } catch (e) {
-                    setExplorerRows([])
-                    setExplorerErr(getApiErrorMessage(e, 'Explorer search failed'))
-                  } finally {
-                    setExplorerBusy(false)
-                  }
+                  await runExplorer()
                 }}
                 className="inline-flex items-center gap-2 rounded-xl border border-amber-500/40 bg-amber-500/10 px-4 py-2 text-xs font-semibold text-amber-900 disabled:opacity-50 dark:text-amber-200"
               >
@@ -262,9 +403,24 @@ export function SearchLeadsPage() {
                       <tr key={`${row.id}-${row.domain}`} className="border-b border-surface-border/70">
                         <td className="px-2 py-2">{row.company_name || '—'}</td>
                         <td className="max-w-[18rem] truncate px-2 py-2" title={row.website}>
-                          {row.website || '—'}
+                          {row.website ? (
+                            <a
+                              href={row.website}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="text-amber-800 underline underline-offset-2 hover:text-amber-700 dark:text-amber-300 dark:hover:text-amber-200"
+                            >
+                              {row.website}
+                            </a>
+                          ) : (
+                            '—'
+                          )}
                         </td>
-                        <td className="px-2 py-2">{row.source || 'manual'}</td>
+                        <td className="px-2 py-2">
+                          <span className="inline-flex rounded-full border border-surface-border bg-field/40 px-2 py-0.5 text-[11px] font-medium text-ink">
+                            {titleizeSource(row.source || 'manual')}
+                          </span>
+                        </td>
                         <td className="px-2 py-2">{Math.round(Number(row.score || 0))}</td>
                         <td className="px-2 py-2">
                           {[
