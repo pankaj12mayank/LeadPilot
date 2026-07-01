@@ -95,6 +95,12 @@ const BASE_CONFIG: AdminConfig = {
     { source_name: 'manual', source_type: 'manual', enabled: true, input_type: 'file', adapter_function: 'ingest_public_companies' },
   ],
   worker_config: { worker_count: 3 },
+  plan_channel_access: {
+    starter: { channels: ['linkedin', 'email'], lead_limit: 100 },
+    growth: { channels: ['linkedin', 'email', 'phone'], lead_limit: 500 },
+    pro: { channels: ['linkedin', 'email', 'phone', 'api'], lead_limit: 2000 },
+    enterprise: { channels: ['linkedin', 'email', 'phone', 'api', 'custom'], lead_limit: 10000 },
+  },
 }
 
 function lead(overrides: Partial<Lead>): Lead {

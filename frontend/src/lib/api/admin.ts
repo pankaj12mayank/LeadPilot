@@ -1,268 +1,154 @@
-import { adminClient } from '@/lib/api/adminClient'
-import type { Branding } from '@/store/brandingStore'
+import { api } from '@/lib/api/client'
 
-export async function adminLogin(email: string, password: string) {
-  const { data } = await adminClient.post<{ access_token: string; token_type: string }>('/admin/login', {
-    email,
-    password,
-  })
+export type AdminConfig = any
+export type AdminJobLogRow = any
+export type AdminWorkspaceStats = any
+export type AdminControls = any
+export type AdminUserRow = any
+export type AdminProfile = any
+
+export async function adminGetProfile(): Promise<any> {
+  const { data } = await api.get('/admin/profile')
   return data
 }
 
-export type AdminUserRow = {
-  id: string
-  email: string
-  created_at: string
-  is_active: boolean
-  role?: 'admin' | 'user' | 'buyer'
-  plan_id?: 'starter' | 'growth' | 'pro' | 'enterprise'
-  last_login_at: string
-}
-
-export type AdminWorkspaceStats = {
-  registered_users: number
-  active_users?: number
-  inactive_users?: number
-  total_leads: number
-  hot_leads: number
-  contacted_leads: number
-  converted_leads: number
-  conversion_rate_percent: number
-  total_companies?: number
-}
-
-export async function adminGetStats() {
-  const { data } = await adminClient.get<AdminWorkspaceStats>('/admin/stats')
+export async function adminUpdateProfile(body: {
+  name?: string
+  current_password?: string
+  new_password?: string
+}): Promise<any> {
+  const { data } = await api.patch('/admin/profile', body)
   return data
 }
 
-export type AdminControls = {
-  scoring_weights: {
-    role_relevance: number
-    company_size: number
-    signals: number
-    data_completeness: number
-    base_factor_mix: number
-  }
-  targeting_filters: {
-    allowed_sources: string[]
-    min_company_score: number
-    preferred_locations: string[]
-    preferred_keywords: string[]
-  }
-  schedule_timing: {
-    daily_auto: string
-    friday_heavy: string
-    saturday_linkedin: string
-    sunday_report: string
-  }
-}
-
-export type AdminJobLogRow = {
-  job_type: string
-  run_date: string
-  status: 'success' | 'partial_success' | 'failure' | string
-  records_processed: number
-  errors: string[]
-  retry_next_scheduled_run?: boolean
-}
-
-export type AdminConfig = {
-  targeting: {
-    keywords: string[]
-    locations: string[]
-    industries: string[]
-    company_types: string[]
-    preferred_locations: string[]
-    preferred_keywords: string[]
-    min_company_score: number
-  }
-  sources: {
-    job_boards: boolean
-    startup_directories: boolean
-    local_listings: boolean
-    manual_seeds: boolean
-    linkedin: boolean
-    public_db: boolean
-    google_maps: boolean
-    indiamart: boolean
-    justdial: boolean
-    eworldtrade: boolean
-    global_sources: boolean
-    thomasnet: boolean
-    yelp: boolean
-    faire: boolean
-    allowed_sources: string[]
-  }
-  scoring_weights: {
-    role_weight: number
-    signal_weight: number
-    data_weight: number
-    company_size_weight: number
-    base_factor_mix: number
-  }
-  signals_config: {
-    hiring_enabled: boolean
-    scaling_enabled: boolean
-  }
-  scheduler_config: {
-    daily_time: string
-    weekly_time: string
-    linkedin_day: string
-    daily_auto: string
-    friday_heavy: string
-    saturday_linkedin: string
-    sunday_report: string
-  }
-  session_policy: {
-    expiry_days: number
-  }
-  retry_policy: {
-    retry_count: number
-  }
-  task_priority: {
-    linkedin: 'high' | 'medium' | 'low'
-    scoring: 'high' | 'medium' | 'low'
-    enrichment: 'high' | 'medium' | 'low'
-    ingestion: 'high' | 'medium' | 'low'
-  }
-  ai_control: {
-    ollama_enabled: boolean
-    api_enabled: boolean
-  }
-  scoring_control: {
-    role: number
-    signals: number
-    ai_score: number
-  }
-  safety_control: {
-    delay_seconds: number
-    batch_size: number
-    retry_count: number
-    pagination_limit: number
-  }
-  queue_priority: {
-    linkedin: 'high' | 'medium' | 'low'
-    ai: 'high' | 'medium' | 'low'
-    others: 'high' | 'medium' | 'low'
-  }
-  source_registry: Array<{
-    source_name: string
-    source_type: 'job_board' | 'directory' | 'local' | 'manual' | 'marketplace'
-    enabled: boolean
-    input_type: 'url' | 'keyword' | 'file' | 'csv'
-    adapter_function: string
-  }>
-  worker_config: {
-    worker_count: number
-  }
-  plan_channel_access: Record<
-    'starter' | 'growth' | 'pro' | 'enterprise',
-    {
-      channels: string[]
-      lead_limit: number
-    }
-  >
-}
-
-export async function adminGetControls() {
-  const { data } = await adminClient.get<AdminControls>('/admin/controls')
+export async function adminLogin(email: string, password: string): Promise<any> {
+  const { data } = await api.post('/admin/login', { email, password })
   return data
 }
 
-export async function adminPatchControls(patch: Partial<AdminControls>) {
-  const { data } = await adminClient.patch<AdminControls>('/admin/controls', patch)
+export async function adminGetDashboard(): Promise<any> {
+  const { data } = await api.get('/admin/overview')
   return data
 }
 
-export async function adminGetConfig() {
-  const { data } = await adminClient.get<AdminConfig>('/admin/config')
+export async function adminGetStats(): Promise<any> {
+  const { data } = await api.get('/admin/overview')
   return data
 }
 
-export async function adminPatchConfig(patch: Partial<AdminConfig>) {
-  const { data } = await adminClient.patch<AdminConfig>('/admin/config', patch)
+export async function adminGetUsers(params?: any): Promise<any> {
+  const { data } = await api.get('/admin/users', { params })
   return data
 }
 
-export async function adminGetJobLogs(limit = 50) {
-  const { data } = await adminClient.get<{ count: number; items: AdminJobLogRow[] }>('/admin/job-logs', { params: { limit } })
+export async function adminListUsers(params?: any): Promise<any> {
+  return adminGetUsers(params)
+}
+
+export async function adminCreateUser(body: any): Promise<any> {
+  const { data } = await api.post('/admin/users', body)
   return data
 }
 
-export async function adminListUsers() {
-  const { data } = await adminClient.get<{ users: AdminUserRow[] }>('/admin/users')
-  return data.users
-}
-
-export async function adminCreateUser(
-  email: string,
-  password: string,
-  role: 'admin' | 'user' | 'buyer' = 'user',
-  plan_id: 'starter' | 'growth' | 'pro' | 'enterprise' = 'starter',
-) {
-  const { data } = await adminClient.post<{ user: AdminUserRow }>('/admin/users', {
-    email,
-    password,
-    role,
-    plan_id: role === 'admin' ? 'enterprise' : plan_id,
-  })
-  return data.user
-}
-
-export async function adminBulkDeleteUsers(ids: string[]) {
-  const { data } = await adminClient.post<{ deleted: number }>('/admin/users/bulk-delete', { ids })
-  return data.deleted
-}
-
-export async function adminSetUserActive(
-  userId: string,
-  is_active: boolean,
-  role?: 'admin' | 'user' | 'buyer',
-  plan_id?: 'starter' | 'growth' | 'pro' | 'enterprise',
-) {
-  const { data } = await adminClient.patch<{ user: AdminUserRow }>(`/admin/users/${encodeURIComponent(userId)}`, {
-    is_active,
-    role,
-    plan_id,
-  })
-  return data.user
-}
-
-export async function adminSetUserPassword(userId: string, password: string) {
-  await adminClient.post(`/admin/users/${encodeURIComponent(userId)}/password`, { password })
-}
-
-export async function adminGetBranding() {
-  const { data } = await adminClient.get<Branding>('/admin/branding')
+export async function adminUpdateUser(id: string, body: any): Promise<any> {
+  const { data } = await api.patch(`/admin/users/${id}`, body)
   return data
 }
 
-export async function adminPatchBranding(patch: Partial<Branding>) {
-  const { data } = await adminClient.patch<Branding>('/admin/branding', patch)
+export async function adminDeleteUser(id: string): Promise<void> {
+  await api.delete(`/admin/users/${id}`)
+}
+
+export async function adminSetUserActive(id: string, is_active: boolean): Promise<any> {
+  const { data } = await api.patch(`/admin/users/${id}`, { is_active })
   return data
 }
 
-export async function adminUploadLogo(file: File) {
+export async function adminSetUserPassword(id: string, password: string): Promise<any> {
+  const { data } = await api.patch(`/admin/users/${id}/password`, { password })
+  return data
+}
+
+export async function adminBulkDeleteUsers(ids: string[]): Promise<any> {
+  const { data } = await api.post('/admin/users/bulk-delete', { ids })
+  return data
+}
+
+export async function adminGetBranding(): Promise<any> {
+  const { data } = await api.get('/admin/branding')
+  return data
+}
+
+export async function adminPatchBranding(data: any): Promise<any> {
+  const { data: res } = await api.patch('/admin/branding', data)
+  return res
+}
+
+export async function adminUploadLogo(file: Blob): Promise<any> {
   const fd = new FormData()
   fd.append('file', file)
-  const { data } = await adminClient.post<Branding>('/admin/branding/upload-logo', fd)
+  const { data } = await api.post('/admin/branding/logo', fd, { headers: { 'Content-Type': 'multipart/form-data' } })
   return data
 }
 
-export async function adminUploadFavicon(file: File) {
+export async function adminUploadFavicon(file: Blob): Promise<any> {
   const fd = new FormData()
   fd.append('file', file)
-  const { data } = await adminClient.post<Branding>('/admin/branding/upload-favicon', fd)
+  const { data } = await api.post('/admin/branding/favicon', fd, { headers: { 'Content-Type': 'multipart/form-data' } })
   return data
 }
 
-export async function adminClearLogo() {
-  const { data } = await adminClient.post<Branding>('/admin/branding/clear-logo')
+export async function adminClearLogo(): Promise<any> {
+  const { data } = await api.delete('/admin/branding/logo')
   return data
 }
 
-export async function adminClearFavicon() {
-  const { data } = await adminClient.post<Branding>('/admin/branding/clear-favicon')
+export async function adminClearFavicon(): Promise<any> {
+  const { data } = await api.delete('/admin/branding/favicon')
+  return data
+}
+
+export async function adminGetJobLogs(params?: any): Promise<any> {
+  const { data } = await api.get('/admin/job-logs', { params })
+  return data
+}
+
+export async function adminGetControls(): Promise<any> {
+  const { data } = await api.get('/admin/scoring')
+  return data
+}
+
+export async function adminPatchControls(data: any): Promise<any> {
+  const { data: res } = await api.patch('/admin/scoring', data)
+  return res
+}
+
+export async function adminGetConfig(): Promise<any> {
+  const { data } = await api.get('/admin/sources')
+  return data
+}
+
+export async function adminPatchConfig(data: any): Promise<any> {
+  const { data: res } = await api.patch('/admin/sources', data)
+  return res
+}
+
+export async function adminGetNewsletter(params?: any): Promise<any> {
+  const { data } = await api.get('/admin/newsletter', { params })
+  return data
+}
+
+export async function adminDeleteSubscriber(id: string): Promise<any> {
+  const { data } = await api.delete(`/admin/newsletter/${id}`)
+  return data
+}
+
+export async function adminGetInbox(params?: any): Promise<any> {
+  const { data } = await api.get('/admin/inbox', { params })
+  return data
+}
+
+export async function adminUpdateInboxStatus(id: string, status: string): Promise<any> {
+  const { data } = await api.patch(`/admin/inbox/${id}`, { status })
   return data
 }

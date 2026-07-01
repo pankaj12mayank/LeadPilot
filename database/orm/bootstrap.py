@@ -104,6 +104,8 @@ def _ensure_user_columns(engine) -> None:
             cx.execute(text("ALTER TABLE users ADD COLUMN plan_id VARCHAR(32) NOT NULL DEFAULT 'starter'"))
         if "last_login_at" not in cols:
             cx.execute(text("ALTER TABLE users ADD COLUMN last_login_at VARCHAR(64) DEFAULT ''"))
+        if "name" not in cols:
+            cx.execute(text("ALTER TABLE users ADD COLUMN name VARCHAR(255) NOT NULL DEFAULT ''"))
 
 
 def _ensure_company_enrichment_columns(engine) -> None:
@@ -154,6 +156,29 @@ def _ensure_company_columns(engine) -> None:
             cx.execute(text("ALTER TABLE companies ADD COLUMN ai_score REAL DEFAULT 0"))
 
 
+def _ensure_plan_columns(engine) -> None:
+    with engine.begin() as cx:
+        cur = cx.execute(text("PRAGMA table_info(plans)"))
+        cols = {row[1] for row in cur.fetchall()}
+        if not cols: return
+        if "stripe_price_id" not in cols:
+            cx.execute(text("ALTER TABLE plans ADD COLUMN stripe_price_id VARCHAR(128) DEFAULT ''"))
+        if "razorpay_plan_id" not in cols:
+            cx.execute(text("ALTER TABLE plans ADD COLUMN razorpay_plan_id VARCHAR(128) DEFAULT ''"))
+        if "sort_order" not in cols:
+            cx.execute(text("ALTER TABLE plans ADD COLUMN sort_order INTEGER NOT NULL DEFAULT 0"))
+        if "is_free" not in cols:
+            cx.execute(text("ALTER TABLE plans ADD COLUMN is_free INTEGER NOT NULL DEFAULT 0"))
+        if "lead_limit" not in cols:
+            cx.execute(text("ALTER TABLE plans ADD COLUMN lead_limit INTEGER NOT NULL DEFAULT 0"))
+        if "channel_access" not in cols:
+            cx.execute(text("ALTER TABLE plans ADD COLUMN channel_access TEXT NOT NULL DEFAULT '{}'"))
+        if "currency" not in cols:
+            cx.execute(text("ALTER TABLE plans ADD COLUMN currency VARCHAR(8) NOT NULL DEFAULT 'usd'"))
+        if "features" not in cols:
+            cx.execute(text("ALTER TABLE plans ADD COLUMN features TEXT NOT NULL DEFAULT '[]'"))
+
+
 def init_sa_tables() -> None:
     """Create SQLAlchemy-managed tables if missing (SQLite)."""
     engine = get_engine()
@@ -162,6 +187,7 @@ def init_sa_tables() -> None:
     _ensure_user_columns(engine)
     _ensure_company_columns(engine)
     _ensure_company_enrichment_columns(engine)
+    _ensure_plan_columns(engine)
     _ensure_lead_indexes(engine)
 
 

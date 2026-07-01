@@ -13,7 +13,6 @@ from backend.app.logging_config import setup_logging
 from backend.app.middleware.error_handlers import register_exception_handlers
 from backend.app.routes import (
     admin,
-    admin_landing,
     ai_messages,
     analytics,
     auth,
@@ -27,11 +26,12 @@ from backend.app.routes import (
     scraper,
     settings_routes,
     selenium_leadpilot,
+    subscriptions,
     tools,
 )
 from database.meta_db import init_meta_schema
 from database.orm.bootstrap import init_sa_tables
-from backend.services import lead_service, runtime_settings, settings_service, task_queue_service
+from backend.services import lead_service, runtime_settings, settings_service, task_queue_service, subscription_service
 
 _startup_log = logging.getLogger("leadpilot.startup")
 
@@ -87,6 +87,8 @@ async def lifespan(app: FastAPI):
         cfg.get("retry_policy", {}).get("retry_count"),
     )
     settings_service.subscribe_config_updates(_log_config_update)
+    subscription_service.seed_default_plans()
+    subscription_service.seed_default_email_templates()
     _startup_log.info("LeadPilot API — ready to accept requests.")
     yield
     settings_service.unsubscribe_config_updates(_log_config_update)
@@ -129,7 +131,6 @@ _api_root = config.API_ROOT_PATH or ""
 app.include_router(health.router)
 app.include_router(public.router, prefix=_api_root)
 app.include_router(admin.router, prefix=_api_root)
-app.include_router(admin_landing.router, prefix=_api_root)
 app.include_router(auth.router, prefix=_api_root)
 app.include_router(companies.router, prefix=_api_root)
 app.include_router(leads.router, prefix=_api_root)
@@ -142,6 +143,7 @@ app.include_router(exports.router, prefix=_api_root)
 app.include_router(scraper.router, prefix=_api_root)
 app.include_router(selenium_leadpilot.router, prefix=_api_root)
 app.include_router(tools.router, prefix=_api_root)
+app.include_router(subscriptions.router, prefix=_api_root)
 
 _startup_log.info(
     "HTTP API routes mounted under %r (GET /health unchanged; static /branding unchanged).",

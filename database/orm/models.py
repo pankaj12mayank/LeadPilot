@@ -14,6 +14,7 @@ class User(Base):
     id: Mapped[str] = mapped_column(String(36), primary_key=True)
     email: Mapped[str] = mapped_column(String(320), unique=True, nullable=False, index=True)
     password_hash: Mapped[str] = mapped_column(String(255), nullable=False)
+    name: Mapped[str] = mapped_column(String(255), nullable=False, default="")
     created_at: Mapped[str] = mapped_column(String(64), nullable=False)
     is_active: Mapped[int] = mapped_column(Integer, nullable=False, default=1, index=True)
     role: Mapped[str] = mapped_column(String(32), nullable=False, default="user", index=True)
@@ -134,8 +135,8 @@ class AppSetting(Base):
     value: Mapped[str] = mapped_column(Text, default="")
 
 
-class AdminConfigState(Base):
-    __tablename__ = "admin_config"
+class LandingConfigState(Base):
+    __tablename__ = "landing_config"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     config_json: Mapped[str] = mapped_column(Text, nullable=False, default="{}")
@@ -143,8 +144,8 @@ class AdminConfigState(Base):
     updated_at: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
 
 
-class LandingConfigState(Base):
-    __tablename__ = "landing_config"
+class AdminConfigState(Base):
+    __tablename__ = "admin_config"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     config_json: Mapped[str] = mapped_column(Text, nullable=False, default="{}")
@@ -206,3 +207,135 @@ class LeadPackPurchase(Base):
     amount_usd: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)
     status: Mapped[str] = mapped_column(String(32), nullable=False, default="completed", index=True)
     purchased_at: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+
+
+class Plan(Base):
+    __tablename__ = "plans"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    name: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    description: Mapped[str] = mapped_column(Text, default="")
+    monthly_price: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)
+    currency: Mapped[str] = mapped_column(String(8), nullable=False, default="usd")
+    features: Mapped[str] = mapped_column(Text, nullable=False, default="[]")
+    highlighted: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    is_free: Mapped[int] = mapped_column(Integer, nullable=False, default=0, index=True)
+    lead_limit: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    channel_access: Mapped[str] = mapped_column(Text, nullable=False, default="{}")
+    stripe_price_id: Mapped[str] = mapped_column(String(128), default="")
+    razorpay_plan_id: Mapped[str] = mapped_column(String(128), default="")
+    sort_order: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    is_active: Mapped[int] = mapped_column(Integer, nullable=False, default=1, index=True)
+    created_at: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    updated_at: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+
+
+class Subscription(Base):
+    __tablename__ = "subscriptions"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    user_id: Mapped[str] = mapped_column(String(36), nullable=False, index=True)
+    plan_id: Mapped[str] = mapped_column(String(36), nullable=False, index=True)
+    status: Mapped[str] = mapped_column(String(32), nullable=False, default="pending_payment", index=True)
+    start_date: Mapped[str] = mapped_column(String(64), default="")
+    end_date: Mapped[str] = mapped_column(String(64), default="")
+    trial_end: Mapped[str] = mapped_column(String(64), default="")
+    stripe_sub_id: Mapped[str] = mapped_column(String(128), default="", index=True)
+    razorpay_sub_id: Mapped[str] = mapped_column(String(128), default="", index=True)
+    gateway: Mapped[str] = mapped_column(String(32), nullable=False, default="free")
+    auto_renew: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    created_at: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    updated_at: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+
+
+class Transaction(Base):
+    __tablename__ = "transactions"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    user_id: Mapped[str] = mapped_column(String(36), nullable=False, index=True)
+    subscription_id: Mapped[str] = mapped_column(String(36), nullable=False, index=True)
+    plan_id: Mapped[str] = mapped_column(String(36), nullable=False, index=True)
+    amount: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)
+    currency: Mapped[str] = mapped_column(String(8), nullable=False, default="usd")
+    gateway: Mapped[str] = mapped_column(String(32), nullable=False, default="stripe")
+    gateway_txn_id: Mapped[str] = mapped_column(String(255), default="", index=True)
+    gateway_sub_id: Mapped[str] = mapped_column(String(255), default="")
+    status: Mapped[str] = mapped_column(String(32), nullable=False, default="pending", index=True)
+    payment_method: Mapped[str] = mapped_column(String(64), default="")
+    failure_reason: Mapped[str] = mapped_column(Text, default="")
+    invoice_url: Mapped[str] = mapped_column(Text, default="")
+    created_at: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+
+
+class PaymentGatewayConfig(Base):
+    __tablename__ = "payment_gateway_config"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    gateway: Mapped[str] = mapped_column(String(32), unique=True, nullable=False, index=True)
+    is_active: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    publishable_key: Mapped[str] = mapped_column(Text, default="")
+    secret_key: Mapped[str] = mapped_column(Text, default="")
+    webhook_secret: Mapped[str] = mapped_column(Text, default="")
+    created_at: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    updated_at: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+
+
+class EmailConfig(Base):
+    __tablename__ = "email_config"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    smtp_host: Mapped[str] = mapped_column(String(255), default="")
+    smtp_port: Mapped[int] = mapped_column(Integer, nullable=False, default=587)
+    smtp_user: Mapped[str] = mapped_column(String(255), default="")
+    smtp_pass: Mapped[str] = mapped_column(Text, default="")
+    from_email: Mapped[str] = mapped_column(String(320), default="")
+    from_name: Mapped[str] = mapped_column(String(255), default="")
+    is_active: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    created_at: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    updated_at: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+
+
+class EmailTemplate(Base):
+    __tablename__ = "email_templates"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    name: Mapped[str] = mapped_column(String(128), unique=True, nullable=False, index=True)
+    subject: Mapped[str] = mapped_column(String(512), nullable=False, default="")
+    body_html: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    variables: Mapped[str] = mapped_column(Text, nullable=False, default="[]")
+    created_at: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    updated_at: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+
+
+class UserUsage(Base):
+    __tablename__ = "user_usage"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    user_id: Mapped[str] = mapped_column(String(36), nullable=False, index=True)
+    subscription_id: Mapped[str] = mapped_column(String(36), nullable=False, index=True)
+    leads_consumed: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    period_start: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    period_end: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    updated_at: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+
+
+class NewsletterSubscriber(Base):
+    __tablename__ = "newsletter_subscribers"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    email: Mapped[str] = mapped_column(String(320), nullable=False, unique=True, index=True)
+    subscribed_at: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    status: Mapped[str] = mapped_column(String(16), nullable=False, default="active")
+    source: Mapped[str] = mapped_column(String(64), default="")
+
+
+class ContactMessage(Base):
+    __tablename__ = "contact_messages"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    name: Mapped[str] = mapped_column(String(255), nullable=False)
+    email: Mapped[str] = mapped_column(String(320), nullable=False, index=True)
+    phone: Mapped[str] = mapped_column(String(64), default="")
+    message: Mapped[str] = mapped_column(Text, nullable=False)
+    status: Mapped[str] = mapped_column(String(16), nullable=False, default="unread", index=True)
+    created_at: Mapped[str] = mapped_column(String(64), nullable=False, index=True)

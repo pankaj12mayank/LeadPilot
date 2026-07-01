@@ -37,6 +37,7 @@ export type Lead = {
 export type User = {
   id: string
   email: string
+  name?: string
   created_at: string
   role?: 'admin' | 'user' | 'buyer'
   plan_id?: 'starter' | 'growth' | 'pro' | 'enterprise'
@@ -48,6 +49,7 @@ export type AuthResponse = {
   access_token: string
   token_type: string
   user?: User
+  subscription?: any
 }
 
 export type DashboardMonthPoint = {

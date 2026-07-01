@@ -147,7 +147,7 @@ export function SeleniumLeadpilotPanel({
   }
 
   const running = st.state === 'running'
-  const tail = st.log_tail?.length ? st.log_tail : [st.message || '—']
+  const tail = st.log_tail && st.log_tail.length > 0 ? st.log_tail : [st.message || '—']
 
   return (
     <div

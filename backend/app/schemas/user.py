@@ -20,6 +20,7 @@ class UserLogin(BaseModel):
 class UserResponse(BaseModel):
     id: str
     email: str
+    name: str = ""
     created_at: str
     is_active: bool = True
     role: str = "user"

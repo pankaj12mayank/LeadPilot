@@ -14,7 +14,7 @@ from backend.app.api.deps import get_current_admin
 from backend.app.middleware.jwt import create_access_token
 from backend.services import analytics_service, auth_service, branding_files, runtime_settings, settings_service
 from database.orm.bootstrap import get_session_factory
-from database.orm.models import Company, LeadPack
+from database.orm.models import Company, LeadPack, NewsletterSubscriber, ContactMessage
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 
@@ -681,3 +681,216 @@ def admin_clear_favicon(_admin: dict = Depends(get_current_admin)) -> Dict[str, 
     branding_files.clear_branding_favicon()
     settings_service.patch_settings({"branding": {"favicon_url": ""}})
     return runtime_settings.get_branding()
+
+
+# ── Profile ────────────────────────────────────────────────────────────
+
+from database.orm.models import User as UserModel
+
+@router.get("/profile")
+def admin_get_profile(admin: dict = Depends(get_current_admin)) -> Dict[str, Any]:
+    user_id = admin.get("sub", "")
+    if not user_id:
+        raise HTTPException(status_code=401, detail="Invalid admin token")
+    Session = get_session_factory()
+    db = Session()
+    try:
+        user = db.get(UserModel, user_id)
+        if not user:
+            raise HTTPException(status_code=404, detail="Admin user not found")
+        return {
+            "id": user.id,
+            "email": user.email,
+            "name": user.name or "",
+            "role": "admin",
+        }
+    finally:
+        db.close()
+
+
+class AdminProfileUpdate(BaseModel):
+    name: str = ""
+    current_password: str = ""
+    new_password: str = ""
+
+
+@router.patch("/profile")
+def admin_update_profile(body: AdminProfileUpdate, admin: dict = Depends(get_current_admin)) -> Dict[str, Any]:
+    user_id = admin.get("sub", "")
+    if not user_id:
+        raise HTTPException(status_code=401, detail="Invalid admin token")
+    Session = get_session_factory()
+    db = Session()
+    try:
+        user = db.get(UserModel, user_id)
+        if not user:
+            raise HTTPException(status_code=404, detail="Admin user not found")
+        if body.name:
+            user.name = body.name
+        if body.current_password and body.new_password:
+            from backend.services.auth_service import verify_password, hash_password
+            if not verify_password(body.current_password, user.password_hash):
+                raise HTTPException(status_code=400, detail="Current password is incorrect")
+            user.password_hash = hash_password(body.new_password)
+        db.commit()
+        return {"ok": True, "name": user.name}
+    finally:
+        db.close()
+
+
+# ── Newsletter Subscribers ────────────────────────────────────────────
+
+class NewsletterBody(BaseModel):
+    email: str
+    source: str = ""
+
+
+@router.get("/newsletter")
+def admin_list_newsletter(
+    email: str = "",
+    status: str = "",
+    date_from: str = "",
+    date_to: str = "",
+    _admin: dict = Depends(get_current_admin),
+) -> Dict[str, Any]:
+    Session = get_session_factory()
+    db = Session()
+    try:
+        stmt = select(NewsletterSubscriber).order_by(NewsletterSubscriber.subscribed_at.desc())
+        if email:
+            stmt = stmt.where(NewsletterSubscriber.email.ilike(f"%{email}%"))
+        if status:
+            stmt = stmt.where(NewsletterSubscriber.status == status)
+        if date_from:
+            stmt = stmt.where(NewsletterSubscriber.subscribed_at >= date_from)
+        if date_to:
+            stmt = stmt.where(NewsletterSubscriber.subscribed_at <= date_to)
+        rows = list(db.scalars(stmt))
+        return {
+            "subscribers": [
+                {"id": r.id, "email": r.email, "status": r.status, "source": r.source or "", "subscribed_at": r.subscribed_at}
+                for r in rows
+            ],
+            "total": len(rows),
+        }
+    finally:
+        db.close()
+
+
+@router.post("/newsletter")
+def admin_add_subscriber(body: NewsletterBody, _admin: dict = Depends(get_current_admin)) -> Dict[str, Any]:
+    import uuid
+    Session = get_session_factory()
+    db = Session()
+    try:
+        now = datetime.now(timezone.utc).isoformat()
+        existing = db.scalar(select(NewsletterSubscriber).where(NewsletterSubscriber.email == body.email))
+        if existing:
+            raise HTTPException(status_code=400, detail="Email already subscribed")
+        sub = NewsletterSubscriber(id=str(uuid.uuid4()), email=body.email, subscribed_at=now, status="active", source=body.source)
+        db.add(sub)
+        db.commit()
+        return {"id": sub.id, "email": sub.email, "subscribed_at": now}
+    finally:
+        db.close()
+
+
+@router.delete("/newsletter/{sub_id}")
+def admin_delete_subscriber(sub_id: str, _admin: dict = Depends(get_current_admin)) -> Dict[str, Any]:
+    Session = get_session_factory()
+    db = Session()
+    try:
+        sub = db.get(NewsletterSubscriber, sub_id)
+        if not sub:
+            raise HTTPException(status_code=404, detail="Subscriber not found")
+        db.delete(sub)
+        db.commit()
+        return {"ok": True}
+    finally:
+        db.close()
+
+
+@router.patch("/newsletter/{sub_id}")
+def admin_update_subscriber_status(sub_id: str, status: str, _admin: dict = Depends(get_current_admin)) -> Dict[str, Any]:
+    Session = get_session_factory()
+    db = Session()
+    try:
+        sub = db.get(NewsletterSubscriber, sub_id)
+        if not sub:
+            raise HTTPException(status_code=404, detail="Subscriber not found")
+        sub.status = status
+        db.commit()
+        return {"ok": True}
+    finally:
+        db.close()
+
+
+# ── Contact Inbox ──────────────────────────────────────────────────────
+
+class ContactStatusBody(BaseModel):
+    status: str = "unread"
+
+
+@router.get("/inbox")
+def admin_list_inbox(
+    email: str = "",
+    status: str = "",
+    date_from: str = "",
+    date_to: str = "",
+    search: str = "",
+    _admin: dict = Depends(get_current_admin),
+) -> Dict[str, Any]:
+    Session = get_session_factory()
+    db = Session()
+    try:
+        stmt = select(ContactMessage).order_by(ContactMessage.created_at.desc())
+        if email:
+            stmt = stmt.where(ContactMessage.email.ilike(f"%{email}%"))
+        if status:
+            stmt = stmt.where(ContactMessage.status == status)
+        if date_from:
+            stmt = stmt.where(ContactMessage.created_at >= date_from)
+        if date_to:
+            stmt = stmt.where(ContactMessage.created_at <= date_to)
+        if search:
+            stmt = stmt.where(ContactMessage.message.ilike(f"%{search}%"))
+        rows = list(db.scalars(stmt))
+        return {
+            "contacts": [
+                {"id": r.id, "name": r.name, "email": r.email, "phone": r.phone or "", "message": r.message, "status": r.status, "created_at": r.created_at}
+                for r in rows
+            ],
+            "total": len(rows),
+        }
+    finally:
+        db.close()
+
+
+@router.patch("/inbox/{msg_id}")
+def admin_update_inbox_status(msg_id: str, body: ContactStatusBody, _admin: dict = Depends(get_current_admin)) -> Dict[str, Any]:
+    Session = get_session_factory()
+    db = Session()
+    try:
+        msg = db.get(ContactMessage, msg_id)
+        if not msg:
+            raise HTTPException(status_code=404, detail="Message not found")
+        msg.status = body.status
+        db.commit()
+        return {"ok": True}
+    finally:
+        db.close()
+
+
+@router.delete("/inbox/{msg_id}")
+def admin_delete_inbox_message(msg_id: str, _admin: dict = Depends(get_current_admin)) -> Dict[str, Any]:
+    Session = get_session_factory()
+    db = Session()
+    try:
+        msg = db.get(ContactMessage, msg_id)
+        if not msg:
+            raise HTTPException(status_code=404, detail="Message not found")
+        db.delete(msg)
+        db.commit()
+        return {"ok": True}
+    finally:
+        db.close()

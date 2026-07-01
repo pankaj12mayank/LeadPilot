@@ -1,3 +1,5 @@
+import { Link } from 'react-router-dom'
+import { Sparkles } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { Navigate, useNavigate, useSearchParams } from 'react-router-dom'
 
@@ -7,6 +9,7 @@ import { adminLogin } from '@/lib/api/admin'
 import { useBrandingStore } from '@/store/brandingStore'
 import { fetchMe, login, register } from '@/lib/api/auth'
 import { getApiErrorMessage } from '@/lib/api/client'
+import { resolveMediaUrl } from '@/lib/utils/mediaUrl'
 import { useAuthStore } from '@/store/authStore'
 import { useAdminStore } from '@/store/adminStore'
 
@@ -61,6 +64,8 @@ export function LoginPage() {
   const { token, setAuth } = useAuthStore()
   const setAdminToken = useAdminStore((s) => s.setToken)
   const productName = useBrandingStore((s) => s.branding.product_name)
+  const logoUrl = useBrandingStore((s) => s.branding.logo_url)
+  const mediaRevision = useBrandingStore((s) => s.mediaRevision)
   const [searchParams] = useSearchParams()
   const navigate = useNavigate()
   const [mode, setMode] = useState<'login' | 'register'>('login')
@@ -69,6 +74,7 @@ export function LoginPage() {
   const [confirmPassword, setConfirmPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
+  const [subBlocked, setSubBlocked] = useState<string | null>(null)
 
   useEffect(() => {
     try {
@@ -109,6 +115,13 @@ export function LoginPage() {
         const data = await register(email.trim(), password)
         const user = data.user ?? (await fetchMe())
         setAuth(data.access_token, user)
+        const sub = data.subscription
+        if (sub && sub.status === 'pending_payment') {
+          setSubBlocked('Please complete your payment to access the dashboard.')
+          setBusy(false)
+          return
+        }
+        navigate('/dashboard', { replace: true })
         return
       }
       // Login: app user first, then same form tries server admin (API .env), same as one sign-in page.
@@ -116,6 +129,18 @@ export function LoginPage() {
         const data = await login(email.trim(), password)
         const user = data.user ?? (await fetchMe())
         setAuth(data.access_token, user)
+        // Check subscription gate
+        const sub = data.subscription
+        if (sub && sub.status === 'pending_payment') {
+          setSubBlocked('Your payment is pending. Please complete payment to access the dashboard.')
+          setBusy(false)
+          return
+        }
+        if (sub && sub.status === 'payment_failed') {
+          setSubBlocked('Your last payment failed. Please retry with a different payment method.')
+          setBusy(false)
+          return
+        }
         if (next.startsWith('/admin')) {
           try {
             const ad = await adminLogin(email.trim(), password)
@@ -168,7 +193,15 @@ export function LoginPage() {
       <div className="pointer-events-none absolute -left-32 top-1/4 h-72 w-72 rounded-full bg-amber-500/15 blur-[100px] dark:bg-amber-400/10 sm:h-96 sm:w-96 sm:blur-[120px]" />
       <div className="pointer-events-none absolute -right-20 bottom-0 h-64 w-64 rounded-full bg-emerald-600/10 blur-[80px] dark:bg-emerald-500/10 sm:h-80 sm:w-80 sm:blur-[100px]" />
 
-      <div className="relative z-10 flex shrink-0 justify-end px-4 pb-1 pt-3 sm:px-8 sm:pt-4">
+      <div className="relative z-10 flex items-center justify-between px-4 pb-1 pt-3 sm:px-8 sm:pt-4">
+        <Link to="/" className="flex items-center gap-2">
+          {logoUrl ? (
+            <img src={`${resolveMediaUrl(logoUrl)}?v=${mediaRevision}`} alt={productName} className="h-7 w-7 rounded-lg object-contain" />
+          ) : (
+            <Sparkles className="h-5 w-5 text-amber-600" />
+          )}
+          <span className="font-display text-sm font-semibold text-zinc-900 dark:text-white">{productName}</span>
+        </Link>
         <ThemeToggle />
       </div>
 
@@ -306,6 +339,34 @@ export function LoginPage() {
 
         </div>
       </div>
+
+      {subBlocked && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="w-full max-w-md rounded-2xl border border-surface-border bg-white p-6 text-center shadow-xl dark:bg-zinc-900">
+            <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-amber-100 dark:bg-amber-900/30">
+              <span className="text-3xl">&#x26A0;</span>
+            </div>
+            <h2 className="mt-4 font-display text-xl font-bold text-zinc-900 dark:text-white">Payment Required</h2>
+            <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">{subBlocked}</p>
+            <div className="mt-6 flex justify-center gap-3">
+              <Link
+                to="/pricing"
+                onClick={() => setSubBlocked(null)}
+                className="rounded-lg bg-amber-600 px-6 py-2.5 text-sm font-semibold text-white hover:bg-amber-700"
+              >
+                Choose a Plan
+              </Link>
+              <button
+                type="button"
+                onClick={() => { setSubBlocked(null); useAuthStore.getState().logout() }}
+                className="rounded-lg border border-surface-border px-6 py-2.5 text-sm font-medium text-zinc-600 hover:bg-zinc-50 dark:text-zinc-400"
+              >
+                Sign Out
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

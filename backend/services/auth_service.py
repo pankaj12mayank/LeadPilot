@@ -76,6 +76,7 @@ def get_user_by_id(user_id: str) -> Optional[Dict[str, Any]]:
         return {
             "id": u.id,
             "email": u.email,
+            "name": u.name or "",
             "created_at": u.created_at,
             "is_active": bool(int(getattr(u, "is_active", 1) or 0)),
             "role": normalize_role(getattr(u, "role", "user")),
@@ -97,6 +98,7 @@ def get_user_by_email(email: str) -> Optional[Dict[str, Any]]:
         return {
             "id": u.id,
             "email": u.email,
+            "name": u.name or "",
             "password_hash": u.password_hash,
             "created_at": u.created_at,
             "is_active": int(getattr(u, "is_active", 1) or 0),
@@ -142,6 +144,7 @@ def list_users() -> List[Dict[str, Any]]:
             {
                 "id": u.id,
                 "email": u.email,
+                "name": u.name or "",
                 "created_at": u.created_at,
                 "is_active": bool(int(getattr(u, "is_active", 1) or 0)),
                 "role": normalize_role(getattr(u, "role", "user")),

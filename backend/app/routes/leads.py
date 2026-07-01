@@ -28,6 +28,7 @@ from backend.services import (
     history_service,
     lead_orm_service,
     status_history_service,
+    subscription_service,
 )
 
 
@@ -78,9 +79,19 @@ _CSV_FIELDS = [
 
 
 def _create_from_body(db: Session, body: LeadCreate, user_id: str) -> LeadResponse:
+    # Check lead limit
+    sub = subscription_service.get_user_subscription(user_id)
+    if sub:
+        remaining = (sub.get("lead_limit", 0) or 0) - (sub.get("leads_consumed", 0) or 0)
+        if remaining <= 0:
+            raise HTTPException(
+                status_code=403,
+                detail="Lead limit reached. Upgrade your plan to add more leads.",
+            )
     payload = body.model_dump(exclude_none=True)
     payload["user_id"] = user_id
     stored = lead_orm_service.create_lead(db, payload)
+    subscription_service.increment_lead_consumed(user_id)
     db.commit()
     history_service.record_event(
         stored.id,

@@ -1,8 +1,0 @@
-2026/04/16-22:55:44.487 4464 Reusing MANIFEST D:\Py_Projects\LeadPilot\sessions\playwright_user_data\upwork\Default\IndexedDB\https_www.upwork.com_0.indexeddb.leveldb/MANIFEST-000001
-2026/04/16-22:55:44.488 4464 Recovering log #4
-2026/04/16-22:55:44.489 4464 Reusing old log D:\Py_Projects\LeadPilot\sessions\playwright_user_data\upwork\Default\IndexedDB\https_www.upwork.com_0.indexeddb.leveldb/000004.log 
-2026/04/16-22:55:44.582 4464 Level-0 table #8: started
-2026/04/16-22:55:44.588 4464 Level-0 table #8: 118623 bytes OK
-2026/04/16-22:55:44.595 4464 Delete type=0 #4
-2026/04/16-22:55:44.596 4464 Manual compaction at level-0 from '\x00\x04\x00\x00\x00' @ 72057594037927935 : 1 .. '\x00\x05\x00\x00\x00' @ 0 : 0; will stop at (end)
-2026/04/16-22:55:46.122 5ee4 Manual compaction at level-0 from '\x00\x05\x00\x00\x00' @ 72057594037927935 : 1 .. '\x00\x06\x00\x00\x00' @ 0 : 0; will stop at (end)

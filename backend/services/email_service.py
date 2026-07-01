@@ -28,6 +28,50 @@ def _compose_body(body: str) -> str:
     return body
 
 
+def send_html(
+    to: str,
+    subject: str,
+    body_html: str,
+    smtp_host: str,
+    smtp_port: int = 587,
+    smtp_user: str = "",
+    smtp_password: str = "",
+    from_email: str = "",
+    from_name: str = "",
+) -> bool:
+    """Send HTML email with explicit SMTP config (used by subscription service)."""
+    to = (to or "").strip()
+    if not to:
+        logger.warning("send_html: empty recipient")
+        return False
+    if not smtp_host:
+        logger.warning("send_html: no SMTP host")
+        return False
+    msg = EmailMessage()
+    msg["Subject"] = subject
+    msg["From"] = f"{from_name or 'LeadPilot'} <{from_email}>"
+    msg["To"] = to
+    msg.set_content(body_html, subtype="html")
+    try:
+        if smtp_port == 465:
+            context = ssl.create_default_context()
+            with smtplib.SMTP_SSL(smtp_host, smtp_port, context=context) as server:
+                if smtp_user:
+                    server.login(smtp_user, smtp_password)
+                server.send_message(msg)
+        else:
+            with smtplib.SMTP(smtp_host, smtp_port, timeout=60) as server:
+                server.starttls(context=ssl.create_default_context())
+                if smtp_user:
+                    server.login(smtp_user, smtp_password)
+                server.send_message(msg)
+        logger.info("send_html: sent to=%s subject=%s", to, subject)
+        return True
+    except Exception as e:
+        logger.error("send_html: send failed: %s", e)
+        return False
+
+
 def send_email(
     to_address: str,
     subject: str,

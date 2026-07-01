@@ -3538,3 +3538,23 @@ Call log:
 2026-04-29 18:56:47,549 | ERROR | Ollama failed after 1 attempts; last error: [WinError 10061] No connection could be made because the target machine actively refused it
 2026-04-29 18:56:47,552 | INFO | ai.qualification.generated company_id=1 provider=fallback score=95
 2026-04-29 18:56:47,558 | INFO | scoring.done company_id=1 score=89.4 priority=Hot fetch_ok=1
+2026-06-30 17:13:02,695 | INFO | landing_analytics event=page_view section=landing target=/
+2026-06-30 17:13:02,695 | INFO | landing_analytics event=page_view section=landing target=/
+2026-06-30 17:13:54,643 | INFO | landing_analytics event=page_view section=landing target=/
+2026-06-30 17:13:54,655 | INFO | landing_analytics event=page_view section=landing target=/
+2026-06-30 17:14:00,008 | INFO | landing_analytics event=page_view section=landing target=/
+2026-06-30 17:14:01,408 | INFO | landing_analytics event=page_view section=landing target=/
+2026-06-30 17:14:03,134 | INFO | landing_analytics event=page_view section=landing target=/
+2026-06-30 17:14:04,169 | INFO | landing_analytics event=page_view section=landing target=/
+2026-06-30 17:14:05,955 | INFO | landing_analytics event=cta_click section=hero target=/search-leads
+2026-06-30 17:14:47,947 | INFO | landing_analytics event=page_view section=landing target=/
+2026-06-30 17:14:47,955 | INFO | landing_analytics event=page_view section=landing target=/
+2026-06-30 17:14:50,089 | INFO | landing_analytics event=cta_click section=hero target=/search-leads
+2026-06-30 17:15:09,299 | INFO | landing_analytics event=page_view section=landing target=/
+2026-06-30 17:15:09,310 | INFO | landing_analytics event=page_view section=landing target=/
+2026-06-30 17:15:13,054 | INFO | landing_analytics event=cta_click section=hero target=/login
+2026-07-01 12:01:31,476 | INFO | landing_analytics event=page_view section=landing target=/
+2026-07-01 15:32:57,788 | INFO | Seeded default Free plan
+2026-07-01 15:45:01,120 | INFO | Seeded 3 default email templates
+2026-07-01 16:49:29,140 | INFO | Seeded/updated 4 default plans
+2026-07-01 16:50:55,234 | INFO | Seeded/updated 4 default plans

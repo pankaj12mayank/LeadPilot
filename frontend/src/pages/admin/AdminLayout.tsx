@@ -1,17 +1,25 @@
-import { Bot, LayoutDashboard, ListChecks, LogOut, Palette, Shield, Users } from 'lucide-react'
-import { Link, Navigate, NavLink, Outlet } from 'react-router-dom'
+import { BarChart3, Cable, CreditCard, Gauge, Inbox, LogOut, Mail, Palette, ScrollText, Shield, Sliders, User, Users, Wallet } from 'lucide-react'
+import { Navigate, NavLink, Outlet } from 'react-router-dom'
 
 import { useAdminStore } from '@/store/adminStore'
 import { cn } from '@/lib/utils/cn'
 
 const nav = [
-  { to: '/admin/overview#dashboard', label: 'Dashboard', icon: LayoutDashboard },
+  { to: '/admin/overview', label: 'Dashboard', icon: Gauge },
   { to: '/admin/users', label: 'Users', icon: Users },
-  { to: '/admin/overview#channels', label: 'Channels', icon: ListChecks },
-  { to: '/admin/overview#ai-settings', label: 'AI Settings', icon: Bot },
-  { to: '/admin/overview#logs', label: 'Logs', icon: LayoutDashboard },
+  { to: '/admin/lead-packs', label: 'Lead Packs', icon: Wallet },
+  { to: '/admin/scoring', label: 'Scoring & Schedule', icon: Sliders },
+  { to: '/admin/plans', label: 'Plans & Channels', icon: BarChart3 },
+  { to: '/admin/sources', label: 'Source Registry', icon: Cable },
+  { to: '/admin/job-logs', label: 'Job Logs', icon: ScrollText },
   { to: '/admin/branding', label: 'Branding', icon: Palette },
-  { to: '/admin/landing', label: 'Landing CMS', icon: Palette },
+  { to: '/admin/profile', label: 'Profile', icon: User },
+  { to: '/admin/newsletter', label: 'Newsletter', icon: Mail },
+  { to: '/admin/inbox', label: 'Inbox', icon: Inbox },
+  { to: '/admin/payment-gateway', label: 'Payment Gateway', icon: CreditCard },
+  { to: '/admin/email-config', label: 'Email Config', icon: Mail },
+  { to: '/admin/email-templates', label: 'Email Templates', icon: ScrollText },
+  { to: '/admin/transactions', label: 'Transactions', icon: Wallet },
 ]
 
 export function AdminLayout() {
@@ -23,50 +31,59 @@ export function AdminLayout() {
   }
 
   return (
-    <div className="min-h-screen bg-surface text-ink">
-      <header className="border-b border-surface-border bg-gradient-to-b from-premium-card-light to-transparent px-4 py-4 dark:from-premium-card-dark">
-        <div className="mx-auto flex max-w-6xl flex-col gap-4">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-          <Link
-            to="/admin/overview"
-            className="flex items-center gap-2 rounded-lg outline-none ring-offset-2 transition hover:opacity-90 focus-visible:ring-2 focus-visible:ring-amber-500/40"
-          >
-            <Shield className="h-5 w-5 text-amber-700 dark:text-amber-300" />
-            <span className="font-display text-sm font-semibold tracking-tight">LeadPilot Admin Console</span>
-          </Link>
-            <button
-              type="button"
-              onClick={() => logout()}
-              className="inline-flex items-center gap-1 rounded-lg border border-surface-border px-3 py-2 text-ink-muted transition hover:text-ink"
-            >
-              <LogOut className="h-4 w-4" />
-              Sign out
-            </button>
+    <div className="flex h-screen overflow-hidden bg-zinc-50 dark:bg-zinc-950">
+      {/* Sidebar */}
+      <aside className="flex w-64 flex-col border-r border-surface-border bg-white dark:bg-zinc-900">
+        <div className="flex h-16 items-center gap-3 border-b border-surface-border px-5">
+          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-amber-500 to-amber-600 shadow-sm">
+            <Shield className="h-4 w-4 text-white" />
           </div>
-          <nav className="flex flex-wrap items-center gap-2 rounded-xl border border-surface-border bg-premium-card-light/70 p-1 text-sm dark:bg-premium-card-dark/60">
-            {nav.map(({ to, label, icon: Icon }) => (
-              <NavLink
-                key={to}
-                to={to}
-                className={({ isActive }) =>
-                  cn(
-                    'inline-flex items-center gap-1.5 rounded-lg px-3 py-2 font-medium transition',
-                    isActive
-                      ? 'bg-amber-500/15 text-ink shadow-sm'
-                      : 'text-ink-muted hover:bg-field/80 hover:text-ink dark:hover:bg-white/[0.04]',
-                  )
-                }
-              >
-                <Icon className="h-4 w-4 shrink-0 opacity-90" strokeWidth={1.75} />
-                {label}
-              </NavLink>
-            ))}
-          </nav>
+          <div>
+            <span className="block text-sm font-semibold text-zinc-900 dark:text-white">Admin Console</span>
+            <span className="block text-[11px] text-zinc-500">LeadPilot Control</span>
+          </div>
         </div>
-      </header>
-      <main className="mx-auto max-w-6xl px-4 py-8">
-        <Outlet />
-      </main>
+        <nav className="flex-1 space-y-1 overflow-y-auto p-3">
+          {nav.map(({ to, label, icon: Icon }) => (
+            <NavLink
+              key={to}
+              to={to}
+              end={to === '/admin/overview'}
+              className={({ isActive }) =>
+                cn(
+                  'flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors',
+                  isActive
+                    ? 'bg-amber-500/10 text-amber-700 dark:bg-amber-400/10 dark:text-amber-300'
+                    : 'text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-white',
+                )
+              }
+            >
+              <Icon className="h-4 w-4" strokeWidth={1.5} />
+              {label}
+            </NavLink>
+          ))}
+        </nav>
+        <div className="border-t border-surface-border p-3">
+          <button
+            type="button"
+            onClick={logout}
+            className="flex w-full items-center justify-center gap-2 rounded-lg border border-surface-border px-3 py-2 text-xs font-medium text-zinc-600 hover:bg-zinc-50 dark:text-zinc-400 dark:hover:bg-zinc-800"
+          >
+            <LogOut className="h-4 w-4" />
+            Sign Out
+          </button>
+        </div>
+      </aside>
+
+      {/* Main */}
+      <div className="flex flex-1 flex-col min-w-0">
+        <header className="flex h-16 items-center border-b border-surface-border bg-white px-6 dark:bg-zinc-900">
+          <h1 className="text-lg font-semibold text-zinc-900 dark:text-white">Admin Panel</h1>
+        </header>
+        <main className="flex-1 overflow-y-auto p-6">
+          <Outlet />
+        </main>
+      </div>
     </div>
   )
 }

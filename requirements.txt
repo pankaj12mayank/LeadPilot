@@ -20,4 +20,3 @@ ruff>=0.8.0
 selenium>=4.15.0
 openpyxl>=3.1.0
 openai>=1.40.0
-streamlit

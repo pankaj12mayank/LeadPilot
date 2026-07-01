@@ -23,6 +23,7 @@ import { toast } from 'sonner'
 import { useShallow } from 'zustand/react/shallow'
 
 import { Badge, statusBadgeClass } from '@/components/ui/Badge'
+import { UpgradeBanner } from '@/components/UpgradeBanner'
 import { FilterSelect } from '@/components/ui/FilterSelect'
 import { Modal } from '@/components/ui/Modal'
 import {
@@ -253,6 +254,7 @@ export function LeadsPage() {
   /** Lead id currently generating message (only that row's button disabled). */
   const [genBusyLeadId, setGenBusyLeadId] = useState<string | null>(null)
   const [genErr, setGenErr] = useState<string | null>(null)
+  const [usage, setUsage] = useState<{ leads_consumed: number; lead_limit: number } | null>(null)
   const [loadErr, setLoadErr] = useState<string | null>(null)
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({})
   const [pagination, setPagination] = useState<PaginationState>({ pageIndex: 0, pageSize: 25 })
@@ -338,6 +340,17 @@ export function LeadsPage() {
   useEffect(() => {
     setPagination((p) => ({ ...p, pageIndex: 0 }))
   }, [debouncedSearch, filters.status, filters.tier])
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await fetch('/api/user/usage', {
+          headers: { Authorization: `Bearer ${sessionStorage.getItem('li_token') || ''}` },
+        })
+        if (res.ok) { const j = await res.json(); setUsage(j) }
+      } catch { /* ignore */ }
+    })()
+  }, [])
 
   const openModal = useCallback(async (lead: Lead) => {
     let base = lead
@@ -786,6 +799,7 @@ export function LeadsPage() {
           {genErr}
         </div>
       ) : null}
+      {usage && <UpgradeBanner used={usage.leads_consumed} limit={usage.lead_limit} />}
 
       <section className="rounded-2xl border border-surface-border bg-premium-card-light p-4 shadow-card dark:bg-premium-card-dark sm:p-5">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">

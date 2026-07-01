@@ -67,21 +67,21 @@ export function OutreachQueuePage() {
   const preferredKeywords = useMemo(
     () =>
       (adminConfig.targeting?.preferred_keywords || [])
-        .map((x) => String(x || '').trim().toLowerCase())
+        .map((x: any) => String(x || '').trim().toLowerCase())
         .filter(Boolean),
     [adminConfig.targeting?.preferred_keywords],
   )
   const preferredLocations = useMemo(
     () =>
       (adminConfig.targeting?.preferred_locations || [])
-        .map((x) => String(x || '').trim().toLowerCase())
+        .map((x: any) => String(x || '').trim().toLowerCase())
         .filter(Boolean),
     [adminConfig.targeting?.preferred_locations],
   )
   const preferredIndustries = useMemo(
     () =>
       (adminConfig.targeting?.industries || [])
-        .map((x) => String(x || '').trim().toLowerCase())
+        .map((x: any) => String(x || '').trim().toLowerCase())
         .filter(Boolean),
     [adminConfig.targeting?.industries],
   )
@@ -140,9 +140,9 @@ export function OutreachQueuePage() {
       const company = String(lead.company_name || '').toLowerCase()
       const industry = String(lead.industry || '').toLowerCase()
       const location = String(lead.location || '').toLowerCase()
-      const keywordHit = preferredKeywords.some((k) => title.includes(k) || company.includes(k))
-      const locationHit = preferredLocations.some((loc) => location.includes(loc))
-      const industryHit = preferredIndustries.some((ind) => industry.includes(ind))
+      const keywordHit = preferredKeywords.some((k: any) => title.includes(k) || company.includes(k))
+      const locationHit = preferredLocations.some((loc: any) => location.includes(loc))
+      const industryHit = preferredIndustries.some((ind: any) => industry.includes(ind))
       let boost = 0
       if (keywordHit) boost += 8
       if (locationHit) boost += 6

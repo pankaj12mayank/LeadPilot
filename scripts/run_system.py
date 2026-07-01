@@ -72,6 +72,7 @@ def install_dependencies(py: Path) -> None:
         raise RuntimeError("npm is required. Install Node.js LTS and retry.")
     _run([str(py), "-m", "pip", "install", "--upgrade", "pip"])
     _run([str(py), "-m", "pip", "install", "-r", str(ROOT / "requirements.txt")])
+    _run([str(py), "-m", "playwright", "install", "--with-deps"], cwd=ROOT)
     if not (FRONTEND / "package.json").is_file():
         raise RuntimeError("frontend/package.json missing.")
     if (FRONTEND / "package-lock.json").is_file():

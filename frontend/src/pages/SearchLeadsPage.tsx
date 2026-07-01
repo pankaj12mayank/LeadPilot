@@ -1,4 +1,5 @@
 import { AlertTriangle, Loader2, RefreshCw } from 'lucide-react'
+import { UpgradeBanner } from '@/components/UpgradeBanner'
 import { useCallback, useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { toast } from 'sonner'
@@ -62,6 +63,7 @@ export function SearchLeadsPage() {
   const [recent, setRecent] = useState<Lead[]>([])
   const [loading, setLoading] = useState(true)
   const [pollRunning, setPollRunning] = useState(false)
+  const [usage, setUsage] = useState<{ leads_consumed: number; lead_limit: number } | null>(null)
   const [keyword, setKeyword] = useState('')
   const [location, setLocation] = useState('')
   const [sourceFilter, setSourceFilter] = useState<string>('all')
@@ -187,20 +189,23 @@ export function SearchLeadsPage() {
         sources: selectedSources,
       })
       setExplorerRows(r.results || [])
+      const ing = r.ingestion as Record<string, unknown> | undefined
+      const savedTotal = ing?.saved_total as Record<string, unknown> | undefined
       const info =
-        (r.results || []).length === 0 && r.ingestion?.triggered
+        (r.results || []).length === 0 && ing?.triggered
           ? 'Fetching more data'
-          : r.ingestion?.triggered
-            ? `Low DB results detected -> ingestion triggered. Saved: +${r.ingestion.saved_total.created} new, ${r.ingestion.saved_total.updated} updated.`
+          : ing?.triggered
+            ? `Low DB results detected -> ingestion triggered. Saved: +${savedTotal?.created ?? 0} new, ${savedTotal?.updated ?? 0} updated.`
             : `Results found directly from Company DB. ${r.count || 0} rows matched.`
       const metaHints: string[] = []
-      if (r.effective_filters && r.effective_filters.source_filter !== sourceFilter && sourceFilter !== 'all') {
+      const effFilters = r.effective_filters as Record<string, unknown> | undefined
+      if (effFilters && effFilters.source_filter !== sourceFilter && sourceFilter !== 'all') {
         metaHints.push('source filter adjusted by admin policy')
       }
-      if (signalHiring && !r.effective_filters?.signal_hiring) {
+      if (signalHiring && !effFilters?.signal_hiring) {
         metaHints.push('hiring signal filter disabled by admin')
       }
-      if (signalScaling && !r.effective_filters?.signal_scaling) {
+      if (signalScaling && !effFilters?.signal_scaling) {
         metaHints.push('scaling signal filter disabled by admin')
       }
       setExplorerInfo(metaHints.length ? `${info} (${metaHints.join(', ')})` : info)
@@ -241,8 +246,20 @@ export function SearchLeadsPage() {
     }
   }, [explorerInfo, explorerRows.length, lastChangedFields, lastConfigEventTs, loadRecent, mode, runExplorer])
 
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await fetch('/api/user/usage', {
+          headers: { Authorization: `Bearer ${sessionStorage.getItem('li_token') || ''}` },
+        })
+        if (res.ok) { const j = await res.json(); setUsage(j) }
+      } catch { /* ignore */ }
+    })()
+  }, [])
+
   return (
     <div className="mx-auto max-w-[1200px] space-y-8">
+      {usage && <UpgradeBanner used={usage.leads_consumed} limit={usage.lead_limit} />}
       <div>
         <h1 className="font-display text-2xl font-bold tracking-tight text-ink sm:text-3xl">Lead generation</h1>
         <p className="mt-2 max-w-2xl text-sm text-ink-muted">
@@ -690,17 +707,20 @@ export function SearchLeadsPage() {
                         setLinkedinCandidates(0)
                         try {
                           setLinkedinRunBusy(true)
-                          const run = await runScheduledJob('saturday_linkedin')
-                          const paused = Boolean(run.result?.paused || run.session_gate?.paused)
+                          const run = await runScheduledJob({ job_type: 'saturday_linkedin' })
+                          const r = run as Record<string, unknown>
+                          const result = r.result as Record<string, unknown> | undefined
+                          const sessionGate = r.session_gate as Record<string, unknown> | undefined
+                          const paused = Boolean(result?.paused || sessionGate?.paused)
                           if (paused) {
                             setLinkedinJobMsg(
                               String(
-                                run.result?.instructions ||
+                                result?.instructions ||
                                   'LinkedIn session expired. Login manually, then run LinkedIn Expansion again.',
                               ),
                             )
                           } else {
-                            const cands = Array.isArray(run.result?.candidates) ? run.result.candidates.length : 0
+                            const cands = Array.isArray(result?.candidates) ? (result.candidates as unknown[]).length : 0
                             setLinkedinCandidates(cands)
                             setLinkedinJobMsg(`LinkedIn expansion ran successfully. Prepared ${cands} company candidates.`)
                           }
