@@ -3,7 +3,8 @@ import { persist } from 'zustand/middleware'
 
 type AdminState = {
   token: string | null
-  setToken: (t: string | null) => void
+  email: string | null
+  setToken: (t: string | null, email?: string | null) => void
   logout: () => void
 }
 
@@ -11,8 +12,9 @@ export const useAdminStore = create<AdminState>()(
   persist(
     (set) => ({
       token: null,
-      setToken: (t) => set({ token: t }),
-      logout: () => set({ token: null }),
+      email: null,
+      setToken: (t, email) => set({ token: t, email: email ?? null }),
+      logout: () => set({ token: null, email: null }),
     }),
     { name: 'leadpilot-admin' },
   ),

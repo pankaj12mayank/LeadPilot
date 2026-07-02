@@ -1,4 +1,4 @@
-import { Save } from 'lucide-react'
+import { Eye, EyeOff, Save } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { toast } from 'sonner'
 
@@ -58,6 +58,35 @@ export function AdminProfilePage() {
     } finally { setPwBusy(false) }
   }
 
+function PasswordBlock({ label, value, onChange, placeholder }: { label: string; value: string; onChange: (v: string) => void; placeholder?: string }) {
+  const [visible, setVisible] = useState(false)
+  const id = label.toLowerCase().replace(/\s+/g, '-')
+  return (
+    <div>
+      <label className="block text-xs font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400" htmlFor={id}>{label}</label>
+      <div className="relative mt-1">
+        <input
+          id={id}
+          type={visible ? 'text' : 'password'}
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          placeholder={placeholder}
+          className="w-full rounded-lg border border-surface-border bg-transparent px-3 py-2 pr-10 text-sm outline-none focus:border-amber-500/50 focus:ring-1 focus:ring-amber-500/25 dark:bg-zinc-900"
+        />
+        <button
+          type="button"
+          tabIndex={-1}
+          onClick={() => setVisible((v) => !v)}
+          className="absolute right-1.5 top-1/2 -translate-y-1/2 flex h-7 w-7 items-center justify-center rounded-md text-zinc-400 hover:bg-zinc-100 hover:text-zinc-600 dark:hover:bg-zinc-800 dark:hover:text-zinc-300"
+          aria-label={visible ? 'Hide password' : 'Show password'}
+        >
+          {visible ? <EyeOff className="h-3.5 w-3.5" strokeWidth={1.5} /> : <Eye className="h-3.5 w-3.5" strokeWidth={1.5} />}
+        </button>
+      </div>
+    </div>
+  )
+}
+
   return (
     <div className="space-y-6">
       <div>
@@ -114,34 +143,9 @@ export function AdminProfilePage() {
         <h2 className="font-display text-lg font-semibold text-zinc-900 dark:text-white">Change Password</h2>
         <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">Update your admin password.</p>
         <div className="mt-4 grid gap-4 sm:grid-cols-3">
-          <div>
-            <label className="block text-xs font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">Current Password</label>
-            <input
-              type="password"
-              value={currentPassword}
-              onChange={(e) => setCurrentPassword(e.target.value)}
-              className="mt-1 w-full rounded-lg border border-surface-border bg-transparent px-3 py-2 text-sm outline-none focus:border-amber-500/50 focus:ring-1 focus:ring-amber-500/25"
-            />
-          </div>
-          <div>
-            <label className="block text-xs font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">New Password</label>
-            <input
-              type="password"
-              value={newPassword}
-              onChange={(e) => setNewPassword(e.target.value)}
-              className="mt-1 w-full rounded-lg border border-surface-border bg-transparent px-3 py-2 text-sm outline-none focus:border-amber-500/50 focus:ring-1 focus:ring-amber-500/25"
-              placeholder="At least 8 characters"
-            />
-          </div>
-          <div>
-            <label className="block text-xs font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">Confirm New Password</label>
-            <input
-              type="password"
-              value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
-              className="mt-1 w-full rounded-lg border border-surface-border bg-transparent px-3 py-2 text-sm outline-none focus:border-amber-500/50 focus:ring-1 focus:ring-amber-500/25"
-            />
-          </div>
+          <PasswordBlock label="Current Password" value={currentPassword} onChange={setCurrentPassword} />
+          <PasswordBlock label="New Password" value={newPassword} onChange={setNewPassword} placeholder="At least 8 characters" />
+          <PasswordBlock label="Confirm New Password" value={confirmPassword} onChange={setConfirmPassword} />
         </div>
         <button
           type="button"

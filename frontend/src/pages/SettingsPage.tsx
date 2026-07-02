@@ -155,23 +155,30 @@ export function SettingsPage() {
   }
 
   return (
-    <div className="mx-auto max-w-3xl space-y-8">
-      <form onSubmit={onSave} className="space-y-8">
-        <section className="rounded-2xl border border-surface-border bg-premium-card-light p-8 shadow-card dark:bg-premium-card-dark">
-          <h2 className="type-panel-title mb-2">AI message configuration</h2>
-          <p className="text-xs leading-relaxed text-ink-muted">
+    <div className="space-y-6">
+      <div>
+        <h1 className="font-display text-2xl font-bold text-zinc-900 dark:text-white">Settings</h1>
+        <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
+          Configure your workspace AI, scraping, and export preferences.
+        </p>
+      </div>
+
+      <form onSubmit={onSave} className="space-y-6">
+        <section className="rounded-2xl border border-surface-border bg-white p-6 shadow-sm dark:bg-zinc-900">
+          <h2 className="text-base font-semibold text-zinc-900 dark:text-white">AI message configuration</h2>
+          <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
             Choose how outreach messages are generated. Ollama uses your local or hosted Ollama runtime; API uses an
             OpenAI-compatible HTTPS endpoint.
           </p>
 
-          <div className="mt-6 flex flex-wrap gap-2 rounded-xl border border-surface-border bg-field/40 p-1 dark:bg-zinc-900/40">
+          <div className="mt-4 inline-flex rounded-xl border border-surface-border bg-zinc-50 p-1 dark:bg-zinc-800/50">
             <button
               type="button"
               onClick={() => setAiProvider('ollama')}
-              className={`flex-1 rounded-lg px-3 py-2 text-sm font-semibold transition ${
+              className={`rounded-lg px-4 py-1.5 text-sm font-medium transition ${
                 aiProvider === 'ollama'
-                  ? 'bg-gradient-to-r from-amber-600 to-amber-700 text-white shadow-sm'
-                  : 'text-ink-muted hover:text-ink'
+                  ? 'bg-white text-zinc-900 shadow-sm ring-1 ring-zinc-200 dark:bg-zinc-700 dark:text-white dark:ring-zinc-600'
+                  : 'text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200'
               }`}
             >
               Ollama
@@ -179,44 +186,44 @@ export function SettingsPage() {
             <button
               type="button"
               onClick={() => setAiProvider('external_api')}
-              className={`flex-1 rounded-lg px-3 py-2 text-sm font-semibold transition ${
+              className={`rounded-lg px-4 py-1.5 text-sm font-medium transition ${
                 aiProvider === 'external_api'
-                  ? 'bg-gradient-to-r from-amber-600 to-amber-700 text-white shadow-sm'
-                  : 'text-ink-muted hover:text-ink'
+                  ? 'bg-white text-zinc-900 shadow-sm ring-1 ring-zinc-200 dark:bg-zinc-700 dark:text-white dark:ring-zinc-600'
+                  : 'text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200'
               }`}
             >
               External API
             </button>
           </div>
 
-          <label className="mt-6 flex cursor-pointer items-center gap-3 rounded-xl border border-surface-border bg-field/60 px-4 py-3 dark:bg-zinc-900/40">
+          <label className="mt-4 flex cursor-pointer items-center gap-3 rounded-xl border border-surface-border bg-zinc-50/50 px-4 py-3 dark:bg-zinc-800/30">
             <input
               type="checkbox"
               checked={freeApi}
               onChange={(e) => setFreeApi(e.target.checked)}
-              className="h-4 w-4 rounded border-surface-border bg-field text-amber-700 accent-amber-600 focus:ring-amber-500/30 dark:text-amber-400"
+              className="h-4 w-4 rounded border-surface-border accent-amber-600"
             />
-            <span className="text-sm text-ink-muted">Free API mode (skip all model calls — templates only)</span>
+            <span className="text-sm text-zinc-600 dark:text-zinc-400">Free API mode (skip all model calls — templates only)</span>
           </label>
 
           {aiProvider === 'ollama' ? (
             <div className="mt-6 space-y-5">
-              <label className="flex cursor-pointer items-center gap-3 rounded-xl border border-surface-border bg-field/60 px-4 py-3 dark:bg-zinc-900/40">
+              <label className="flex cursor-pointer items-center gap-3 rounded-xl border border-surface-border bg-zinc-50/50 px-4 py-3 dark:bg-zinc-800/30">
                 <input
                   type="checkbox"
                   checked={useOllama}
                   onChange={(e) => setUseOllama(e.target.checked)}
-                  className="h-4 w-4 rounded border-surface-border bg-field text-amber-700 accent-amber-600 focus:ring-amber-500/30 dark:text-amber-400"
+                  className="h-4 w-4 rounded border-surface-border accent-amber-600"
                 />
-                <span className="text-sm text-ink-muted">Enable Ollama path when not in free API mode</span>
+                <span className="text-sm text-zinc-600 dark:text-zinc-400">Enable Ollama path when not in free API mode</span>
               </label>
               <div>
-                <label className="text-xs font-semibold uppercase tracking-wider text-ink-muted" htmlFor="preset">
+                <label className="text-xs font-medium text-zinc-500 dark:text-zinc-400" htmlFor="preset">
                   Model preset
                 </label>
                 <FilterSelect
                   id="preset"
-                  className="mt-2"
+                  className="mt-1.5"
                   options={MODEL_PRESETS}
                   value={modelPreset}
                   onChange={setModelPreset}
@@ -225,14 +232,14 @@ export function SettingsPage() {
               </div>
               {modelPreset === 'custom' ? (
                 <div>
-                  <label className="text-xs font-semibold uppercase tracking-wider text-ink-muted" htmlFor="custom">
+                  <label className="text-xs font-medium text-zinc-500 dark:text-zinc-400" htmlFor="custom">
                     Custom model tag
                   </label>
                   <input
                     id="custom"
                     value={modelCustom}
                     onChange={(e) => setModelCustom(e.target.value)}
-                    className="field-input mt-2"
+                    className="field-input mt-1.5"
                     placeholder="e.g. llama3:latest"
                   />
                 </div>
@@ -268,19 +275,19 @@ export function SettingsPage() {
                         setOllamaTestBusy(false)
                       }
                     }}
-                    className="rounded-xl border border-surface-border px-4 py-2 text-sm font-semibold text-ink-muted transition hover:border-amber-500/30 hover:text-ink disabled:opacity-50"
+                    className="rounded-lg border border-surface-border px-3 py-1.5 text-sm font-medium text-zinc-600 transition hover:border-zinc-300 hover:text-zinc-900 disabled:opacity-50 dark:text-zinc-400 dark:hover:border-zinc-600 dark:hover:text-white"
                   >
                     {ollamaTestBusy ? 'Testing…' : 'Test Ollama connection'}
                   </button>
                   {ollamaTestBusy ? (
-                    <span className="text-xs text-ink-muted">
+                    <span className="text-xs text-zinc-400">
                       Contacting the API — it may start Ollama silently or pull a model (can take up to a few minutes the first time).
                     </span>
                   ) : null}
                 </div>
-                {ollamaTestMsg ? <p className="text-xs text-ink-muted">{ollamaTestMsg}</p> : null}
+                {ollamaTestMsg ? <p className="text-xs text-zinc-500">{ollamaTestMsg}</p> : null}
                 {ollamaTestHints?.length ? (
-                  <ul className="max-w-2xl list-disc space-y-1.5 pl-5 text-xs leading-relaxed text-ink-muted">
+                  <ul className="max-w-2xl list-disc space-y-1.5 pl-5 text-xs leading-relaxed text-zinc-500">
                     {ollamaTestHints.map((h, i) => (
                       <li key={i}>{h}</li>
                     ))}
@@ -291,18 +298,18 @@ export function SettingsPage() {
           ) : (
             <div className="mt-6 space-y-4">
               <div>
-                <label className="text-xs font-semibold uppercase tracking-wider text-ink-muted" htmlFor="ext-url">
+                <label className="text-xs font-medium text-zinc-500 dark:text-zinc-400" htmlFor="ext-url">
                   Chat completions URL
                 </label>
                 <input
                   id="ext-url"
                   value={extBaseUrl}
                   onChange={(e) => setExtBaseUrl(e.target.value)}
-                  className="field-input mt-2 font-mono text-xs"
+                  className="field-input mt-1.5 font-mono text-xs"
                 />
               </div>
               <div>
-                <label className="text-xs font-semibold uppercase tracking-wider text-ink-muted" htmlFor="ext-key">
+                <label className="text-xs font-medium text-zinc-500 dark:text-zinc-400" htmlFor="ext-key">
                   API key
                 </label>
                 <input
@@ -311,20 +318,20 @@ export function SettingsPage() {
                   autoComplete="off"
                   value={extApiKey}
                   onChange={(e) => setExtApiKey(e.target.value)}
-                  className="field-input mt-2"
+                  className="field-input mt-1.5"
                   placeholder="sk-… or service key"
                 />
-                <p className="mt-1 text-[11px] text-ink-subtle">Leave blank when saving to keep the existing key.</p>
+                <p className="mt-1 text-[11px] text-zinc-400">Leave blank when saving to keep the existing key.</p>
               </div>
               <div>
-                <label className="text-xs font-semibold uppercase tracking-wider text-ink-muted" htmlFor="ext-model">
+                <label className="text-xs font-medium text-zinc-500 dark:text-zinc-400" htmlFor="ext-model">
                   Model name
                 </label>
                 <input
                   id="ext-model"
                   value={extModel}
                   onChange={(e) => setExtModel(e.target.value)}
-                  className="field-input mt-2"
+                  className="field-input mt-1.5"
                   placeholder="gpt-4o-mini"
                 />
               </div>
@@ -348,82 +355,82 @@ export function SettingsPage() {
                       setExtTestBusy(false)
                     }
                   }}
-                  className="rounded-xl border border-surface-border px-4 py-2 text-sm font-semibold text-ink-muted transition hover:border-amber-500/30 hover:text-ink disabled:opacity-50"
+                  className="rounded-lg border border-surface-border px-3 py-1.5 text-sm font-medium text-zinc-600 transition hover:border-zinc-300 hover:text-zinc-900 disabled:opacity-50 dark:text-zinc-400 dark:hover:border-zinc-600 dark:hover:text-white"
                 >
                   {extTestBusy ? 'Testing…' : 'Test API connection'}
                 </button>
-                {extTestMsg ? <span className="text-xs text-ink-muted">{extTestMsg}</span> : null}
+                {extTestMsg ? <span className="text-xs text-zinc-500">{extTestMsg}</span> : null}
               </div>
             </div>
           )}
         </section>
 
-        <section className="rounded-2xl border border-surface-border bg-premium-card-light p-8 shadow-card dark:bg-premium-card-dark">
-          <h2 className="type-panel-title mb-2">Delay and safety settings</h2>
-          <p className="mt-2 text-xs leading-relaxed text-ink-muted">
+        <section className="rounded-2xl border border-surface-border bg-white p-6 shadow-sm dark:bg-zinc-900">
+          <h2 className="text-base font-semibold text-zinc-900 dark:text-white">Delay and safety settings</h2>
+          <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
             Workspace defaults for prospecting cadence and batch size. Individual runs can still override delays from
             the LinkedIn search screen.
           </p>
-          <div className="mt-6 grid gap-4 sm:grid-cols-3">
+          <div className="mt-4 grid gap-4 sm:grid-cols-3">
             <div>
-              <label className="text-xs font-semibold uppercase tracking-wider text-ink-muted">Minimum delay (s)</label>
+              <label className="text-xs font-medium text-zinc-500 dark:text-zinc-400">Minimum delay (s)</label>
               <input
                 type="number"
                 step="0.5"
                 min={1}
                 value={delayMin}
                 onChange={(e) => setDelayMin(Number(e.target.value))}
-                className="field-input mt-2"
+                className="field-input mt-1.5"
               />
             </div>
             <div>
-              <label className="text-xs font-semibold uppercase tracking-wider text-ink-muted">Maximum delay (s)</label>
+              <label className="text-xs font-medium text-zinc-500 dark:text-zinc-400">Maximum delay (s)</label>
               <input
                 type="number"
                 step="0.5"
                 min={1}
                 value={delayMax}
                 onChange={(e) => setDelayMax(Number(e.target.value))}
-                className="field-input mt-2"
+                className="field-input mt-1.5"
               />
             </div>
             <div>
-              <label className="text-xs font-semibold uppercase tracking-wider text-ink-muted">Default lead limit</label>
+              <label className="text-xs font-medium text-zinc-500 dark:text-zinc-400">Default lead limit</label>
               <input
                 type="number"
                 min={1}
                 max={50}
                 value={maxLeads}
                 onChange={(e) => setMaxLeads(Number(e.target.value))}
-                className="field-input mt-2"
+                className="field-input mt-1.5"
               />
             </div>
           </div>
         </section>
 
-        <section className="rounded-2xl border border-surface-border bg-premium-card-light p-8 shadow-card dark:bg-premium-card-dark">
-          <h2 className="type-panel-title mb-2">Export preferences</h2>
-          <p className="mt-2 text-xs leading-relaxed text-ink-muted">
+        <section className="rounded-2xl border border-surface-border bg-white p-6 shadow-sm dark:bg-zinc-900">
+          <h2 className="text-base font-semibold text-zinc-900 dark:text-white">Export preferences</h2>
+          <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
             Lead export files use the server export pipeline. Optional directory notes help operators align deployments
             with your data retention policy.
           </p>
-          <div className="mt-6">
-            <label className="text-xs font-semibold uppercase tracking-wider text-ink-muted" htmlFor="exports">
+          <div className="mt-4 max-w-sm">
+            <label className="text-xs font-medium text-zinc-500 dark:text-zinc-400" htmlFor="exports">
               Exports directory (optional note)
             </label>
             <input
               id="exports"
               value={exportsDir}
               onChange={(e) => setExportsDir(e.target.value)}
-              className="field-input mt-2"
+              className="field-input mt-1.5"
               placeholder="exports"
             />
           </div>
         </section>
 
-        <section className="rounded-2xl border border-surface-border bg-premium-card-light p-8 shadow-card dark:bg-premium-card-dark">
-          <h2 className="type-panel-title mb-2">Account settings</h2>
-          <p className="text-xs leading-relaxed text-ink-muted">
+        <section className="rounded-2xl border border-surface-border bg-white p-6 shadow-sm dark:bg-zinc-900">
+          <h2 className="text-base font-semibold text-zinc-900 dark:text-white">Account settings</h2>
+          <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
             Internal documentation for administrators. Not shown to prospects or external contacts.
           </p>
           <textarea
@@ -434,15 +441,17 @@ export function SettingsPage() {
           />
         </section>
 
-        {msg ? <p className="text-sm text-ink-muted">{msg}</p> : null}
+        {msg ? <p className="text-sm text-zinc-500">{msg}</p> : null}
 
-        <button
-          type="submit"
-          disabled={busy}
-          className="btn-primary px-6 py-3 text-sm disabled:opacity-50"
-        >
-          {busy ? 'Saving' : 'Save Changes'}
-        </button>
+        <div className="flex items-center gap-3">
+          <button
+            type="submit"
+            disabled={busy}
+            className="rounded-lg bg-amber-600 px-5 py-2 text-sm font-semibold text-white transition hover:bg-amber-700 disabled:opacity-50"
+          >
+            {busy ? 'Saving' : 'Save Changes'}
+          </button>
+        </div>
       </form>
     </div>
   )

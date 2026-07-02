@@ -45,7 +45,7 @@ def admin_login(body: AdminLoginBody) -> Dict[str, Any]:
     pw = body.password.strip()
     if em != config.ADMIN_EMAIL or pw != config.ADMIN_PASSWORD:
         raise HTTPException(status_code=401, detail="Invalid admin email or password")
-    token = create_access_token("admin-console", {"admin": True})
+    token = create_access_token("admin-console", {"admin": True, "admin_email": em})
     return {"access_token": token, "token_type": "bearer"}
 
 
@@ -120,7 +120,11 @@ def admin_patch_lead_pack(pack_id: int, body: AdminLeadPackCreate, _admin: dict 
 
 @router.get("/users")
 def admin_list_users(_admin: dict = Depends(get_current_admin)) -> Dict[str, Any]:
-    return {"users": auth_service.list_users()}
+    users = auth_service.list_users()
+    admin_email = (_admin.get("admin_email") or getattr(config, "ADMIN_EMAIL", "") or "").strip().lower()
+    if admin_email:
+        users = [u for u in users if u.get("email", "").strip().lower() != admin_email]
+    return {"users": users}
 
 
 class AdminCreateUserBody(BaseModel):
@@ -155,7 +159,7 @@ def admin_bulk_delete_users(
 
 
 class AdminUserActiveBody(BaseModel):
-    is_active: bool
+    is_active: bool | None = None
     role: str | None = None
     plan_id: str | None = None
 
@@ -166,7 +170,9 @@ def admin_patch_user(
     body: AdminUserActiveBody,
     _admin: dict = Depends(get_current_admin),
 ) -> Dict[str, Any]:
-    updated = auth_service.set_user_active(user_id, body.is_active)
+    updated = True
+    if body.is_active is not None:
+        updated = auth_service.set_user_active(user_id, body.is_active)
     if updated and body.role is not None:
         updated = auth_service.set_user_role(user_id, body.role)
     if updated and body.plan_id is not None:
@@ -689,21 +695,19 @@ from database.orm.models import User as UserModel
 
 @router.get("/profile")
 def admin_get_profile(admin: dict = Depends(get_current_admin)) -> Dict[str, Any]:
-    user_id = admin.get("sub", "")
-    if not user_id:
-        raise HTTPException(status_code=401, detail="Invalid admin token")
+    email = getattr(config, "ADMIN_EMAIL", "admin@leadpilot.local")
     Session = get_session_factory()
     db = Session()
     try:
-        user = db.get(UserModel, user_id)
-        if not user:
-            raise HTTPException(status_code=404, detail="Admin user not found")
-        return {
-            "id": user.id,
-            "email": user.email,
-            "name": user.name or "",
-            "role": "admin",
-        }
+        user = db.query(UserModel).filter(UserModel.email == email).first() if email else None
+        if user:
+            return {
+                "id": user.id,
+                "email": user.email,
+                "name": user.name or "",
+                "role": "admin",
+            }
+        return {"id": "admin-console", "email": email, "name": "Admin", "role": "admin"}
     finally:
         db.close()
 
@@ -716,24 +720,22 @@ class AdminProfileUpdate(BaseModel):
 
 @router.patch("/profile")
 def admin_update_profile(body: AdminProfileUpdate, admin: dict = Depends(get_current_admin)) -> Dict[str, Any]:
-    user_id = admin.get("sub", "")
-    if not user_id:
-        raise HTTPException(status_code=401, detail="Invalid admin token")
+    email = getattr(config, "ADMIN_EMAIL", "admin@leadpilot.local")
     Session = get_session_factory()
     db = Session()
     try:
-        user = db.get(UserModel, user_id)
-        if not user:
-            raise HTTPException(status_code=404, detail="Admin user not found")
-        if body.name:
-            user.name = body.name
-        if body.current_password and body.new_password:
-            from backend.services.auth_service import verify_password, hash_password
-            if not verify_password(body.current_password, user.password_hash):
-                raise HTTPException(status_code=400, detail="Current password is incorrect")
-            user.password_hash = hash_password(body.new_password)
-        db.commit()
-        return {"ok": True, "name": user.name}
+        user = db.query(UserModel).filter(UserModel.email == email).first() if email else None
+        if user:
+            if body.name:
+                user.name = body.name
+            if body.current_password and body.new_password:
+                from backend.services.auth_service import verify_password, hash_password
+                if not verify_password(body.current_password, user.password_hash):
+                    raise HTTPException(status_code=400, detail="Current password is incorrect")
+                user.password_hash = hash_password(body.new_password)
+            db.commit()
+            return {"ok": True, "name": user.name}
+        return {"ok": True, "name": body.name or "Admin"}
     finally:
         db.close()
 

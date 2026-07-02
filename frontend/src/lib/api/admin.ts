@@ -27,12 +27,12 @@ export async function adminLogin(email: string, password: string): Promise<any> 
 }
 
 export async function adminGetDashboard(): Promise<any> {
-  const { data } = await api.get('/admin/overview')
+  const { data } = await api.get('/admin/stats')
   return data
 }
 
 export async function adminGetStats(): Promise<any> {
-  const { data } = await api.get('/admin/overview')
+  const { data } = await api.get('/admin/stats')
   return data
 }
 
@@ -42,7 +42,8 @@ export async function adminGetUsers(params?: any): Promise<any> {
 }
 
 export async function adminListUsers(params?: any): Promise<any> {
-  return adminGetUsers(params)
+  const { data } = await api.get('/admin/users', { params })
+  return data
 }
 
 export async function adminCreateUser(body: any): Promise<any> {
@@ -61,7 +62,7 @@ export async function adminDeleteUser(id: string): Promise<void> {
 
 export async function adminSetUserActive(id: string, is_active: boolean): Promise<any> {
   const { data } = await api.patch(`/admin/users/${id}`, { is_active })
-  return data
+  return data.user || data
 }
 
 export async function adminSetUserPassword(id: string, password: string): Promise<any> {
@@ -87,24 +88,24 @@ export async function adminPatchBranding(data: any): Promise<any> {
 export async function adminUploadLogo(file: Blob): Promise<any> {
   const fd = new FormData()
   fd.append('file', file)
-  const { data } = await api.post('/admin/branding/logo', fd, { headers: { 'Content-Type': 'multipart/form-data' } })
+  const { data } = await api.post('/admin/branding/upload-logo', fd, { headers: { 'Content-Type': 'multipart/form-data' } })
   return data
 }
 
 export async function adminUploadFavicon(file: Blob): Promise<any> {
   const fd = new FormData()
   fd.append('file', file)
-  const { data } = await api.post('/admin/branding/favicon', fd, { headers: { 'Content-Type': 'multipart/form-data' } })
+  const { data } = await api.post('/admin/branding/upload-favicon', fd, { headers: { 'Content-Type': 'multipart/form-data' } })
   return data
 }
 
 export async function adminClearLogo(): Promise<any> {
-  const { data } = await api.delete('/admin/branding/logo')
+  const { data } = await api.post('/admin/branding/clear-logo')
   return data
 }
 
 export async function adminClearFavicon(): Promise<any> {
-  const { data } = await api.delete('/admin/branding/favicon')
+  const { data } = await api.post('/admin/branding/clear-favicon')
   return data
 }
 
@@ -114,22 +115,22 @@ export async function adminGetJobLogs(params?: any): Promise<any> {
 }
 
 export async function adminGetControls(): Promise<any> {
-  const { data } = await api.get('/admin/scoring')
+  const { data } = await api.get('/admin/controls')
   return data
 }
 
 export async function adminPatchControls(data: any): Promise<any> {
-  const { data: res } = await api.patch('/admin/scoring', data)
+  const { data: res } = await api.patch('/admin/controls', data)
   return res
 }
 
 export async function adminGetConfig(): Promise<any> {
-  const { data } = await api.get('/admin/sources')
+  const { data } = await api.get('/admin/config')
   return data
 }
 
 export async function adminPatchConfig(data: any): Promise<any> {
-  const { data: res } = await api.patch('/admin/sources', data)
+  const { data: res } = await api.patch('/admin/config', data)
   return res
 }
 

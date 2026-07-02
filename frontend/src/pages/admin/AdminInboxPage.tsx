@@ -1,5 +1,5 @@
-import { MessageSquare, Search, Filter, Trash2, Mail, MailOpen, Loader2 } from 'lucide-react'
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { MessageSquare, Search, Trash2, Mail, MailOpen, Loader2 } from 'lucide-react'
+import { useCallback, useEffect, useState } from 'react'
 
 import { api, getApiErrorMessage } from '@/lib/api/client'
 import { cn } from '@/lib/utils/cn'
@@ -94,79 +94,64 @@ export function AdminInboxPage() {
       </div>
 
       <div className="overflow-hidden rounded-2xl border border-surface-border bg-white shadow-sm dark:bg-zinc-900">
-        <div className="flex flex-wrap items-center gap-3 border-b border-surface-border px-5 py-4">
-          <div className="relative min-w-[200px] flex-1 max-w-xs">
-            <Mail className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-400" />
+        <div className="flex flex-wrap items-center gap-2 border-b border-surface-border px-4 py-3">
+          <div className="relative w-44">
+            <Mail className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-zinc-400" />
             <input
               type="text"
               value={searchEmail}
               onChange={(e) => setSearchEmail(e.target.value)}
-              placeholder="Search by email..."
-              className="field-input w-full py-2 pl-9 pr-3"
+              placeholder="Email..."
+              className="w-full rounded-lg border border-surface-border bg-transparent py-1.5 pl-8 pr-2.5 text-xs outline-none focus:border-amber-500/50 focus:ring-1 focus:ring-amber-500/25 dark:bg-zinc-900"
             />
           </div>
-
-          <div className="relative min-w-[200px] flex-1 max-w-xs">
-            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-400" />
+          <div className="relative w-44">
+            <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-zinc-400" />
             <input
               type="text"
               value={searchMessage}
               onChange={(e) => setSearchMessage(e.target.value)}
-              placeholder="Search messages..."
-              className="field-input w-full py-2 pl-9 pr-3"
+              placeholder="Message..."
+              className="w-full rounded-lg border border-surface-border bg-transparent py-1.5 pl-8 pr-2.5 text-xs outline-none focus:border-amber-500/50 focus:ring-1 focus:ring-amber-500/25 dark:bg-zinc-900"
             />
           </div>
-
-          <div className="flex items-center gap-2">
-            <Filter className="h-4 w-4 text-zinc-400" />
-            <select
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-              className="field-input"
-            >
-              <option value="">All Statuses</option>
-              <option value="unread">Unread</option>
-              <option value="read">Read</option>
-            </select>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <span className="text-sm text-zinc-500 dark:text-zinc-400">From:</span>
-            <input
-              type="date"
-              value={dateFrom}
-              onChange={(e) => setDateFrom(e.target.value)}
-              className="field-input"
-            />
-          </div>
-
-          <div className="flex items-center gap-2">
-            <span className="text-sm text-zinc-500 dark:text-zinc-400">To:</span>
-            <input
-              type="date"
-              value={dateTo}
-              onChange={(e) => setDateTo(e.target.value)}
-              className="field-input"
-            />
-          </div>
-
+          <select
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+            className="rounded-lg border border-surface-border bg-white px-2.5 py-1.5 text-xs dark:bg-zinc-900 focus:border-amber-500/50 focus:ring-1 focus:ring-amber-500/25 hover:border-zinc-400 dark:hover:border-zinc-600"
+          >
+            <option value="">All</option>
+            <option value="unread">Unread</option>
+            <option value="read">Read</option>
+          </select>
+          <input
+            type="date"
+            value={dateFrom}
+            onChange={(e) => setDateFrom(e.target.value)}
+            className="w-36 rounded-lg border border-surface-border bg-white px-2.5 py-1.5 text-xs dark:bg-zinc-900 focus:border-amber-500/50 focus:ring-1 focus:ring-amber-500/25 hover:border-zinc-400 dark:hover:border-zinc-600"
+          />
+          <input
+            type="date"
+            value={dateTo}
+            onChange={(e) => setDateTo(e.target.value)}
+            className="w-36 rounded-lg border border-surface-border bg-white px-2.5 py-1.5 text-xs dark:bg-zinc-900 focus:border-amber-500/50 focus:ring-1 focus:ring-amber-500/25 hover:border-zinc-400 dark:hover:border-zinc-600"
+          />
           {hasFilters && (
             <button
               type="button"
               onClick={clearFilters}
-              className="text-sm text-amber-600 hover:text-amber-700 dark:text-amber-400"
+              className="text-xs text-amber-600 hover:text-amber-700 dark:text-amber-400 font-medium"
             >
               Clear
             </button>
           )}
-
           <button
             type="button"
             onClick={() => void fetchContacts()}
             disabled={busy}
-            className="ml-auto inline-flex items-center gap-2 rounded-lg border border-surface-border px-3 py-2 text-sm font-medium text-zinc-600 hover:bg-zinc-50 dark:text-zinc-400 dark:hover:bg-zinc-800"
+            className="ml-auto inline-flex items-center gap-1.5 rounded-lg border border-surface-border px-2.5 py-1.5 text-xs font-medium text-zinc-600 hover:bg-zinc-50 hover:border-zinc-400 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:border-zinc-600"
           >
-            {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+            {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null}
             Refresh
           </button>
         </div>

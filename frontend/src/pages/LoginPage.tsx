@@ -144,7 +144,7 @@ export function LoginPage() {
         if (next.startsWith('/admin')) {
           try {
             const ad = await adminLogin(email.trim(), password)
-            setAdminToken(ad.access_token)
+            setAdminToken(ad.access_token, email.trim())
             navigate(next, { replace: true })
           } catch {
             navigate('/dashboard', { replace: true })
@@ -159,7 +159,7 @@ export function LoginPage() {
         } catch (eApp) {
         try {
           const ad = await adminLogin(email.trim(), password)
-          setAdminToken(ad.access_token)
+          setAdminToken(ad.access_token, email.trim())
           const dest = next.startsWith('/admin') ? next : '/admin'
           navigate(dest, { replace: true })
         } catch (eAdmin) {

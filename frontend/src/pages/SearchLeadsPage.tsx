@@ -1,7 +1,6 @@
 import { AlertTriangle, Loader2, RefreshCw } from 'lucide-react'
 import { UpgradeBanner } from '@/components/UpgradeBanner'
 import { useCallback, useEffect, useState } from 'react'
-import { Link } from 'react-router-dom'
 import { toast } from 'sonner'
 
 import { SeleniumLeadpilotPanel } from '@/components/scraper/SeleniumLeadpilotPanel'
@@ -20,6 +19,7 @@ import { fetchLeads } from '@/lib/api/leads'
 import { getEnabledExplorerSources, getEnabledSignalFilters, getHighScoreThreshold } from '@/lib/config/userConfigRules'
 import { useModeStore } from '@/store/modeStore'
 import { useUserConfigStore } from '@/store/userConfigStore'
+import { useAuthStore } from '@/store/authStore'
 import type { Lead } from '@/types/models'
 
 function clip(s: string, n: number) {
@@ -96,6 +96,18 @@ export function SearchLeadsPage() {
   const defaultKeyword = String((adminConfig.targeting?.keywords || [])[0] || '').trim()
   const defaultLocation = String((adminConfig.targeting?.locations || [])[0] || '').trim()
   const defaultMinScore = getHighScoreThreshold(adminConfig)
+  const authUser = useAuthStore((s) => s.user)
+  const userPlan = authUser?.plan_id || 'starter'
+  const planChannels = (adminConfig.plan_channel_access as Record<string, { channels: string[] }> | undefined)?.[userPlan]?.channels || []
+  const hasDirectoryChannels = planChannels.some((c: string) => !['linkedin', 'public_db'].includes(c))
+  const hasPublicDb = planChannels.includes('public_db')
+  const availableModes = ['linkedin', ...(hasDirectoryChannels ? ['directory'] as const : []), ...(hasPublicDb ? ['explorer'] as const : [])]
+
+  useEffect(() => {
+    if (availableModes.length > 0 && !availableModes.includes(mode as any)) {
+      setMode(availableModes[0] as any)
+    }
+  }, [availableModes, mode, setMode])
 
   const loadRecent = useCallback(async () => {
     try {
@@ -260,46 +272,40 @@ export function SearchLeadsPage() {
   return (
     <div className="mx-auto max-w-[1200px] space-y-8">
       {usage && <UpgradeBanner used={usage.leads_consumed} limit={usage.lead_limit} />}
-      <div>
-        <h1 className="font-display text-2xl font-bold tracking-tight text-ink sm:text-3xl">Lead generation</h1>
-        <p className="mt-2 max-w-2xl text-sm text-ink-muted">
-          Choose how leads are generated. Explorer uses the company database for self-growing discovery, while LinkedIn
-          keeps the current desktop capture flow unchanged. New leads appear in{' '}
-          <Link to="/leads" className="font-medium text-amber-800 underline-offset-2 hover:underline dark:text-amber-300">
-            Leads
-          </Link>{' '}
-          when ingest is enabled.
-        </p>
-      </div>
 
       <section className="rounded-2xl border border-surface-border bg-premium-card-light p-5 shadow-card dark:bg-premium-card-dark sm:p-6">
         <h2 className="type-panel-title">Mode selector</h2>
         <p className="mt-1 text-xs text-ink-muted">
-          Switch between LinkedIn capture and Explorer Mode. Your selected mode is stored for this session. Default
-          mode is Explorer.
+          Switch between LinkedIn capture and Explorer Mode. Your selected mode is stored for this session.
         </p>
         <div className="mt-3 flex flex-wrap gap-2">
-          <button
-            type="button"
-            onClick={() => setMode('linkedin')}
-            className={`rounded-xl border px-3 py-1.5 text-xs ${mode === 'linkedin' ? 'border-amber-500/50 bg-amber-500/10 text-ink' : 'border-surface-border text-ink-muted'}`}
-          >
-            LinkedIn Mode
-          </button>
-          <button
-            type="button"
-            onClick={() => setMode('directory')}
-            className={`rounded-xl border px-3 py-1.5 text-xs ${mode === 'directory' ? 'border-amber-500/50 bg-amber-500/10 text-ink' : 'border-surface-border text-ink-muted'}`}
-          >
-            Directory Mode
-          </button>
-          <button
-            type="button"
-            onClick={() => setMode('explorer')}
-            className={`rounded-xl border px-3 py-1.5 text-xs ${mode === 'explorer' ? 'border-amber-500/50 bg-amber-500/10 text-ink' : 'border-surface-border text-ink-muted'}`}
-          >
-            Explorer Mode
-          </button>
+          {availableModes.includes('linkedin') && (
+            <button
+              type="button"
+              onClick={() => setMode('linkedin')}
+              className={`rounded-xl border px-3 py-1.5 text-xs ${mode === 'linkedin' ? 'border-amber-500/50 bg-amber-500/10 text-ink' : 'border-surface-border text-ink-muted'}`}
+            >
+              LinkedIn Mode
+            </button>
+          )}
+          {availableModes.includes('directory') && (
+            <button
+              type="button"
+              onClick={() => setMode('directory')}
+              className={`rounded-xl border px-3 py-1.5 text-xs ${mode === 'directory' ? 'border-amber-500/50 bg-amber-500/10 text-ink' : 'border-surface-border text-ink-muted'}`}
+            >
+              Directory Mode
+            </button>
+          )}
+          {availableModes.includes('explorer') && (
+            <button
+              type="button"
+              onClick={() => setMode('explorer')}
+              className={`rounded-xl border px-3 py-1.5 text-xs ${mode === 'explorer' ? 'border-amber-500/50 bg-amber-500/10 text-ink' : 'border-surface-border text-ink-muted'}`}
+            >
+              Explorer Mode
+            </button>
+          )}
         </div>
         <div className="mt-3 rounded-xl border border-surface-border bg-field/40 px-4 py-3 text-xs text-ink-muted">
           Active mode:{' '}

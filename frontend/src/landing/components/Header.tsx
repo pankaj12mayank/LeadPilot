@@ -31,12 +31,12 @@ export function Header() {
   }, [])
 
   function cycleTheme() {
-    const order: Array<'light' | 'dark' | 'system'> = ['light', 'dark', 'system']
-    const idx = order.indexOf(themePref)
+    const order: Array<'light' | 'dark'> = ['light', 'dark']
+    const idx = order.indexOf(themePref === 'system' ? 'light' : themePref)
     setTheme(order[(idx + 1) % order.length])
   }
 
-  const isDark = themePref === 'dark' || (themePref === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches)
+  const isDark = themePref === 'dark'
 
   return (
     <header

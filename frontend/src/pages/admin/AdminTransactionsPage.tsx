@@ -38,29 +38,29 @@ export function AdminTransactionsPage() {
         <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">{txns.length} transactions</p>
       </div>
 
-      <div className="flex flex-wrap gap-3">
-        <div className="relative flex-1 max-w-xs">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-400" />
+      <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-surface-border bg-white p-3 shadow-sm dark:bg-zinc-900">
+        <div className="relative w-48">
+          <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-zinc-400" />
           <input
             value={userSearch}
             onChange={(e) => setUserSearch(e.target.value)}
-            className="field-input w-full pl-9"
-            placeholder="Search by email..."
+            className="w-full rounded-lg border border-surface-border bg-transparent py-1.5 pl-8 pr-2.5 text-xs outline-none focus:border-amber-500/50 focus:ring-1 focus:ring-amber-500/25 dark:bg-zinc-900"
+            placeholder="Email..."
           />
         </div>
-        <select value={gatewayFilter} onChange={(e) => setGatewayFilter(e.target.value)} className="field-input">
+        <select value={gatewayFilter} onChange={(e) => setGatewayFilter(e.target.value)} className="rounded-lg border border-surface-border bg-white px-2.5 py-1.5 text-xs dark:bg-zinc-900 focus:border-amber-500/50 focus:ring-1 focus:ring-amber-500/25 hover:border-zinc-400 dark:hover:border-zinc-600">
           <option value="">All Gateways</option>
           <option value="stripe">Stripe</option>
           <option value="razorpay">Razorpay</option>
         </select>
-        <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="field-input">
-          <option value="">All Statuses</option>
+        <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="rounded-lg border border-surface-border bg-white px-2.5 py-1.5 text-xs dark:bg-zinc-900 focus:border-amber-500/50 focus:ring-1 focus:ring-amber-500/25 hover:border-zinc-400 dark:hover:border-zinc-600">
+          <option value="">All</option>
           <option value="success">Success</option>
           <option value="failed">Failed</option>
           <option value="pending">Pending</option>
           <option value="refunded">Refunded</option>
         </select>
-        <button type="button" onClick={() => void load()} className="rounded-lg border border-surface-border px-4 py-2 text-sm text-zinc-600 hover:bg-zinc-50 dark:text-zinc-400">
+        <button type="button" onClick={() => void load()} className="ml-auto inline-flex items-center gap-1.5 rounded-lg border border-surface-border px-2.5 py-1.5 text-xs font-medium text-zinc-600 hover:bg-zinc-50 hover:border-zinc-400 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:border-zinc-600">
           Refresh
         </button>
       </div>

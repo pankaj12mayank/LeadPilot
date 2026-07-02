@@ -1463,3 +1463,209 @@ sqlite3.OperationalError: database is locked
 2026-07-01 17:53:43,018 | WARNING | backend.app.middleware.error_handlers | GET /api/admin/sources -> HTTP 404: Not Found
 2026-07-01 17:53:45,041 | WARNING | backend.app.middleware.error_handlers | GET /api/admin/branding -> HTTP 401: Not authenticated
 2026-07-01 17:53:45,045 | WARNING | backend.app.middleware.error_handlers | GET /api/admin/branding -> HTTP 401: Not authenticated
+2026-07-02 11:33:01,967 | INFO | leadpilot.startup | LeadPilot API — startup beginning.
+2026-07-02 11:33:01,969 | INFO | leadpilot.startup | python-dotenv: loaded .env from repository root (see config.py).
+2026-07-02 11:33:01,971 | INFO | leadpilot.startup | Runtime directories ready (exports, sessions, logs, DB parents, branding).
+2026-07-02 11:33:01,973 | INFO | leadpilot.startup | Meta SQLite schema OK (database/api_meta.db).
+2026-07-02 11:33:01,978 | INFO | leadpilot.startup | SQLAlchemy tables OK (ORM / leads schema).
+2026-07-02 11:33:01,980 | INFO | leadpilot.startup | Lead storage initialized (STORAGE_MODE=csv).
+2026-07-02 11:33:01,986 | INFO | leadpilot.startup | Admin config loaded (session expiry=7 day(s), retry_count=3).
+2026-07-02 11:33:01,998 | INFO | backend.services.subscription_service | Seeded/updated 4 default plans
+2026-07-02 11:33:02,002 | INFO | leadpilot.startup | LeadPilot API — ready to accept requests.
+2026-07-02 11:47:18,678 | WARNING | backend.app.middleware.error_handlers | POST /api/auth/login -> HTTP 401: Incorrect email or password
+2026-07-02 11:47:18,786 | WARNING | backend.app.middleware.error_handlers | GET /api/admin/overview -> HTTP 404: Not Found
+2026-07-02 11:47:18,790 | WARNING | backend.app.middleware.error_handlers | GET /api/admin/overview -> HTTP 404: Not Found
+2026-07-02 11:47:20,532 | WARNING | backend.app.middleware.error_handlers | GET /api/admin/users -> HTTP 401: Not authenticated
+2026-07-02 11:47:20,536 | WARNING | backend.app.middleware.error_handlers | GET /api/admin/overview -> HTTP 404: Not Found
+2026-07-02 11:47:20,538 | WARNING | backend.app.middleware.error_handlers | GET /api/admin/users -> HTTP 401: Not authenticated
+2026-07-02 11:47:20,542 | WARNING | backend.app.middleware.error_handlers | GET /api/admin/overview -> HTTP 404: Not Found
+2026-07-02 11:47:22,615 | WARNING | backend.app.middleware.error_handlers | GET /api/admin/users -> HTTP 401: Not authenticated
+2026-07-02 11:47:22,618 | WARNING | backend.app.middleware.error_handlers | GET /api/admin/overview -> HTTP 404: Not Found
+2026-07-02 11:47:22,620 | WARNING | backend.app.middleware.error_handlers | GET /api/admin/users -> HTTP 401: Not authenticated
+2026-07-02 11:47:22,623 | WARNING | backend.app.middleware.error_handlers | GET /api/admin/overview -> HTTP 404: Not Found
+2026-07-02 11:47:33,788 | INFO | leadpilot.startup | LeadPilot API — shutdown.
+2026-07-02 11:47:46,753 | INFO | leadpilot.startup | LeadPilot API — startup beginning.
+2026-07-02 11:47:46,753 | INFO | leadpilot.startup | python-dotenv: loaded .env from repository root (see config.py).
+2026-07-02 11:47:46,756 | INFO | leadpilot.startup | Runtime directories ready (exports, sessions, logs, DB parents, branding).
+2026-07-02 11:47:46,759 | INFO | leadpilot.startup | Meta SQLite schema OK (database/api_meta.db).
+2026-07-02 11:47:46,765 | INFO | leadpilot.startup | SQLAlchemy tables OK (ORM / leads schema).
+2026-07-02 11:47:46,765 | INFO | leadpilot.startup | Lead storage initialized (STORAGE_MODE=csv).
+2026-07-02 11:47:46,774 | INFO | leadpilot.startup | Admin config loaded (session expiry=7 day(s), retry_count=3).
+2026-07-02 11:47:46,793 | INFO | backend.services.subscription_service | Seeded/updated 4 default plans
+2026-07-02 11:47:46,797 | INFO | leadpilot.startup | LeadPilot API — ready to accept requests.
+2026-07-02 11:47:47,139 | WARNING | backend.app.middleware.error_handlers | GET /api/admin/overview -> HTTP 404: Not Found
+2026-07-02 11:47:47,144 | WARNING | backend.app.middleware.error_handlers | GET /api/admin/overview -> HTTP 404: Not Found
+2026-07-02 11:47:47,150 | WARNING | backend.app.middleware.error_handlers | GET /api/admin/overview -> HTTP 404: Not Found
+2026-07-02 11:47:49,556 | WARNING | backend.app.middleware.error_handlers | GET /api/admin/users -> HTTP 401: Not authenticated
+2026-07-02 11:47:49,559 | WARNING | backend.app.middleware.error_handlers | GET /api/admin/overview -> HTTP 404: Not Found
+2026-07-02 11:47:49,561 | WARNING | backend.app.middleware.error_handlers | GET /api/admin/users -> HTTP 401: Not authenticated
+2026-07-02 11:47:49,564 | WARNING | backend.app.middleware.error_handlers | GET /api/admin/overview -> HTTP 404: Not Found
+2026-07-02 11:47:54,137 | WARNING | backend.app.middleware.error_handlers | GET /api/admin/scoring -> HTTP 404: Not Found
+2026-07-02 11:47:54,141 | WARNING | backend.app.middleware.error_handlers | GET /api/admin/scoring -> HTTP 404: Not Found
+2026-07-02 11:47:57,835 | WARNING | backend.app.middleware.error_handlers | GET /api/admin/plans -> HTTP 401: Not authenticated
+2026-07-02 11:47:57,837 | WARNING | backend.app.middleware.error_handlers | GET /api/admin/plans -> HTTP 401: Not authenticated
+2026-07-02 11:47:59,781 | WARNING | backend.app.middleware.error_handlers | GET /api/admin/email-templates -> HTTP 401: Not authenticated
+2026-07-02 11:47:59,785 | WARNING | backend.app.middleware.error_handlers | GET /api/admin/email-templates -> HTTP 401: Not authenticated
+2026-07-02 12:02:10,335 | WARNING | backend.app.middleware.error_handlers | POST /api/auth/login -> HTTP 401: Incorrect email or password
+2026-07-02 12:02:10,531 | WARNING | backend.app.middleware.error_handlers | GET /api/admin/overview -> HTTP 404: Not Found
+2026-07-02 12:02:10,536 | WARNING | backend.app.middleware.error_handlers | GET /api/admin/overview -> HTTP 404: Not Found
+2026-07-02 12:02:12,330 | WARNING | backend.app.middleware.error_handlers | GET /api/admin/overview -> HTTP 404: Not Found
+2026-07-02 12:02:12,339 | WARNING | backend.app.middleware.error_handlers | GET /api/admin/overview -> HTTP 404: Not Found
+2026-07-02 12:02:24,306 | INFO | leadpilot.startup | LeadPilot API — shutdown.
+2026-07-02 12:02:38,352 | INFO | leadpilot.startup | LeadPilot API — startup beginning.
+2026-07-02 12:02:38,352 | INFO | leadpilot.startup | python-dotenv: loaded .env from repository root (see config.py).
+2026-07-02 12:02:38,354 | INFO | leadpilot.startup | Runtime directories ready (exports, sessions, logs, DB parents, branding).
+2026-07-02 12:02:38,357 | INFO | leadpilot.startup | Meta SQLite schema OK (database/api_meta.db).
+2026-07-02 12:02:38,362 | INFO | leadpilot.startup | SQLAlchemy tables OK (ORM / leads schema).
+2026-07-02 12:02:38,362 | INFO | leadpilot.startup | Lead storage initialized (STORAGE_MODE=csv).
+2026-07-02 12:02:38,368 | INFO | leadpilot.startup | Admin config loaded (session expiry=7 day(s), retry_count=3).
+2026-07-02 12:02:38,384 | INFO | backend.services.subscription_service | Seeded/updated 4 default plans
+2026-07-02 12:02:38,387 | INFO | leadpilot.startup | LeadPilot API — ready to accept requests.
+2026-07-02 12:02:42,815 | WARNING | backend.app.middleware.error_handlers | GET /api/admin/overview -> HTTP 404: Not Found
+2026-07-02 12:02:42,820 | WARNING | backend.app.middleware.error_handlers | GET /api/admin/overview -> HTTP 404: Not Found
+2026-07-02 12:03:23,619 | WARNING | backend.app.middleware.error_handlers | GET /api/admin/sources -> HTTP 404: Not Found
+2026-07-02 12:03:23,623 | WARNING | backend.app.middleware.error_handlers | GET /api/admin/sources -> HTTP 404: Not Found
+2026-07-02 12:03:28,454 | WARNING | backend.app.middleware.error_handlers | GET /api/admin/profile -> HTTP 404: Admin user not found
+2026-07-02 12:03:28,460 | WARNING | backend.app.middleware.error_handlers | GET /api/admin/profile -> HTTP 404: Admin user not found
+2026-07-02 12:03:57,990 | WARNING | backend.app.middleware.error_handlers | GET /api/admin/profile -> HTTP 404: Admin user not found
+2026-07-02 12:03:57,997 | WARNING | backend.app.middleware.error_handlers | GET /api/admin/profile -> HTTP 404: Admin user not found
+2026-07-02 12:05:14,104 | WARNING | backend.app.middleware.error_handlers | GET /api/admin/overview -> HTTP 404: Not Found
+2026-07-02 12:05:14,110 | WARNING | backend.app.middleware.error_handlers | GET /api/admin/overview -> HTTP 404: Not Found
+2026-07-02 12:05:32,457 | WARNING | backend.app.middleware.error_handlers | GET /api/admin/sources -> HTTP 404: Not Found
+2026-07-02 12:05:32,465 | WARNING | backend.app.middleware.error_handlers | GET /api/admin/sources -> HTTP 404: Not Found
+2026-07-02 12:05:51,203 | WARNING | backend.app.middleware.error_handlers | GET /api/admin/profile -> HTTP 404: Admin user not found
+2026-07-02 12:05:51,211 | WARNING | backend.app.middleware.error_handlers | GET /api/admin/profile -> HTTP 404: Admin user not found
+2026-07-02 12:08:46,183 | INFO | leadpilot.startup | LeadPilot API — shutdown.
+2026-07-02 12:08:51,420 | INFO | leadpilot.startup | LeadPilot API — startup beginning.
+2026-07-02 12:08:51,420 | INFO | leadpilot.startup | python-dotenv: loaded .env from repository root (see config.py).
+2026-07-02 12:08:51,424 | INFO | leadpilot.startup | Runtime directories ready (exports, sessions, logs, DB parents, branding).
+2026-07-02 12:08:51,429 | INFO | leadpilot.startup | Meta SQLite schema OK (database/api_meta.db).
+2026-07-02 12:08:51,436 | INFO | leadpilot.startup | SQLAlchemy tables OK (ORM / leads schema).
+2026-07-02 12:08:51,437 | INFO | leadpilot.startup | Lead storage initialized (STORAGE_MODE=csv).
+2026-07-02 12:08:51,447 | INFO | leadpilot.startup | Admin config loaded (session expiry=7 day(s), retry_count=3).
+2026-07-02 12:08:51,462 | INFO | backend.services.subscription_service | Seeded/updated 4 default plans
+2026-07-02 12:08:51,467 | INFO | leadpilot.startup | LeadPilot API — ready to accept requests.
+2026-07-02 12:08:57,815 | INFO | leadpilot.startup | LeadPilot API — shutdown.
+2026-07-02 12:09:02,344 | INFO | leadpilot.startup | LeadPilot API — startup beginning.
+2026-07-02 12:09:02,344 | INFO | leadpilot.startup | python-dotenv: loaded .env from repository root (see config.py).
+2026-07-02 12:09:02,347 | INFO | leadpilot.startup | Runtime directories ready (exports, sessions, logs, DB parents, branding).
+2026-07-02 12:09:02,350 | INFO | leadpilot.startup | Meta SQLite schema OK (database/api_meta.db).
+2026-07-02 12:09:02,355 | INFO | leadpilot.startup | SQLAlchemy tables OK (ORM / leads schema).
+2026-07-02 12:09:02,356 | INFO | leadpilot.startup | Lead storage initialized (STORAGE_MODE=csv).
+2026-07-02 12:09:02,364 | INFO | leadpilot.startup | Admin config loaded (session expiry=7 day(s), retry_count=3).
+2026-07-02 12:09:02,377 | INFO | backend.services.subscription_service | Seeded/updated 4 default plans
+2026-07-02 12:09:02,380 | INFO | leadpilot.startup | LeadPilot API — ready to accept requests.
+2026-07-02 12:11:06,563 | INFO | leadpilot.startup | LeadPilot API — shutdown.
+2026-07-02 12:11:16,981 | INFO | leadpilot.startup | LeadPilot API — startup beginning.
+2026-07-02 12:11:16,981 | INFO | leadpilot.startup | python-dotenv: loaded .env from repository root (see config.py).
+2026-07-02 12:11:16,984 | INFO | leadpilot.startup | Runtime directories ready (exports, sessions, logs, DB parents, branding).
+2026-07-02 12:11:16,987 | INFO | leadpilot.startup | Meta SQLite schema OK (database/api_meta.db).
+2026-07-02 12:11:16,995 | INFO | leadpilot.startup | SQLAlchemy tables OK (ORM / leads schema).
+2026-07-02 12:11:16,996 | INFO | leadpilot.startup | Lead storage initialized (STORAGE_MODE=csv).
+2026-07-02 12:11:17,005 | INFO | leadpilot.startup | Admin config loaded (session expiry=7 day(s), retry_count=3).
+2026-07-02 12:11:17,024 | INFO | backend.services.subscription_service | Seeded/updated 4 default plans
+2026-07-02 12:11:17,027 | INFO | leadpilot.startup | LeadPilot API — ready to accept requests.
+2026-07-02 12:22:02,168 | INFO | leadpilot.startup | LeadPilot API — shutdown.
+2026-07-02 12:22:06,384 | INFO | leadpilot.startup | LeadPilot API — startup beginning.
+2026-07-02 12:22:06,385 | INFO | leadpilot.startup | python-dotenv: loaded .env from repository root (see config.py).
+2026-07-02 12:22:06,387 | INFO | leadpilot.startup | Runtime directories ready (exports, sessions, logs, DB parents, branding).
+2026-07-02 12:22:06,390 | INFO | leadpilot.startup | Meta SQLite schema OK (database/api_meta.db).
+2026-07-02 12:22:06,395 | INFO | leadpilot.startup | SQLAlchemy tables OK (ORM / leads schema).
+2026-07-02 12:22:06,396 | INFO | leadpilot.startup | Lead storage initialized (STORAGE_MODE=csv).
+2026-07-02 12:22:06,403 | INFO | leadpilot.startup | Admin config loaded (session expiry=7 day(s), retry_count=3).
+2026-07-02 12:22:06,415 | INFO | backend.services.subscription_service | Seeded/updated 4 default plans
+2026-07-02 12:22:06,418 | INFO | leadpilot.startup | LeadPilot API — ready to accept requests.
+2026-07-02 12:33:52,694 | INFO | leadpilot.startup | LeadPilot API — shutdown.
+2026-07-02 12:34:01,805 | INFO | leadpilot.startup | LeadPilot API — startup beginning.
+2026-07-02 12:34:01,806 | INFO | leadpilot.startup | python-dotenv: loaded .env from repository root (see config.py).
+2026-07-02 12:34:01,807 | INFO | leadpilot.startup | Runtime directories ready (exports, sessions, logs, DB parents, branding).
+2026-07-02 12:34:01,809 | INFO | leadpilot.startup | Meta SQLite schema OK (database/api_meta.db).
+2026-07-02 12:34:01,813 | INFO | leadpilot.startup | SQLAlchemy tables OK (ORM / leads schema).
+2026-07-02 12:34:01,813 | INFO | leadpilot.startup | Lead storage initialized (STORAGE_MODE=csv).
+2026-07-02 12:34:01,817 | INFO | leadpilot.startup | Admin config loaded (session expiry=7 day(s), retry_count=3).
+2026-07-02 12:34:01,832 | INFO | backend.services.subscription_service | Seeded/updated 4 default plans
+2026-07-02 12:34:01,834 | INFO | leadpilot.startup | LeadPilot API — ready to accept requests.
+2026-07-02 12:34:04,857 | WARNING | backend.app.middleware.error_handlers | POST /api/auth/login -> HTTP 401: Incorrect email or password
+2026-07-02 12:48:03,700 | INFO | leadpilot.startup | LeadPilot API — shutdown.
+2026-07-02 12:48:14,621 | INFO | leadpilot.startup | LeadPilot API — startup beginning.
+2026-07-02 12:48:14,621 | INFO | leadpilot.startup | python-dotenv: loaded .env from repository root (see config.py).
+2026-07-02 12:48:14,623 | INFO | leadpilot.startup | Runtime directories ready (exports, sessions, logs, DB parents, branding).
+2026-07-02 12:48:14,625 | INFO | leadpilot.startup | Meta SQLite schema OK (database/api_meta.db).
+2026-07-02 12:48:14,629 | INFO | leadpilot.startup | SQLAlchemy tables OK (ORM / leads schema).
+2026-07-02 12:48:14,630 | INFO | leadpilot.startup | Lead storage initialized (STORAGE_MODE=csv).
+2026-07-02 12:48:14,635 | INFO | leadpilot.startup | Admin config loaded (session expiry=7 day(s), retry_count=3).
+2026-07-02 12:48:14,650 | INFO | backend.services.subscription_service | Seeded/updated 4 default plans
+2026-07-02 12:48:14,652 | INFO | leadpilot.startup | LeadPilot API — ready to accept requests.
+2026-07-02 12:51:16,996 | INFO | leadpilot.startup | LeadPilot API — shutdown.
+2026-07-02 12:51:21,226 | INFO | leadpilot.startup | LeadPilot API — startup beginning.
+2026-07-02 12:51:21,226 | INFO | leadpilot.startup | python-dotenv: loaded .env from repository root (see config.py).
+2026-07-02 12:51:21,228 | INFO | leadpilot.startup | Runtime directories ready (exports, sessions, logs, DB parents, branding).
+2026-07-02 12:51:21,231 | INFO | leadpilot.startup | Meta SQLite schema OK (database/api_meta.db).
+2026-07-02 12:51:21,235 | INFO | leadpilot.startup | SQLAlchemy tables OK (ORM / leads schema).
+2026-07-02 12:51:21,236 | INFO | leadpilot.startup | Lead storage initialized (STORAGE_MODE=csv).
+2026-07-02 12:51:21,242 | INFO | leadpilot.startup | Admin config loaded (session expiry=7 day(s), retry_count=3).
+2026-07-02 12:51:21,253 | INFO | backend.services.subscription_service | Seeded/updated 4 default plans
+2026-07-02 12:51:21,256 | INFO | leadpilot.startup | LeadPilot API — ready to accept requests.
+2026-07-02 12:54:50,165 | INFO | leadpilot.startup | LeadPilot API — shutdown.
+2026-07-02 12:54:54,372 | INFO | leadpilot.startup | LeadPilot API — startup beginning.
+2026-07-02 12:54:54,372 | INFO | leadpilot.startup | python-dotenv: loaded .env from repository root (see config.py).
+2026-07-02 12:54:54,375 | INFO | leadpilot.startup | Runtime directories ready (exports, sessions, logs, DB parents, branding).
+2026-07-02 12:54:54,379 | INFO | leadpilot.startup | Meta SQLite schema OK (database/api_meta.db).
+2026-07-02 12:54:54,384 | INFO | leadpilot.startup | SQLAlchemy tables OK (ORM / leads schema).
+2026-07-02 12:54:54,385 | INFO | leadpilot.startup | Lead storage initialized (STORAGE_MODE=csv).
+2026-07-02 12:54:54,392 | INFO | leadpilot.startup | Admin config loaded (session expiry=7 day(s), retry_count=3).
+2026-07-02 12:54:54,403 | INFO | backend.services.subscription_service | Seeded/updated 4 default plans
+2026-07-02 12:54:54,406 | INFO | leadpilot.startup | LeadPilot API — ready to accept requests.
+2026-07-02 12:57:49,854 | INFO | leadpilot.startup | LeadPilot API — shutdown.
+2026-07-02 12:57:54,058 | INFO | leadpilot.startup | LeadPilot API — startup beginning.
+2026-07-02 12:57:54,058 | INFO | leadpilot.startup | python-dotenv: loaded .env from repository root (see config.py).
+2026-07-02 12:57:54,060 | INFO | leadpilot.startup | Runtime directories ready (exports, sessions, logs, DB parents, branding).
+2026-07-02 12:57:54,062 | INFO | leadpilot.startup | Meta SQLite schema OK (database/api_meta.db).
+2026-07-02 12:57:54,066 | INFO | leadpilot.startup | SQLAlchemy tables OK (ORM / leads schema).
+2026-07-02 12:57:54,066 | INFO | leadpilot.startup | Lead storage initialized (STORAGE_MODE=csv).
+2026-07-02 12:57:54,071 | INFO | leadpilot.startup | Admin config loaded (session expiry=7 day(s), retry_count=3).
+2026-07-02 12:57:54,081 | INFO | backend.services.subscription_service | Seeded/updated 4 default plans
+2026-07-02 12:57:54,083 | INFO | leadpilot.startup | LeadPilot API — ready to accept requests.
+2026-07-02 12:58:02,787 | INFO | leadpilot.startup | LeadPilot API — shutdown.
+2026-07-02 12:58:07,036 | INFO | leadpilot.startup | LeadPilot API — startup beginning.
+2026-07-02 12:58:07,036 | INFO | leadpilot.startup | python-dotenv: loaded .env from repository root (see config.py).
+2026-07-02 12:58:07,038 | INFO | leadpilot.startup | Runtime directories ready (exports, sessions, logs, DB parents, branding).
+2026-07-02 12:58:07,040 | INFO | leadpilot.startup | Meta SQLite schema OK (database/api_meta.db).
+2026-07-02 12:58:07,043 | INFO | leadpilot.startup | SQLAlchemy tables OK (ORM / leads schema).
+2026-07-02 12:58:07,044 | INFO | leadpilot.startup | Lead storage initialized (STORAGE_MODE=csv).
+2026-07-02 12:58:07,049 | INFO | leadpilot.startup | Admin config loaded (session expiry=7 day(s), retry_count=3).
+2026-07-02 12:58:07,058 | INFO | backend.services.subscription_service | Seeded/updated 4 default plans
+2026-07-02 12:58:07,060 | INFO | leadpilot.startup | LeadPilot API — ready to accept requests.
+2026-07-02 12:58:08,831 | INFO | leadpilot.startup | LeadPilot API — shutdown.
+2026-07-02 12:58:12,653 | INFO | leadpilot.startup | LeadPilot API — startup beginning.
+2026-07-02 12:58:12,653 | INFO | leadpilot.startup | python-dotenv: loaded .env from repository root (see config.py).
+2026-07-02 12:58:12,655 | INFO | leadpilot.startup | Runtime directories ready (exports, sessions, logs, DB parents, branding).
+2026-07-02 12:58:12,657 | INFO | leadpilot.startup | Meta SQLite schema OK (database/api_meta.db).
+2026-07-02 12:58:12,664 | INFO | leadpilot.startup | SQLAlchemy tables OK (ORM / leads schema).
+2026-07-02 12:58:12,665 | INFO | leadpilot.startup | Lead storage initialized (STORAGE_MODE=csv).
+2026-07-02 12:58:12,672 | INFO | leadpilot.startup | Admin config loaded (session expiry=7 day(s), retry_count=3).
+2026-07-02 12:58:12,696 | INFO | backend.services.subscription_service | Seeded/updated 4 default plans
+2026-07-02 12:58:12,699 | INFO | leadpilot.startup | LeadPilot API — ready to accept requests.
+2026-07-02 12:58:53,761 | WARNING | backend.app.middleware.error_handlers | POST /api/auth/login -> HTTP 401: Incorrect email or password
+2026-07-02 13:00:10,370 | INFO | leadpilot.startup | LeadPilot API — shutdown.
+2026-07-02 13:00:14,483 | INFO | leadpilot.startup | LeadPilot API — startup beginning.
+2026-07-02 13:00:14,484 | INFO | leadpilot.startup | python-dotenv: loaded .env from repository root (see config.py).
+2026-07-02 13:00:14,487 | INFO | leadpilot.startup | Runtime directories ready (exports, sessions, logs, DB parents, branding).
+2026-07-02 13:00:14,490 | INFO | leadpilot.startup | Meta SQLite schema OK (database/api_meta.db).
+2026-07-02 13:00:14,498 | INFO | leadpilot.startup | SQLAlchemy tables OK (ORM / leads schema).
+2026-07-02 13:00:14,499 | INFO | leadpilot.startup | Lead storage initialized (STORAGE_MODE=csv).
+2026-07-02 13:00:14,508 | INFO | leadpilot.startup | Admin config loaded (session expiry=7 day(s), retry_count=3).
+2026-07-02 13:00:14,522 | INFO | backend.services.subscription_service | Seeded/updated 4 default plans
+2026-07-02 13:00:14,525 | INFO | leadpilot.startup | LeadPilot API — ready to accept requests.
+2026-07-02 13:06:19,967 | INFO | leadpilot.startup | LeadPilot API — shutdown.
+2026-07-02 13:06:30,120 | INFO | leadpilot.startup | LeadPilot API — startup beginning.
+2026-07-02 13:06:30,120 | INFO | leadpilot.startup | python-dotenv: loaded .env from repository root (see config.py).
+2026-07-02 13:06:30,123 | INFO | leadpilot.startup | Runtime directories ready (exports, sessions, logs, DB parents, branding).
+2026-07-02 13:06:30,127 | INFO | leadpilot.startup | Meta SQLite schema OK (database/api_meta.db).
+2026-07-02 13:06:30,133 | INFO | leadpilot.startup | SQLAlchemy tables OK (ORM / leads schema).
+2026-07-02 13:06:30,134 | INFO | leadpilot.startup | Lead storage initialized (STORAGE_MODE=csv).
+2026-07-02 13:06:30,141 | INFO | leadpilot.startup | Admin config loaded (session expiry=7 day(s), retry_count=3).
+2026-07-02 13:06:30,160 | INFO | backend.services.subscription_service | Seeded/updated 4 default plans
+2026-07-02 13:06:30,163 | INFO | leadpilot.startup | LeadPilot API — ready to accept requests.
+2026-07-02 13:10:26,233 | WARNING | backend.app.middleware.error_handlers | POST /api/auth/login -> HTTP 401: Incorrect email or password
+2026-07-02 13:10:45,664 | WARNING | backend.app.middleware.error_handlers | POST /api/admin/login -> HTTP 401: Invalid admin email or password

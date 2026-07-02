@@ -54,4 +54,4 @@ def get_current_admin(
         raise HTTPException(status_code=401, detail="Invalid or expired token")
     if not payload.get("admin"):
         raise HTTPException(status_code=403, detail="Admin token required")
-    return {"admin": True, "sub": payload.get("sub")}
+    return {"admin": True, "sub": payload.get("sub"), "admin_email": payload.get("admin_email", "")}

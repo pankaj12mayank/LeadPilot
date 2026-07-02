@@ -1,15 +1,8 @@
 import { create } from 'zustand'
 
-export type ThemePreference = 'light' | 'dark' | 'system'
+export type ThemePreference = 'light' | 'dark'
 
 const STORAGE_KEY = 'leadpilot-theme-preference'
-
-export function resolveTheme(pref: ThemePreference): 'light' | 'dark' {
-  if (pref === 'system') {
-    return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
-  }
-  return pref
-}
 
 export function applyThemeToDocument(mode: 'light' | 'dark') {
   document.documentElement.classList.toggle('dark', mode === 'dark')
@@ -19,18 +12,18 @@ export function applyThemeToDocument(mode: 'light' | 'dark') {
 function readPreference(): ThemePreference {
   try {
     const v = localStorage.getItem(STORAGE_KEY)
-    if (v === 'light' || v === 'dark' || v === 'system') return v
+    if (v === 'light' || v === 'dark') return v
   } catch {
     /* ignore */
   }
-  return 'system'
+  return 'light'
 }
 
-/** Call before React render (with ``window``) to align with stored / system preference. */
+/** Call before React render (with ``window``) to align with stored preference. */
 export function initDocumentTheme() {
   if (typeof window === 'undefined') return
   const pref = readPreference()
-  applyThemeToDocument(resolveTheme(pref))
+  applyThemeToDocument(pref)
 }
 
 type ThemeState = {
@@ -41,9 +34,9 @@ type ThemeState = {
 }
 
 export const useThemeStore = create<ThemeState>((set, get) => ({
-  preference: typeof window !== 'undefined' ? readPreference() : 'system',
+  preference: typeof window !== 'undefined' ? readPreference() : 'light',
   resolved:
-    typeof window !== 'undefined' ? resolveTheme(readPreference()) : 'light',
+    typeof window !== 'undefined' ? get().preference : 'light',
 
   setPreference(preference) {
     try {
@@ -51,14 +44,12 @@ export const useThemeStore = create<ThemeState>((set, get) => ({
     } catch {
       /* ignore */
     }
-    const resolved = resolveTheme(preference)
-    applyThemeToDocument(resolved)
-    set({ preference, resolved })
+    applyThemeToDocument(preference)
+    set({ preference, resolved: preference })
   },
 
   syncResolved() {
-    const resolved = resolveTheme(get().preference)
-    applyThemeToDocument(resolved)
-    set({ resolved })
+    applyThemeToDocument(get().preference)
+    set({ resolved: get().preference })
   },
 }))

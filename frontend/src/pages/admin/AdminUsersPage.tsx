@@ -1,10 +1,9 @@
-import { Plus, Search, Shield, UserCheck, X } from 'lucide-react'
+import { Search, Shield, UserCheck, X } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { toast } from 'sonner'
 
 import {
   adminBulkDeleteUsers,
-  adminCreateUser,
   adminGetStats,
   adminListUsers,
   adminSetUserActive,
@@ -13,6 +12,8 @@ import {
   type AdminWorkspaceStats,
 } from '@/lib/api/admin'
 import { getApiErrorMessage } from '@/lib/api/client'
+import { useAdminStore } from '@/store/adminStore'
+import { useAuthStore } from '@/store/authStore'
 import { Modal } from '@/components/ui/Modal'
 import { PasswordField } from '@/components/ui/PasswordField'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
@@ -62,11 +63,6 @@ export function AdminUsersPage() {
   const [loadErr, setLoadErr] = useState<string | null>(null)
   const [search, setSearch] = useState('')
   const [busy, setBusy] = useState(false)
-  const [showAddModal, setShowAddModal] = useState(false)
-  const [newEmail, setNewEmail] = useState('')
-  const [newPassword, setNewPassword] = useState('')
-  const [newRole, setNewRole] = useState<'admin' | 'user' | 'buyer'>('user')
-  const [newPlanId, setNewPlanId] = useState<'starter' | 'growth' | 'pro' | 'enterprise'>('starter')
   const [pwTarget, setPwTarget] = useState<AdminUserRow | null>(null)
   const [pwValue, setPwValue] = useState('')
   const [pwBusy, setPwBusy] = useState(false)
@@ -78,7 +74,7 @@ export function AdminUsersPage() {
     setLoadErr(null)
     try {
       const [u, s] = await Promise.all([adminListUsers(), adminGetStats()])
-      setUsers(u)
+      setUsers(u.users || [])
       setStats(s)
     } catch (e) {
       setLoadErr(getApiErrorMessage(e, 'Could not load users.'))
@@ -87,11 +83,22 @@ export function AdminUsersPage() {
 
   useEffect(() => { void load() }, [load])
 
+  const adminEmail = useMemo(() => {
+    const stored = useAdminStore.getState().email
+    if (stored) return stored.trim().toLowerCase()
+    const authUser = useAuthStore.getState().user
+    if (authUser?.email) return authUser.email.trim().toLowerCase()
+    return ''
+  }, [])
+
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase()
-    if (!q) return users
-    return users.filter((x) => x.email.toLowerCase().includes(q))
-  }, [users, search])
+    return users.filter((x) => {
+      if (adminEmail && x.email.toLowerCase() === adminEmail) return false
+      if (!q) return true
+      return x.email.toLowerCase().includes(q)
+    })
+  }, [users, search, adminEmail])
 
   async function confirmToggle() {
     if (!toggleTarget) return
@@ -120,18 +127,6 @@ export function AdminUsersPage() {
     } finally { setPwBusy(false) }
   }
 
-  async function onCreate() {
-    setBusy(true)
-    try {
-      await adminCreateUser({ email: newEmail.trim(), password: newPassword, role: newRole, plan_id: newPlanId })
-      setNewEmail(''); setNewPassword(''); setNewRole('user'); setNewPlanId('starter')
-      setShowAddModal(false)
-      await load()
-      toast.success('User created successfully')
-    } catch (e) { toast.error(getApiErrorMessage(e, 'Could not create user'))
-    } finally { setBusy(false) }
-  }
-
   async function onDelete() {
     if (!deleteTarget) return
     setBusy(true)
@@ -147,21 +142,11 @@ export function AdminUsersPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex flex-wrap items-center justify-between gap-4">
-        <div>
-          <h1 className="font-display text-2xl font-bold text-zinc-900 dark:text-white">Users</h1>
-          <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
-            Manage workspace accounts &mdash; create, activate, or remove users.
-          </p>
-        </div>
-        <button
-          type="button"
-          onClick={() => setShowAddModal(true)}
-          className="inline-flex items-center gap-2 rounded-lg bg-gradient-to-r from-amber-600 to-amber-500 px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:from-amber-700 hover:to-amber-600"
-        >
-          <Plus className="h-4 w-4" />
-          Add User
-        </button>
+      <div>
+        <h1 className="font-display text-2xl font-bold text-zinc-900 dark:text-white">Users</h1>
+        <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
+          Registered workspace accounts. Users sign up and choose a plan on their own.
+        </p>
       </div>
 
       {loadErr && (
@@ -195,18 +180,18 @@ export function AdminUsersPage() {
 
       {/* User Table */}
       <div className="overflow-hidden rounded-2xl border border-surface-border bg-white shadow-sm dark:bg-zinc-900">
-        <div className="border-b border-surface-border px-5 py-4">
-          <div className="relative max-w-sm">
-            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-400" />
+        <div className="flex items-center gap-2 border-b border-surface-border px-4 py-3">
+          <div className="relative w-56">
+            <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-zinc-400" />
             <input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search by email..."
-              className="w-full rounded-lg border border-surface-border bg-transparent py-2 pl-9 pr-3 text-sm outline-none focus:border-amber-500/50 focus:ring-1 focus:ring-amber-500/25"
+              className="w-full rounded-lg border border-surface-border bg-transparent py-1.5 pl-8 pr-8 text-xs outline-none focus:border-amber-500/50 focus:ring-1 focus:ring-amber-500/25 dark:bg-zinc-900"
             />
             {search && (
-              <button type="button" onClick={() => setSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-600">
-                <X className="h-4 w-4" />
+              <button type="button" onClick={() => setSearch('')} className="absolute right-2 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-600">
+                <X className="h-3.5 w-3.5" />
               </button>
             )}
           </div>
@@ -232,7 +217,7 @@ export function AdminUsersPage() {
                     {users.length === 0 ? (
                       <div className="flex flex-col items-center gap-2">
                         <UserCheck className="h-8 w-8 text-zinc-300 dark:text-zinc-600" />
-                        <span>No users yet. Click "Add User" to create one.</span>
+                        <span>No users yet.</span>
                       </div>
                     ) : (
                       'No matches for this search.'
@@ -273,21 +258,15 @@ export function AdminUsersPage() {
                     </span>
                   </td>
                   <td className="py-3 pr-4">
-                    <select
-                      value={u.plan_id || 'starter'}
-                      onChange={async (e) => {
-                        try {
-                          await adminUpdateUser(u.id, { plan_id: e.target.value })
-                          setUsers((rows) => rows.map((r) => (r.id === u.id ? { ...r, plan_id: e.target.value } : r)))
-                          toast.success('Plan updated')
-                        } catch (err) { toast.error(getApiErrorMessage(err, 'Could not update plan')) }
-                      }}
-                      className="rounded-lg border border-surface-border bg-white px-2 py-1 text-xs font-medium dark:bg-zinc-900"
-                    >
-                      {Object.entries(planLabels).map(([val, label]) => (
-                        <option key={val} value={val}>{label}</option>
-                      ))}
-                    </select>
+                    {u.role === 'admin' ? (
+                      <span className="inline-flex rounded-full border border-purple-500/30 bg-purple-500/10 px-2.5 py-0.5 text-xs font-semibold text-purple-700 dark:text-purple-300">
+                        System Owner
+                      </span>
+                    ) : (
+                      <span className="inline-flex rounded-full border border-surface-border bg-zinc-100 px-2.5 py-0.5 text-xs font-medium text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300">
+                        {planLabels[u.plan_id || 'starter'] || u.plan_id || 'Starter'}
+                      </span>
+                    )}
                   </td>
                   <td className="py-3 pr-4 text-xs text-zinc-500 dark:text-zinc-400">{fmtDate(u.last_login_at)}</td>
                   <td className="py-3 pr-4 text-xs text-zinc-500 dark:text-zinc-400">{fmtDate(u.created_at)}</td>
@@ -334,80 +313,6 @@ export function AdminUsersPage() {
           onCancel={() => setToggleTarget(null)}
         />
       )}
-
-      {/* Add User Modal */}
-      <Modal
-        open={showAddModal}
-        title="Add User"
-        titleHint="Create a new workspace account"
-        onClose={() => { if (!busy) { setShowAddModal(false); setNewEmail(''); setNewPassword(''); setNewRole('user'); setNewPlanId('starter') } }}
-      >
-        <div className="space-y-4">
-          <div className="grid gap-3 sm:grid-cols-2">
-            <label className="space-y-1.5">
-              <span className="text-xs font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">Role</span>
-              <select
-                value={newRole}
-                onChange={(e) => setNewRole(e.target.value as 'admin' | 'user' | 'buyer')}
-                className="w-full rounded-lg border border-surface-border bg-white px-3 py-2 text-sm dark:bg-zinc-900"
-              >
-                <option value="user">User</option>
-                <option value="buyer">Buyer</option>
-                <option value="admin">Admin</option>
-              </select>
-            </label>
-            <label className="space-y-1.5">
-              <span className="text-xs font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">Plan</span>
-              <select
-                value={newPlanId}
-                onChange={(e) => setNewPlanId(e.target.value as 'starter' | 'growth' | 'pro' | 'enterprise')}
-                className="w-full rounded-lg border border-surface-border bg-white px-3 py-2 text-sm dark:bg-zinc-900"
-              >
-                <option value="starter">Starter</option>
-                <option value="growth">Growth</option>
-                <option value="pro">Pro</option>
-                <option value="enterprise">Enterprise</option>
-              </select>
-            </label>
-          </div>
-          <label className="space-y-1.5">
-            <span className="text-xs font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">Email</span>
-            <input
-              className="w-full rounded-lg border border-surface-border bg-white px-3 py-2 text-sm dark:bg-zinc-900"
-              placeholder="name@company.com"
-              value={newEmail}
-              onChange={(e) => setNewEmail(e.target.value)}
-              autoComplete="off"
-            />
-          </label>
-          <PasswordField
-            id="nu-pw"
-            label="Temporary Password"
-            value={newPassword}
-            onChange={setNewPassword}
-            autoComplete="new-password"
-            minLength={8}
-            placeholder="At least 8 characters"
-          />
-          <div className="flex justify-end gap-3 pt-2">
-            <button
-              type="button"
-              onClick={() => { setShowAddModal(false); setNewEmail(''); setNewPassword(''); setNewRole('user'); setNewPlanId('starter') }}
-              className="rounded-lg border border-surface-border px-4 py-2 text-sm font-medium text-zinc-600 hover:bg-zinc-50 dark:text-zinc-400 dark:hover:bg-zinc-800"
-            >
-              Cancel
-            </button>
-            <button
-              type="button"
-              disabled={busy || !newEmail.trim() || newPassword.length < 8}
-              className="rounded-lg bg-gradient-to-r from-amber-600 to-amber-500 px-5 py-2 text-sm font-semibold text-white shadow-sm hover:from-amber-700 hover:to-amber-600 disabled:opacity-45"
-              onClick={() => void onCreate()}
-            >
-              {busy ? 'Creating...' : 'Create Account'}
-            </button>
-          </div>
-        </div>
-      </Modal>
 
       {/* Reset Password Modal */}
       <Modal

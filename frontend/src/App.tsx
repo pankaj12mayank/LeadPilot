@@ -13,7 +13,6 @@ const LeadsPage = lazy(() => import('@/pages/LeadsPage').then((m) => ({ default:
 const OutreachQueuePage = lazy(() => import('@/pages/OutreachQueuePage').then((m) => ({ default: m.OutreachQueuePage })))
 const AnalyticsPage = lazy(() => import('@/pages/AnalyticsPage').then((m) => ({ default: m.AnalyticsPage })))
 const SettingsPage = lazy(() => import('@/pages/SettingsPage').then((m) => ({ default: m.SettingsPage })))
-const AboutPage = lazy(() => import('@/pages/AboutPage').then((m) => ({ default: m.AboutPage })))
 const AdminLayout = lazy(() => import('@/pages/admin/AdminLayout').then((m) => ({ default: m.AdminLayout })))
 const AdminOverviewPage = lazy(() => import('@/pages/admin/AdminOverviewPage').then((m) => ({ default: m.AdminOverviewPage })))
 const AdminUsersPage = lazy(() => import('@/pages/admin/AdminUsersPage').then((m) => ({ default: m.AdminUsersPage })))
@@ -28,12 +27,10 @@ const AdminNewsletterPage = lazy(() => import('@/pages/admin/AdminNewsletterPage
 const AdminInboxPage = lazy(() => import('@/pages/admin/AdminInboxPage').then((m) => ({ default: m.AdminInboxPage })))
 const AdminPaymentGatewayPage = lazy(() => import('@/pages/admin/AdminPaymentGatewayPage').then((m) => ({ default: m.AdminPaymentGatewayPage })))
 const AdminEmailConfigPage = lazy(() => import('@/pages/admin/AdminEmailConfigPage').then((m) => ({ default: m.AdminEmailConfigPage })))
-const AdminEmailTemplatesPage = lazy(() => import('@/pages/admin/AdminEmailTemplatesPage').then((m) => ({ default: m.AdminEmailTemplatesPage })))
 const AdminTransactionsPage = lazy(() => import('@/pages/admin/AdminTransactionsPage').then((m) => ({ default: m.AdminTransactionsPage })))
 
 /** Landing pages (public, wrapped in LandingLayout) */
 const LandingHome = lazy(() => import('@/landing/pages/HomePage').then((m) => ({ default: m.HomePage })))
-const LandingAbout = lazy(() => import('@/landing/pages/AboutPage').then((m) => ({ default: m.AboutPage })))
 const LandingContact = lazy(() => import('@/landing/pages/ContactPage').then((m) => ({ default: m.ContactPage })))
 const LandingFeatures = lazy(() => import('@/landing/pages/FeaturesPage').then((m) => ({ default: m.FeaturesPage })))
 const LandingPricing = lazy(() => import('@/landing/pages/PricingPage').then((m) => ({ default: m.PricingPage })))
@@ -81,7 +78,6 @@ export default function App() {
         {/* Public landing pages */}
         <Route element={<LandingLayout />}>
           <Route path="/" element={<LandingHome />} />
-          <Route path="/about" element={<LandingAbout />} />
           <Route path="/contact" element={<LandingContact />} />
           <Route path="/features" element={<LandingFeatures />} />
           <Route path="/pricing" element={<LandingPricing />} />
@@ -114,7 +110,6 @@ export default function App() {
           <Route path="inbox" element={<AdminInboxPage />} />
           <Route path="payment-gateway" element={<AdminPaymentGatewayPage />} />
           <Route path="email-config" element={<AdminEmailConfigPage />} />
-          <Route path="email-templates" element={<AdminEmailTemplatesPage />} />
           <Route path="transactions" element={<AdminTransactionsPage />} />
         </Route>
 
@@ -132,7 +127,6 @@ export default function App() {
           <Route path="/platforms" element={<Navigate to="/search-leads" replace />} />
           <Route path="/analytics" element={<AnalyticsPage />} />
           <Route path="/settings" element={<SettingsPage />} />
-          <Route path="/about-dashboard" element={<AboutPage />} />
           <Route path="/user/transactions" element={<UserTransactionsPage />} />
         </Route>
 

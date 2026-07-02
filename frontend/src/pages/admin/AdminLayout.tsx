@@ -18,7 +18,6 @@ const nav = [
   { to: '/admin/inbox', label: 'Inbox', icon: Inbox },
   { to: '/admin/payment-gateway', label: 'Payment Gateway', icon: CreditCard },
   { to: '/admin/email-config', label: 'Email Config', icon: Mail },
-  { to: '/admin/email-templates', label: 'Email Templates', icon: ScrollText },
   { to: '/admin/transactions', label: 'Transactions', icon: Wallet },
 ]
 

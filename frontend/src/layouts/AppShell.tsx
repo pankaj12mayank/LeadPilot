@@ -31,7 +31,6 @@ const nav = [
   { to: '/outreach-queue', label: 'Outreach', icon: ListChecks },
   { to: '/analytics', label: 'Analytics', icon: BarChart3 },
   { to: '/settings', label: 'Settings', icon: Settings },
-  { to: '/about', label: 'About', icon: Info },
 ]
 
 function pathKey(pathname: string) {
@@ -91,7 +90,7 @@ export function AppShell() {
   }, [])
 
   const visibleNav = nav.filter((item) => {
-    if (role === 'buyer') return ['/dashboard', '/buyer-dashboard', '/analytics', '/settings', '/about'].includes(item.to)
+    if (role === 'buyer') return ['/dashboard', '/buyer-dashboard', '/analytics', '/settings'].includes(item.to)
     if (role === 'user' && item.to === '/buyer-dashboard') return false
     return true
   })

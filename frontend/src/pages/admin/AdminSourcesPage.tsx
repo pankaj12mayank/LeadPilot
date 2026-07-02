@@ -123,7 +123,7 @@ export function AdminSourcesPage() {
     if (!adminConfig || deleteTarget === null) return
     setDeleting(true)
     try {
-      const next = registry.filter((s: any, i: any) => i !== deleteTarget)
+      const next = registry.filter((_: any, i: any) => i !== deleteTarget)
       setAdminConfig({ ...adminConfig, source_registry: next })
       setDeleteTarget(null)
       setDirty(true)
@@ -204,25 +204,25 @@ export function AdminSourcesPage() {
 
       {/* Source Registry Table */}
       <div className="overflow-hidden rounded-2xl border border-surface-border bg-white shadow-sm dark:bg-zinc-900">
-        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-surface-border px-5 py-4">
-          <h2 className="font-display text-base font-semibold text-zinc-900 dark:text-white">
+        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-surface-border px-4 py-3">
+          <h2 className="text-sm font-semibold text-zinc-900 dark:text-white">
             Registered Sources
-            {totalSources > 0 && <span className="ml-2 text-sm font-normal text-zinc-500">({totalSources})</span>}
+            {totalSources > 0 && <span className="ml-1.5 text-xs font-normal text-zinc-500">({totalSources})</span>}
           </h2>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
             <div className="relative">
-              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-400" />
+              <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-zinc-400" />
               <input
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search sources..."
-                className="w-48 rounded-lg border border-surface-border bg-transparent py-1.5 pl-9 pr-3 text-sm outline-none focus:border-amber-500/50 focus:ring-1 focus:ring-amber-500/25"
+                placeholder="Search..."
+                className="w-44 rounded-lg border border-surface-border bg-transparent py-1.5 pl-8 pr-2.5 text-xs outline-none focus:border-amber-500/50 focus:ring-1 focus:ring-amber-500/25 dark:bg-zinc-900"
               />
             </div>
             <button
               type="button"
               onClick={() => openAdd()}
-              className="inline-flex items-center gap-1.5 rounded-lg bg-amber-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-amber-700"
+              className="inline-flex items-center gap-1 rounded-lg bg-amber-600 px-2.5 py-1.5 text-xs font-semibold text-white hover:bg-amber-700"
             >
               <Plus className="h-3.5 w-3.5" />
               Add Source

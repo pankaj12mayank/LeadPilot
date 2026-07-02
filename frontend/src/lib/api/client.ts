@@ -1,6 +1,7 @@
 import axios, { type AxiosError } from 'axios'
 
 import { useAuthStore } from '@/store/authStore'
+import { useAdminStore } from '@/store/adminStore'
 
 /**
  * Resolved browser base URL for the LeadPilot JSON API (includes ``/api`` when that is the server prefix).
@@ -75,7 +76,10 @@ export const api = axios.create({
 })
 
 api.interceptors.request.use((config) => {
-  const t = useAuthStore.getState().token
+  const store = window.location.pathname.startsWith('/admin')
+    ? useAdminStore.getState()
+    : useAuthStore.getState()
+  const t = store.token
   if (t) {
     config.headers.Authorization = `Bearer ${t}`
   }
@@ -87,6 +91,7 @@ api.interceptors.response.use(
   (err) => {
     if (err.response?.status === 401) {
       if (window.location.pathname.startsWith('/admin')) {
+        useAdminStore.getState().logout()
         return Promise.reject(err)
       }
       useAuthStore.getState().logout()

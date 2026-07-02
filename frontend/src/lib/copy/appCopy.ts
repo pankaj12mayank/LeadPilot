@@ -26,11 +26,11 @@ export const ROUTE_META: Record<
       'Buyer dashboard for lead pack marketplace: review pricing, preview leads, and export purchased lead bundles.',
   },
   '/search-leads': {
-    title: 'LinkedIn people search',
+    title: 'Prospecting Modes',
     subtitle:
-      'Run LinkedIn-only prospecting with keyword, location, and safety controls. Qualified rows go to your database for scoring and outreach.',
+      'Choose Explorer (Company DB), Directory (Lead fetch), or LinkedIn Mode (manual People search) with plan-controlled access.',
     documentDescription:
-      'LinkedIn people search and lead generation: live job status, prospect preview, and CRM handoff.',
+      'Prospecting modes: secure database search, directory lead import, and LinkedIn manual People search with tiered plan controls for feature access.',
   },
   '/leads': {
     title: 'Contact and Lead Management',

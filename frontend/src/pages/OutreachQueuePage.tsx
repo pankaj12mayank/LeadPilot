@@ -234,119 +234,83 @@ export function OutreachQueuePage() {
   }, [lastConfigEventTs, load])
 
   return (
-    <div className="mx-auto max-w-[1400px] space-y-6">
-      <section className="rounded-2xl border border-surface-border bg-premium-card-light p-5 shadow-card dark:bg-premium-card-dark sm:p-6">
-        <div className="flex flex-wrap items-end justify-between gap-3">
-          <div>
-            <h2 className="type-panel-title">Outreach Queue</h2>
-            <p className="mt-1 text-xs text-ink-muted">
-              Active pipeline queue (all leads not closed), sorted by highest score first.
-            </p>
-          </div>
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => setShowWorkflow((v) => !v)}
-              className="inline-flex items-center gap-2 rounded-xl border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs font-semibold text-amber-900 transition hover:border-amber-500/60 dark:text-amber-200"
-            >
-              Daily Workflow
-            </button>
-            <button
-              type="button"
-              onClick={() => void load()}
-              className="inline-flex items-center gap-2 rounded-xl border border-surface-border px-3 py-2 text-xs text-ink-muted transition hover:bg-field"
-            >
-              {loading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
-              Refresh
-            </button>
-          </div>
-        </div>
-        {showWorkflow ? (
-          <div className="mt-4 rounded-xl border border-surface-border bg-field/40 p-4">
-            <h3 className="text-xs font-semibold uppercase tracking-wider text-ink-subtle">Daily Workflow Guide</h3>
-            <ol className="mt-2 list-decimal space-y-1 pl-4 text-sm text-ink-muted">
-              <li>Open Explorer with the latest synced admin defaults.</li>
-              <li>Review Hot leads first using the current score floor of {highScoreThreshold}.</li>
-              <li>Select the top leads ranked by updated scoring and targeting boosts.</li>
-              <li>Use enriched lead context to generate or refine the outreach message.</li>
-              <li>Update status after outreach so the queue stays accurate.</li>
-            </ol>
-            <p className="mt-2 text-xs text-ink-muted">{workflowHints.join(' · ')}.</p>
-            <label className="mt-3 inline-flex items-center gap-2 text-xs text-ink-muted">
-              <input
-                type="checkbox"
-                checked={highlightReady}
-                onChange={(e) => setHighlightReady(e.target.checked)}
-                className="h-4 w-4 rounded border-surface-border accent-amber-600"
-              />
-              Highlight leads ready for outreach
-            </label>
-          </div>
-        ) : null}
+    <div className="space-y-6">
+      <div>
+        <h1 className="font-display text-2xl font-bold text-zinc-900 dark:text-white">Outreach Queue</h1>
+        <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
+          Active pipeline — leads sorted by priority score.
+        </p>
+      </div>
 
-        <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          <div>
-            <label className="text-[10px] font-semibold uppercase tracking-wider text-ink-muted">Status filter</label>
-            <FilterSelect
-              className="mt-1"
-              options={STATUS_OPTIONS}
-              value={statusFilter}
-              onChange={setStatusFilter}
-              placeholder="All active statuses"
-            />
-          </div>
-          <div>
-            <label className="text-[10px] font-semibold uppercase tracking-wider text-ink-muted">Min score</label>
-            <input
-              type="number"
-              min={0}
-              max={100}
-              value={minScore}
-              onChange={(e) => {
-                const next = Number(e.target.value)
-                if (!Number.isFinite(next)) {
-                  setErr('Min score must be a valid number between 0 and 100.')
-                  return
-                }
-                if (next < 0 || next > 100) {
-                  setErr('Min score must be between 0 and 100.')
-                  return
-                }
-                setErr(null)
-                setMinScore(next)
-              }}
-              className="field-input mt-1"
-            />
-          </div>
-        </div>
-        <div className="mt-3 flex flex-wrap items-center gap-2">
-          <span className="text-[11px] font-semibold uppercase tracking-wider text-ink-subtle">Smart presets</span>
-          <button
-            type="button"
-            onClick={() => applyPreset('hot')}
-            className={`rounded-lg border px-2.5 py-1 text-[11px] transition ${
-              preset === 'hot' ? 'border-amber-500/40 bg-amber-500/10 text-amber-900 dark:text-amber-200' : 'border-surface-border text-ink-muted hover:bg-field hover:text-ink'
-            }`}
-          >
-            Hot Leads
-          </button>
-          <button
-            type="button"
-            onClick={() => applyPreset('hiring')}
-            className={`rounded-lg border px-2.5 py-1 text-[11px] transition ${
-              preset === 'hiring' ? 'border-amber-500/40 bg-amber-500/10 text-amber-900 dark:text-amber-200' : 'border-surface-border text-ink-muted hover:bg-field hover:text-ink'
-            }`}
-          >
-            Hiring Companies
-          </button>
-          <button
-            type="button"
-            onClick={() => applyPreset('quick_wins')}
-            className={`rounded-lg border px-2.5 py-1 text-[11px] transition ${
-              preset === 'quick_wins' ? 'border-amber-500/40 bg-amber-500/10 text-amber-900 dark:text-amber-200' : 'border-surface-border text-ink-muted hover:bg-field hover:text-ink'
-            }`}
-          >
-            Quick Wins
+      <section className="rounded-2xl border border-surface-border bg-white p-5 shadow-sm dark:bg-zinc-900 sm:p-6">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex flex-wrap items-center gap-3">
+            <div className="flex items-center gap-2 rounded-lg border border-surface-border bg-zinc-50 px-2.5 py-1.5 dark:bg-zinc-800">
+              <FilterSelect
+                options={STATUS_OPTIONS}
+                value={statusFilter}
+                onChange={setStatusFilter}
+                placeholder="Status"
+                className="[&_select]:border-0 [&_select]:bg-transparent [&_select]:text-xs [&_select]:font-medium [&_select]:focus:ring-0"
+              />
+            </div>
+            <div className="flex items-center gap-2 rounded-lg border border-surface-border bg-zinc-50 px-2.5 py-1.5 dark:bg-zinc-800">
+              <input
+                type="number"
+                min={0}
+                max={100}
+                value={minScore}
+                onChange={(e) => {
+                  const next = Number(e.target.value)
+                  if (!Number.isFinite(next)) {
+                    setErr('Min score must be a valid number between 0 and 100.')
+                    return
+                  }
+                  if (next < 0 || next > 100) {
+                    setErr('Min score must be between 0 and 100.')
+                    return
+                  }
+                  setErr(null)
+                  setMinScore(next)
+                }}
+                className="w-16 border-0 bg-transparent text-xs font-medium text-zinc-900 placeholder:text-zinc-400 focus:outline-none focus:ring-0 dark:text-white"
+                placeholder="Score"
+              />
+            </div>
+            <div className="flex items-center gap-1.5">
+              <span className="text-[11px] font-medium text-zinc-400 dark:text-zinc-500">Presets</span>
+              <button
+                type="button"
+                onClick={() => applyPreset('hot')}
+                className={`rounded-lg border px-2.5 py-1 text-[11px] font-medium transition ${
+                  preset === 'hot'
+                    ? 'border-amber-500/40 bg-amber-500/10 text-amber-700 dark:text-amber-300'
+                    : 'border-surface-border text-zinc-500 hover:border-zinc-300 hover:bg-zinc-100 hover:text-zinc-700 dark:text-zinc-400 dark:hover:border-zinc-600 dark:hover:bg-zinc-800 dark:hover:text-white'
+                }`}
+              >
+                Hot Leads
+              </button>
+              <button
+                type="button"
+                onClick={() => applyPreset('hiring')}
+                className={`rounded-lg border px-2.5 py-1 text-[11px] font-medium transition ${
+                  preset === 'hiring'
+                    ? 'border-amber-500/40 bg-amber-500/10 text-amber-700 dark:text-amber-300'
+                    : 'border-surface-border text-zinc-500 hover:border-zinc-300 hover:bg-zinc-100 hover:text-zinc-700 dark:text-zinc-400 dark:hover:border-zinc-600 dark:hover:bg-zinc-800 dark:hover:text-white'
+                }`}
+              >
+                Hiring
+              </button>
+              <button
+                type="button"
+                onClick={() => applyPreset('quick_wins')}
+                className={`rounded-lg border px-2.5 py-1 text-[11px] font-medium transition ${
+                  preset === 'quick_wins'
+                    ? 'border-amber-500/40 bg-amber-500/10 text-amber-700 dark:text-amber-300'
+                    : 'border-surface-border text-zinc-500 hover:border-zinc-300 hover:bg-zinc-100 hover:text-zinc-700 dark:text-zinc-400 dark:hover:border-zinc-600 dark:hover:bg-zinc-800 dark:hover:text-white'
+                }`}
+              >
+                Quick Wins
           </button>
           <button
             type="button"

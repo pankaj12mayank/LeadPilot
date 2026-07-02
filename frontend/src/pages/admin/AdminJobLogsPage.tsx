@@ -1,4 +1,4 @@
-import { Filter, RefreshCw, Search } from 'lucide-react'
+import { RefreshCw, Search } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 
 import {
@@ -76,29 +76,26 @@ export function AdminJobLogsPage() {
 
       <div className="overflow-hidden rounded-2xl border border-surface-border bg-white shadow-sm dark:bg-zinc-900">
         {/* Filters */}
-        <div className="flex flex-wrap items-center gap-3 border-b border-surface-border px-5 py-4">
-          <div className="relative flex-1 max-w-xs">
-            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-400" />
+        <div className="flex flex-wrap items-center gap-2 border-b border-surface-border px-4 py-3">
+          <div className="relative w-48">
+            <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-zinc-400" />
             <input
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search job type..."
-              className="w-full rounded-lg border border-surface-border bg-transparent py-2 pl-9 pr-3 text-sm outline-none focus:border-amber-500/50 focus:ring-1 focus:ring-amber-500/25"
+              placeholder="Job type..."
+              className="w-full rounded-lg border border-surface-border bg-transparent py-1.5 pl-8 pr-2.5 text-xs outline-none focus:border-amber-500/50 focus:ring-1 focus:ring-amber-500/25 dark:bg-zinc-900"
             />
           </div>
-          <div className="flex items-center gap-2">
-            <Filter className="h-4 w-4 text-zinc-400" />
-            <select
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value as typeof statusFilter)}
-              className="rounded-lg border border-surface-border bg-white px-3 py-2 text-sm dark:bg-zinc-900"
-            >
-              <option value="all">All Statuses</option>
-              <option value="success">Success</option>
-              <option value="partial_success">Partial</option>
-              <option value="failure">Failure</option>
-            </select>
-          </div>
+          <select
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value as typeof statusFilter)}
+            className="rounded-lg border border-surface-border bg-white px-2.5 py-1.5 text-xs dark:bg-zinc-900 focus:border-amber-500/50 focus:ring-1 focus:ring-amber-500/25 hover:border-zinc-400 dark:hover:border-zinc-600"
+          >
+            <option value="all">All</option>
+            <option value="success">Success</option>
+            <option value="partial_success">Partial</option>
+            <option value="failure">Failure</option>
+          </select>
           {refreshedAt && (
             <span className="text-xs text-zinc-400 dark:text-zinc-500">Last updated: {refreshedAt}</span>
           )}
