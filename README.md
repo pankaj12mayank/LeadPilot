@@ -81,11 +81,14 @@ The Vite dev server (port 5173) proxies `/api` requests to the backend on port 8
 
 ## URLs
 
-| Service | URL |
-|---------|-----|
-| Frontend | http://localhost:5173 |
-| API Docs | http://127.0.0.1:8000/docs |
-| Health   | http://127.0.0.1:8000/health |
+| Service | URL | Notes |
+|---------|-----|-------|
+| Frontend (dev) | http://localhost:5173 | Vite dev server, proxies /api → backend |
+| Frontend (prod) | http://localhost:4173 | `npm run preview` after build |
+| Backend API | http://127.0.0.1:8000 | FastAPI + Uvicorn |
+| API Docs (Swagger) | http://127.0.0.1:8000/docs | Interactive API explorer |
+| API Docs (ReDoc) | http://127.0.0.1:8000/redoc | Alternative docs UI |
+| Health Check | http://127.0.0.1:8000/health | Quick uptime check |
 
 Default API root path for app routes is `/api` (configurable via `API_ROOT_PATH`).
 
@@ -110,12 +113,73 @@ Most important variables:
 
 ---
 
+## User Roles
+
+| Role | Capabilities |
+|------|-------------|
+| **User** | Lead CRM (search, leads, outreach), analytics, profile, transactions, upgrade/checkout |
+| **Buyer** | Buyer dashboard, lead pack marketplace, purchases |
+| **Admin** | Full system control: user management, plans, scoring, sources, branding, payment gateway, email config, transactions |
+
+## Frontend Routes
+
+### Protected App Pages (`/` — inside AppShell sidebar)
+
+| Route | Page | Description |
+|-------|------|-------------|
+| `/dashboard` | DashboardPage | KPIs, stats cards, plan usage bar, system overview |
+| `/buyer-dashboard` | BuyerDashboardPage | Marketplace lead pack purchases |
+| `/search-leads` | SearchLeadsPage | Explorer — search companies and discover leads |
+| `/leads` | LeadsPage | Full lead CRM table with filters, bulk actions, export |
+| `/outreach-queue` | OutreachQueuePage | AI message generation queue |
+| `/analytics` | AnalyticsPage | Charts: funnel, timeline, platform/status breakdown |
+| `/settings` | SettingsPage | User preferences |
+| `/user/transactions` | UserTransactionsPage | Payment history with filters |
+| `/user/upgrade` | UserUpgradePage | Plan selection cards |
+| `/user/checkout/:planId` | UserCheckoutPage | Payment checkout (Stripe/Razorpay) |
+| `/user/profile` | UserProfilePage | Name, email, password management |
+
+### Admin Pages (`/admin/*`)
+
+| Route | Description |
+|-------|-------------|
+| `/admin/overview` | Workspace stats, registered users, total leads |
+| `/admin/users` | User CRUD, set passwords, manage roles |
+| `/admin/branding` | Logo, favicon, product name, copyright |
+| `/admin/lead-packs` | Lead pack marketplace management |
+| `/admin/scoring` | Scoring weights, signals config |
+| `/admin/plans` | Subscription plan CRUD with pricing |
+| `/admin/sources` | Source toggles and config |
+| `/admin/job-logs` | Scraper job run history |
+| `/admin/profile` | Admin profile management |
+| `/admin/newsletter` | Landing page subscribers |
+| `/admin/inbox` | Contact form messages |
+| `/admin/payment-gateway` | Stripe/Razorpay API key config |
+| `/admin/email-config` | SMTP settings |
+| `/admin/email-templates` | Transactional email template management |
+| `/admin/transactions` | All transactions with filters |
+
+### Landing Pages (public, `/` — no sidebar)
+
+| Route | Description |
+|-------|-------------|
+| `/` | Home page with hero, features, pricing |
+| `/features` / `/features/:slug` | Features overview + detail |
+| `/pricing` | Public pricing page |
+| `/subscribe/:planId` | Public checkout (legacy — use `/user/checkout/:planId` for logged-in users) |
+| `/payment/success` / `/payment/failed` | Payment result pages |
+| `/blog` / `/blog/:slug` | Blog listing + article |
+| `/contact` / `/about` | Contact form + about us |
+| `/terms` / `/privacy` | Legal pages |
+| `/404` | Not found |
+
 ## Usage Flow
 
 1. Start system: `python scripts/run_system.py`
-2. Open frontend and login/register
+2. Open frontend at http://localhost:5173 and login/register
 3. Use Admin panel for source toggles, AI/scoring controls
 4. Use Explorer / Leads / Outreach / Buyer flows as per role
+5. Upgrade from sidebar or dashboard → plan selection → checkout → payment
 
 ---
 

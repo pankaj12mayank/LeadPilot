@@ -1681,3 +1681,6 @@ sqlite3.OperationalError: database is locked
 2026-07-02 17:31:55,842 | ERROR | backend.app.middleware.error_handlers | POST /api/public/subscriptions/create -> HTTP 503: razorpay gateway not configured
 2026-07-02 18:42:22,580 | ERROR | backend.app.middleware.error_handlers | POST /api/public/subscriptions/create -> HTTP 503: stripe gateway not configured
 2026-07-02 18:42:24,970 | ERROR | backend.app.middleware.error_handlers | POST /api/public/subscriptions/create -> HTTP 503: razorpay gateway not configured
+2026-07-02 18:56:08,487 | WARNING | backend.app.middleware.error_handlers | POST /api/auth/login -> HTTP 401: Incorrect email or password
+2026-07-02 18:59:23,286 | WARNING | backend.app.middleware.error_handlers | POST /api/auth/login -> HTTP 401: Incorrect email or password
+2026-07-02 19:03:46,806 | INFO | leadpilot.startup | LeadPilot API — shutdown.

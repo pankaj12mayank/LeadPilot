@@ -1,4 +1,7 @@
-# Payment & Subscription System — A-to-Z Implementation Plan
+# Payment & Subscription System — Implementation Guide
+
+> **Status:** Implementation Complete ✅
+> This document describes the live system architecture. All backend routes, database models, frontend pages, and payment flows are fully built and operational.
 
 ---
 
@@ -587,7 +590,35 @@ Transactions       → /admin/transactions
 
 ---
 
-## 13. Implementation Order
+### 2.5 Subscriptions Router (actual file structure)
+
+All subscription-related routes are in a single file:
+```
+backend/app/routes/subscriptions.py
+```
+
+Additions beyond original plan:
+- `GET /admin/email-templates` — list all templates
+- `PUT /admin/email-templates` — create/update template
+- `DELETE /admin/email-templates/{id}` — delete template
+- `POST /admin/email-config/test` — send test email
+- `POST /public/subscriptions/create` returns `{ url, order_id, subscription_id, transaction_id, gateway, amount, currency, publishable_key, is_free, status }`
+- `POST /public/subscriptions/verify-razorpay` — Razorpay signature verification
+- `GET /public/subscriptions/callback` — Stripe return URL handler
+
+Subscriptions service lives at:
+```
+backend/services/subscription_service.py
+```
+
+Models are consolidated in:
+```
+database/orm/models.py
+```
+
+---
+
+## 13. Implementation Order (Original Plan — for reference)
 
 ```
 Phase 1 — Foundation (Backend)
