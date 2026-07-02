@@ -44,6 +44,9 @@ const LandingPaymentSuccess = lazy(() => import('@/landing/pages/PaymentSuccessP
 const LandingPaymentFailed = lazy(() => import('@/landing/pages/PaymentFailedPage').then((m) => ({ default: m.PaymentFailedPage })))
 const LandingNotFound = lazy(() => import('@/landing/pages/NotFoundPage').then((m) => ({ default: m.NotFoundPage })))
 const UserTransactionsPage = lazy(() => import('@/pages/user/UserTransactionsPage').then((m) => ({ default: m.UserTransactionsPage })))
+const UserProfilePage = lazy(() => import('@/pages/user/UserProfilePage').then((m) => ({ default: m.UserProfilePage })))
+const UserUpgradePage = lazy(() => import('@/pages/user/UserUpgradePage').then((m) => ({ default: m.UserUpgradePage })))
+const UserCheckoutPage = lazy(() => import('@/pages/user/UserCheckoutPage').then((m) => ({ default: m.UserCheckoutPage })))
 
 function PageFallback() {
   return (
@@ -128,6 +131,9 @@ export default function App() {
           <Route path="/analytics" element={<AnalyticsPage />} />
           <Route path="/settings" element={<SettingsPage />} />
           <Route path="/user/transactions" element={<UserTransactionsPage />} />
+          <Route path="/user/upgrade" element={<UserUpgradePage />} />
+          <Route path="/user/checkout/:planId" element={<UserCheckoutPage />} />
+          <Route path="/user/profile" element={<UserProfilePage />} />
         </Route>
 
         {/* Catch-all: 404 */}

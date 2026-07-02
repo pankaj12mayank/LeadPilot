@@ -35,8 +35,7 @@ type ThemeState = {
 
 export const useThemeStore = create<ThemeState>((set, get) => ({
   preference: typeof window !== 'undefined' ? readPreference() : 'light',
-  resolved:
-    typeof window !== 'undefined' ? get().preference : 'light',
+  resolved: typeof window !== 'undefined' ? readPreference() : 'light',
 
   setPreference(preference) {
     try {
@@ -49,7 +48,8 @@ export const useThemeStore = create<ThemeState>((set, get) => ({
   },
 
   syncResolved() {
-    applyThemeToDocument(get().preference)
-    set({ resolved: get().preference })
+    const pref = get().preference
+    applyThemeToDocument(pref)
+    set({ resolved: pref })
   },
 }))

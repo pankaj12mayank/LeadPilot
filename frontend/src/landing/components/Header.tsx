@@ -32,7 +32,8 @@ export function Header() {
 
   function cycleTheme() {
     const order: Array<'light' | 'dark'> = ['light', 'dark']
-    const idx = order.indexOf(themePref === 'system' ? 'light' : themePref)
+    const current = themePref || 'light'
+    const idx = order.indexOf(current)
     setTheme(order[(idx + 1) % order.length])
   }
 

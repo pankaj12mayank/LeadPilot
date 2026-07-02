@@ -113,7 +113,7 @@ export function DashboardPage() {
               </div>
             </div>
             {sub.leads_consumed >= sub.lead_limit && sub.lead_limit > 0 && (
-              <Link to="/pricing" className="shrink-0 rounded-lg bg-amber-600 px-4 py-2 text-sm font-semibold text-white hover:bg-amber-700">
+              <Link to="/user/upgrade" className="shrink-0 rounded-lg bg-amber-600 px-4 py-2 text-sm font-semibold text-white hover:bg-amber-700">
                 Upgrade
               </Link>
             )}

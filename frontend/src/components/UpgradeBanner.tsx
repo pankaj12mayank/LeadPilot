@@ -20,7 +20,7 @@ export function UpgradeBanner({
           </p>
         </div>
         <Link
-          to="/pricing"
+          to="/user/upgrade"
           className="shrink-0 rounded-lg bg-amber-600 px-4 py-2 text-sm font-semibold text-white hover:bg-amber-700"
         >
           Upgrade Now

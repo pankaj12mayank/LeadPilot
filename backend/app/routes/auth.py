@@ -97,3 +97,56 @@ def me(user: dict = Depends(get_current_user)) -> AuthResponse:
         user=_build_user_dict(user),
         subscription=sub,
     )
+
+
+class ProfileUpdateRequest(BaseModel):
+    name: Optional[str] = None
+    current_password: Optional[str] = None
+    new_password: Optional[str] = None
+
+
+class ChangePasswordRequest(BaseModel):
+    current_password: str
+    new_password: str
+
+
+@router.patch("/profile")
+def update_profile(body: ProfileUpdateRequest, user: dict = Depends(get_current_user)) -> dict:
+    updates = {}
+
+    if body.name is not None:
+        updates["name"] = body.name.strip() if body.name else ""
+
+    if body.new_password:
+        if not body.current_password:
+            raise HTTPException(status_code=400, detail="Current password is required to change password")
+
+        if body.new_password != body.current_password:
+            user_row = auth_service.get_user_by_email(user["email"])
+            if not user_row or not auth_service.verify_password(body.current_password, user_row.get("password_hash", "")):
+                raise HTTPException(status_code=400, detail="Current password is incorrect")
+
+        if len(body.new_password) < 8:
+            raise HTTPException(status_code=400, detail="New password must be at least 8 characters")
+
+        auth_service.set_user_password(user["id"], body.new_password)
+        updates["password_changed"] = True
+
+    if not updates:
+        raise HTTPException(status_code=400, detail="No updates provided")
+
+    return {"success": True, "message": "Profile updated successfully", "requires_relogin": updates.get("password_changed", False)}
+
+
+@router.post("/change-password")
+def change_password(body: ChangePasswordRequest, user: dict = Depends(get_current_user)) -> dict:
+    user_row = auth_service.get_user_by_email(user["email"])
+    if not user_row or not auth_service.verify_password(body.current_password, user_row.get("password_hash", "")):
+        raise HTTPException(status_code=400, detail="Current password is incorrect")
+
+    if len(body.new_password) < 8:
+        raise HTTPException(status_code=400, detail="New password must be at least 8 characters")
+
+    auth_service.set_user_password(user["id"], body.new_password)
+
+    return {"success": True, "message": "Password changed successfully. Please login again."}

@@ -1,7 +1,6 @@
 import {
   BarChart3,
   BriefcaseBusiness,
-  Info,
   LayoutDashboard,
   ListChecks,
   LogOut,
@@ -9,13 +8,17 @@ import {
   Search,
   Settings,
   Sparkles,
+  User,
   Users,
+  Receipt,
 } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { NavLink, Outlet, useLocation } from 'react-router-dom'
 import { toast } from 'sonner'
 
 import { ThemeToggle } from '@/components/layout/ThemeToggle'
+import { PlanSection } from '@/components/layout/PlanSection'
+import { ExpiredBanner } from '@/components/SubscriptionGate'
 import { APP_NAME, DEFAULT_META_DESCRIPTION, ROUTE_META } from '@/lib/copy/appCopy'
 import { resolveMediaUrl } from '@/lib/utils/mediaUrl'
 import { cn } from '@/lib/utils/cn'
@@ -31,6 +34,8 @@ const nav = [
   { to: '/outreach-queue', label: 'Outreach', icon: ListChecks },
   { to: '/analytics', label: 'Analytics', icon: BarChart3 },
   { to: '/settings', label: 'Settings', icon: Settings },
+  { to: '/user/transactions', label: 'Transactions', icon: Receipt },
+  { to: '/user/profile', label: 'Profile', icon: User },
 ]
 
 function pathKey(pathname: string) {
@@ -162,6 +167,8 @@ export function AppShell() {
           ))}
         </nav>
 
+        <PlanSection />
+
         {/* User section */}
         <div className="border-t border-surface-border p-3">
           <div className="flex items-center gap-3 rounded-lg px-3 py-2.5">
@@ -246,6 +253,7 @@ export function AppShell() {
 
         {/* Page content */}
         <main className="flex-1 overflow-y-auto p-4 lg:p-6">
+          <ExpiredBanner />
           <Outlet />
         </main>
       </div>

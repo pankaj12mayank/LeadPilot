@@ -1,4 +1,4 @@
-import { Loader2, RefreshCw } from 'lucide-react'
+import { Loader2 } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 
 import { Badge, StatusBadge } from '@/components/ui/Badge'
@@ -60,7 +60,6 @@ export function OutreachQueuePage() {
   const [statusFilter, setStatusFilter] = useState('')
   const [minScore, setMinScore] = useState(0)
   const [preset, setPreset] = useState<'none' | 'hot' | 'hiring' | 'quick_wins' | 'growth'>('none')
-  const [showWorkflow, setShowWorkflow] = useState(false)
   const [highlightReady, setHighlightReady] = useState(false)
   const [skippedBrokenRows, setSkippedBrokenRows] = useState(0)
   const [err, setErr] = useState<string | null>(null)
@@ -85,22 +84,7 @@ export function OutreachQueuePage() {
         .filter(Boolean),
     [adminConfig.targeting?.industries],
   )
-  const workflowHints = useMemo(() => {
-    const hints: string[] = []
-    hints.push(`Explorer filters auto-start from score ${highScoreThreshold}`)
-    if (preferredKeywords.length) hints.push(`focus on keywords like ${preferredKeywords.slice(0, 2).join(', ')}`)
-    if (preferredLocations.length) hints.push(`prioritize locations like ${preferredLocations.slice(0, 2).join(', ')}`)
-    if (adminConfig.signals_config?.hiring_enabled) hints.push('use hiring signal for fast-moving accounts')
-    if (adminConfig.signals_config?.scaling_enabled) hints.push('use scaling signal for expansion-ready accounts')
-    return hints
-  }, [
-    adminConfig.signals_config?.hiring_enabled,
-    adminConfig.signals_config?.scaling_enabled,
-    highScoreThreshold,
-    preferredKeywords,
-    preferredLocations,
-  ])
-
+  
   const load = useCallback(async () => {
     setLoading(true)
     setErr(null)
@@ -311,26 +295,41 @@ export function OutreachQueuePage() {
                 }`}
               >
                 Quick Wins
-          </button>
-          <button
-            type="button"
-            onClick={() => applyPreset('growth')}
-            className={`rounded-lg border px-2.5 py-1 text-[11px] transition ${
-              preset === 'growth' ? 'border-amber-500/40 bg-amber-500/10 text-amber-900 dark:text-amber-200' : 'border-surface-border text-ink-muted hover:bg-field hover:text-ink'
-            }`}
-          >
-            Growth
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              setPreset('none')
-              setMinScore(0)
-            }}
-            className="rounded-lg border border-surface-border px-2.5 py-1 text-[11px] text-ink-muted transition hover:bg-field hover:text-ink"
-          >
-            Clear preset
-          </button>
+              </button>
+              <button
+                type="button"
+                onClick={() => applyPreset('growth')}
+                className={`rounded-lg border px-2.5 py-1 text-[11px] font-medium transition ${
+                  preset === 'growth' ? 'border-amber-500/40 bg-amber-500/10 text-amber-900 dark:text-amber-200' : 'border-surface-border text-zinc-500 hover:border-zinc-300 hover:bg-zinc-100 hover:text-zinc-700 dark:text-zinc-400 dark:hover:border-zinc-600 dark:hover:bg-zinc-800 dark:hover:text-white'
+                }`}
+              >
+                Growth
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setPreset('none')
+                  setMinScore(0)
+                }}
+                className="rounded-lg border border-surface-border px-2.5 py-1 text-[11px] font-medium text-zinc-500 transition hover:border-zinc-300 hover:bg-zinc-100 hover:text-zinc-700 dark:text-zinc-400 dark:hover:border-zinc-600 dark:hover:bg-zinc-800 dark:hover:text-white"
+              >
+                Clear preset
+              </button>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setHighlightReady(!highlightReady)}
+              className={`rounded-lg border px-2.5 py-1.5 text-xs font-medium transition ${
+                highlightReady
+                  ? 'border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300'
+                  : 'border-surface-border text-zinc-500 hover:border-zinc-300 hover:bg-zinc-100 hover:text-zinc-700 dark:text-zinc-400 dark:hover:border-zinc-600 dark:hover:bg-zinc-800 dark:hover:text-white'
+              }`}
+            >
+              Show Ready
+            </button>
+          </div>
         </div>
       </section>
 

@@ -1669,3 +1669,15 @@ sqlite3.OperationalError: database is locked
 2026-07-02 13:06:30,163 | INFO | leadpilot.startup | LeadPilot API — ready to accept requests.
 2026-07-02 13:10:26,233 | WARNING | backend.app.middleware.error_handlers | POST /api/auth/login -> HTTP 401: Incorrect email or password
 2026-07-02 13:10:45,664 | WARNING | backend.app.middleware.error_handlers | POST /api/admin/login -> HTTP 401: Invalid admin email or password
+2026-07-02 17:14:22,297 | INFO | leadpilot.startup | LeadPilot API — startup beginning.
+2026-07-02 17:14:22,298 | INFO | leadpilot.startup | python-dotenv: loaded .env from repository root (see config.py).
+2026-07-02 17:14:22,300 | INFO | leadpilot.startup | Runtime directories ready (exports, sessions, logs, DB parents, branding).
+2026-07-02 17:14:22,302 | INFO | leadpilot.startup | Meta SQLite schema OK (database/api_meta.db).
+2026-07-02 17:14:22,306 | INFO | leadpilot.startup | SQLAlchemy tables OK (ORM / leads schema).
+2026-07-02 17:14:22,307 | INFO | leadpilot.startup | Lead storage initialized (STORAGE_MODE=csv).
+2026-07-02 17:14:22,312 | INFO | leadpilot.startup | Admin config loaded (session expiry=7 day(s), retry_count=3).
+2026-07-02 17:14:22,324 | INFO | backend.services.subscription_service | Seeded/updated 4 default plans
+2026-07-02 17:14:22,326 | INFO | leadpilot.startup | LeadPilot API — ready to accept requests.
+2026-07-02 17:31:55,842 | ERROR | backend.app.middleware.error_handlers | POST /api/public/subscriptions/create -> HTTP 503: razorpay gateway not configured
+2026-07-02 18:42:22,580 | ERROR | backend.app.middleware.error_handlers | POST /api/public/subscriptions/create -> HTTP 503: stripe gateway not configured
+2026-07-02 18:42:24,970 | ERROR | backend.app.middleware.error_handlers | POST /api/public/subscriptions/create -> HTTP 503: razorpay gateway not configured

@@ -283,27 +283,48 @@ export function SearchLeadsPage() {
             <button
               type="button"
               onClick={() => setMode('linkedin')}
-              className={`rounded-xl border px-3 py-1.5 text-xs ${mode === 'linkedin' ? 'border-amber-500/50 bg-amber-500/10 text-ink' : 'border-surface-border text-ink-muted'}`}
+              className={`rounded-lg border px-4 py-2 text-xs font-medium transition-all ${
+                mode === 'linkedin'
+                  ? 'border-amber-500/50 bg-amber-500/10 text-amber-700 shadow-sm dark:text-amber-300'
+                  : 'border-surface-border text-zinc-500 hover:border-zinc-300 hover:bg-zinc-50 hover:text-zinc-700 dark:border-zinc-700 dark:text-zinc-400 dark:hover:border-zinc-600 dark:hover:bg-zinc-800 dark:hover:text-white'
+              }`}
             >
-              LinkedIn Mode
+              <span className="flex items-center gap-1.5">
+                <span className={`h-1.5 w-1.5 rounded-full ${mode === 'linkedin' ? 'bg-amber-500' : 'bg-zinc-300 dark:bg-zinc-600'}`} />
+                LinkedIn Mode
+              </span>
             </button>
           )}
           {availableModes.includes('directory') && (
             <button
               type="button"
               onClick={() => setMode('directory')}
-              className={`rounded-xl border px-3 py-1.5 text-xs ${mode === 'directory' ? 'border-amber-500/50 bg-amber-500/10 text-ink' : 'border-surface-border text-ink-muted'}`}
+              className={`rounded-lg border px-4 py-2 text-xs font-medium transition-all ${
+                mode === 'directory'
+                  ? 'border-amber-500/50 bg-amber-500/10 text-amber-700 shadow-sm dark:text-amber-300'
+                  : 'border-surface-border text-zinc-500 hover:border-zinc-300 hover:bg-zinc-50 hover:text-zinc-700 dark:border-zinc-700 dark:text-zinc-400 dark:hover:border-zinc-600 dark:hover:bg-zinc-800 dark:hover:text-white'
+              }`}
             >
-              Directory Mode
+              <span className="flex items-center gap-1.5">
+                <span className={`h-1.5 w-1.5 rounded-full ${mode === 'directory' ? 'bg-amber-500' : 'bg-zinc-300 dark:bg-zinc-600'}`} />
+                Directory Mode
+              </span>
             </button>
           )}
           {availableModes.includes('explorer') && (
             <button
               type="button"
               onClick={() => setMode('explorer')}
-              className={`rounded-xl border px-3 py-1.5 text-xs ${mode === 'explorer' ? 'border-amber-500/50 bg-amber-500/10 text-ink' : 'border-surface-border text-ink-muted'}`}
+              className={`rounded-lg border px-4 py-2 text-xs font-medium transition-all ${
+                mode === 'explorer'
+                  ? 'border-amber-500/50 bg-amber-500/10 text-amber-700 shadow-sm dark:text-amber-300'
+                  : 'border-surface-border text-zinc-500 hover:border-zinc-300 hover:bg-zinc-50 hover:text-zinc-700 dark:border-zinc-700 dark:text-zinc-400 dark:hover:border-zinc-600 dark:hover:bg-zinc-800 dark:hover:text-white'
+              }`}
             >
-              Explorer Mode
+              <span className="flex items-center gap-1.5">
+                <span className={`h-1.5 w-1.5 rounded-full ${mode === 'explorer' ? 'bg-amber-500' : 'bg-zinc-300 dark:bg-zinc-600'}`} />
+                Explorer Mode
+              </span>
             </button>
           )}
         </div>
@@ -315,7 +336,7 @@ export function SearchLeadsPage() {
         </div>
 
         {mode === 'explorer' ? (
-          <div className="mt-4 space-y-3">
+          <div className="mt-4 space-y-4">
             <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/10 px-4 py-3 text-xs text-emerald-900 dark:text-emerald-200">
               Explorer is synced to the latest admin config.
               {defaultKeyword ? ` Keyword default: ${defaultKeyword}.` : ''}
@@ -323,80 +344,107 @@ export function SearchLeadsPage() {
               {defaultMinScore > 0 ? ` Score floor: ${defaultMinScore}.` : ''}
               {allowedSources.length ? ` Sources: ${allowedSources.join(', ')}.` : ''}
             </div>
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-              <input
-                value={keyword}
-                onChange={(e) => setKeyword(e.target.value)}
-                placeholder="keyword (optional)"
-                className="field-input rounded-xl px-3 py-2 text-sm"
-              />
-              <input
-                value={location}
-                onChange={(e) => setLocation(e.target.value)}
-                placeholder="location (optional)"
-                className="field-input rounded-xl px-3 py-2 text-sm"
-              />
-              <select
-                value={sourceFilter}
-                onChange={(e) => setSourceFilter(e.target.value)}
-                className="field-input rounded-xl px-3 py-2 text-sm"
-              >
-                <option value="all">Source: all</option>
-                {allowedSources.map((src) => (
-                  <option key={src} value={src}>
-                    Source: {src}
-                  </option>
-                ))}
-              </select>
-              <input
-                type="number"
-                min={0}
-                max={365}
-                value={updatedWithinDays}
-                onChange={(e) => setUpdatedWithinDays(Number(e.target.value))}
-                placeholder="updated within days"
-                className="field-input rounded-xl px-3 py-2 text-sm"
-              />
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              <div className="space-y-1.5">
+                <label className="text-[11px] font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">Keyword</label>
+                <input
+                  value={keyword}
+                  onChange={(e) => setKeyword(e.target.value)}
+                  placeholder="e.g. marketing agency"
+                  className="field-input rounded-xl px-3 py-2 text-sm w-full"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-[11px] font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">Location</label>
+                <input
+                  value={location}
+                  onChange={(e) => setLocation(e.target.value)}
+                  placeholder="e.g. Mumbai, India"
+                  className="field-input rounded-xl px-3 py-2 text-sm w-full"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-[11px] font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">Source Filter</label>
+                <select
+                  value={sourceFilter}
+                  onChange={(e) => setSourceFilter(e.target.value)}
+                  className="field-input rounded-xl px-3 py-2 text-sm w-full"
+                >
+                  <option value="all">All Sources</option>
+                  {allowedSources.map((src) => (
+                    <option key={src} value={src}>
+                      {src}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-[11px] font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">Updated Within</label>
+                <input
+                  type="number"
+                  min={0}
+                  max={365}
+                  value={updatedWithinDays}
+                  onChange={(e) => setUpdatedWithinDays(Number(e.target.value))}
+                  placeholder="Days (0 = any)"
+                  className="field-input rounded-xl px-3 py-2 text-sm w-full"
+                />
+              </div>
             </div>
             <div className="text-xs text-ink-muted">
               Source filter controls which origin is shown in Explorer results. Each result includes the source that produced
               the company row.
             </div>
-            <div className="grid gap-3 sm:grid-cols-3">
-              <input
-                type="number"
-                min={0}
-                max={100}
-                value={minScore}
-                onChange={(e) => setMinScore(Number(e.target.value))}
-                placeholder="min score"
-                className="field-input rounded-xl px-3 py-2 text-sm"
-              />
+            <div className="grid gap-4 sm:grid-cols-3">
+              <div className="space-y-1.5">
+                <label className="text-[11px] font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">Minimum Score</label>
+                <input
+                  type="number"
+                  min={0}
+                  max={100}
+                  value={minScore}
+                  onChange={(e) => setMinScore(Number(e.target.value))}
+                  placeholder="0-100"
+                  className="field-input rounded-xl px-3 py-2 text-sm w-full"
+                />
+              </div>
               {enabledSignals.hiring ? (
-                <label className="flex items-center gap-2 rounded-xl border border-surface-border px-3 py-2 text-xs text-ink-muted">
-                  <input
-                    type="checkbox"
-                    checked={signalHiring}
-                    onChange={(e) => setSignalHiring(e.target.checked)}
-                    className="h-4 w-4 rounded border-surface-border accent-amber-600"
-                  />
-                  Hiring signal
-                </label>
+                <div className="space-y-1.5">
+                  <label className="text-[11px] font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">Signals</label>
+                  <label className="flex items-center gap-2 rounded-xl border border-surface-border bg-white px-3 py-2 text-xs text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400 hover:border-amber-500/30 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={signalHiring}
+                      onChange={(e) => setSignalHiring(e.target.checked)}
+                      className="h-4 w-4 rounded border-surface-border accent-amber-600"
+                    />
+                    Hiring signal
+                  </label>
+                </div>
               ) : (
-                <div className="rounded-xl border border-surface-border/70 px-3 py-2 text-xs text-ink-subtle">Hiring signal disabled by admin</div>
+                <div className="space-y-1.5">
+                  <label className="text-[11px] font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">Signals</label>
+                  <div className="rounded-xl border border-surface-border/70 px-3 py-2 text-xs text-zinc-400 dark:text-zinc-500">Hiring signal disabled</div>
+                </div>
               )}
               {enabledSignals.scaling ? (
-                <label className="flex items-center gap-2 rounded-xl border border-surface-border px-3 py-2 text-xs text-ink-muted">
-                  <input
-                    type="checkbox"
-                    checked={signalScaling}
-                    onChange={(e) => setSignalScaling(e.target.checked)}
-                    className="h-4 w-4 rounded border-surface-border accent-amber-600"
-                  />
-                  Scaling signal
-                </label>
+                <div className="space-y-1.5">
+                  <label className="text-[11px] font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">&nbsp;</label>
+                  <label className="flex items-center gap-2 rounded-xl border border-surface-border bg-white px-3 py-2 text-xs text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400 hover:border-amber-500/30 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={signalScaling}
+                      onChange={(e) => setSignalScaling(e.target.checked)}
+                      className="h-4 w-4 rounded border-surface-border accent-amber-600"
+                    />
+                    Scaling signal
+                  </label>
+                </div>
               ) : (
-                <div className="rounded-xl border border-surface-border/70 px-3 py-2 text-xs text-ink-subtle">Scaling signal disabled by admin</div>
+                <div className="space-y-1.5">
+                  <label className="text-[11px] font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">&nbsp;</label>
+                  <div className="rounded-xl border border-surface-border/70 px-3 py-2 text-xs text-zinc-400 dark:text-zinc-500">Scaling signal disabled</div>
+                </div>
               )}
             </div>
             <div className="rounded-xl border border-surface-border bg-field/30 px-3 py-3">
@@ -486,31 +534,31 @@ export function SearchLeadsPage() {
               </div>
             ) : null}
             {explorerErr ? <p className="text-xs text-red-600 dark:text-red-300">{explorerErr}</p> : null}
-            <div className="overflow-x-auto">
+            <div className="overflow-x-auto rounded-xl border border-surface-border">
               <table className="w-full min-w-[780px] text-left text-xs">
-                <thead className="border-b border-surface-border text-ink-muted">
+                <thead className="border-b border-surface-border bg-zinc-50/80 text-[10px] font-semibold uppercase tracking-wider text-zinc-500 dark:bg-zinc-800/50">
                   <tr>
-                    <th className="px-2 py-2">Company</th>
-                    <th className="px-2 py-2">Website</th>
-                    <th className="px-2 py-2">Source</th>
-                    <th className="px-2 py-2">Last Updated</th>
-                    <th className="px-2 py-2">Score</th>
-                    <th className="px-2 py-2">Signals</th>
-                    <th className="px-2 py-2">Action</th>
+                    <th className="px-3 py-2.5">Company</th>
+                    <th className="px-3 py-2.5">Website</th>
+                    <th className="px-3 py-2.5">Source</th>
+                    <th className="px-3 py-2.5">Last Updated</th>
+                    <th className="px-3 py-2.5">Score</th>
+                    <th className="px-3 py-2.5">Signals</th>
+                    <th className="px-3 py-2.5">Action</th>
                   </tr>
                 </thead>
                 <tbody>
                   {explorerRows.length === 0 ? (
                     <tr>
-                      <td colSpan={7} className="px-2 py-3 text-ink-muted">
-                        No explorer rows yet. Apply filters and run Explorer.
+                      <td colSpan={7} className="px-3 py-8 text-center text-ink-muted">
+                        No results found. Configure filters and run Explorer to fetch companies.
                       </td>
                     </tr>
                   ) : (
-                    explorerRows.map((row) => (
-                      <tr key={`${row.id}-${row.domain}`} className="border-b border-surface-border/70">
-                        <td className="px-2 py-2">{row.company_name || '—'}</td>
-                        <td className="max-w-[18rem] truncate px-2 py-2" title={row.website}>
+                    explorerRows.map((row, idx) => (
+                      <tr key={`${row.id}-${row.domain}`} className={`border-b border-surface-border/60 transition-colors hover:bg-amber-500/[0.03] dark:hover:bg-amber-400/[0.03] ${idx % 2 === 1 ? 'bg-zinc-50/50 dark:bg-zinc-800/20' : ''}`}>
+                        <td className="px-3 py-2.5 font-medium text-zinc-900 dark:text-white">{row.company_name || '—'}</td>
+                        <td className="max-w-[18rem] truncate px-3 py-2.5" title={row.website}>
                           {row.website ? (
                             <a
                               href={row.website}
@@ -579,37 +627,46 @@ export function SearchLeadsPage() {
             </div>
           </div>
         ) : mode === 'directory' ? (
-          <div className="mt-4 space-y-3">
+          <div className="mt-4 space-y-4">
             <div className="rounded-xl border border-surface-border bg-field/40 px-4 py-3 text-sm text-ink-muted">
               Choose a directory source, enter keyword/location, then fetch leads directly into your Leads list.
             </div>
-            <div className="grid gap-3 sm:grid-cols-3">
-              <select
-                value={directorySource}
-                onChange={(e) => setDirectorySource(e.target.value)}
-                className="field-input rounded-xl px-3 py-2 text-sm"
-              >
-                <option value="">Select source</option>
-                {allowedSources.map((src) => (
-                  <option key={src} value={src}>
-                    {titleizeSource(src)}
-                  </option>
-                ))}
-              </select>
-              <input
-                value={keyword}
-                onChange={(e) => setKeyword(e.target.value)}
-                placeholder="keyword"
-                className="field-input rounded-xl px-3 py-2 text-sm"
-              />
-              <input
-                value={location}
-                onChange={(e) => setLocation(e.target.value)}
-                placeholder="location"
-                className="field-input rounded-xl px-3 py-2 text-sm"
-              />
+            <div className="grid gap-4 sm:grid-cols-3">
+              <div className="space-y-1.5">
+                <label className="text-[11px] font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">Source</label>
+                <select
+                  value={directorySource}
+                  onChange={(e) => setDirectorySource(e.target.value)}
+                  className="field-input rounded-xl px-3 py-2 text-sm w-full"
+                >
+                  <option value="">Select source</option>
+                  {allowedSources.map((src) => (
+                    <option key={src} value={src}>
+                      {titleizeSource(src)}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-[11px] font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">Keyword</label>
+                <input
+                  value={keyword}
+                  onChange={(e) => setKeyword(e.target.value)}
+                  placeholder="Enter keyword..."
+                  className="field-input rounded-xl px-3 py-2 text-sm w-full"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-[11px] font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">Location</label>
+                <input
+                  value={location}
+                  onChange={(e) => setLocation(e.target.value)}
+                  placeholder="Enter location..."
+                  className="field-input rounded-xl px-3 py-2 text-sm w-full"
+                />
+              </div>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-3">
               <button
                 type="button"
                 disabled={directoryBusy}
