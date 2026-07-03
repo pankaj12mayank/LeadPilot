@@ -43,6 +43,7 @@ const LandingCheckout = lazy(() => import('@/landing/pages/CheckoutPage').then((
 const LandingPaymentSuccess = lazy(() => import('@/landing/pages/PaymentSuccessPage').then((m) => ({ default: m.PaymentSuccessPage })))
 const LandingPaymentFailed = lazy(() => import('@/landing/pages/PaymentFailedPage').then((m) => ({ default: m.PaymentFailedPage })))
 const LandingNotFound = lazy(() => import('@/landing/pages/NotFoundPage').then((m) => ({ default: m.NotFoundPage })))
+const LandingAbout = lazy(() => import('@/landing/pages/AboutPage').then((m) => ({ default: m.AboutPage })))
 const UserTransactionsPage = lazy(() => import('@/pages/user/UserTransactionsPage').then((m) => ({ default: m.UserTransactionsPage })))
 const UserProfilePage = lazy(() => import('@/pages/user/UserProfilePage').then((m) => ({ default: m.UserProfilePage })))
 const UserUpgradePage = lazy(() => import('@/pages/user/UserUpgradePage').then((m) => ({ default: m.UserUpgradePage })))
@@ -92,6 +93,7 @@ export default function App() {
           <Route path="/blog/:slug" element={<LandingBlogPost />} />
           <Route path="/terms" element={<LandingTerms />} />
           <Route path="/privacy" element={<LandingPrivacy />} />
+          <Route path="/about" element={<LandingAbout />} />
           <Route path="/404" element={<LandingNotFound />} />
         </Route>
 
